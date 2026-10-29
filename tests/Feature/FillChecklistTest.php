@@ -292,16 +292,17 @@ it('prunes abandoned empty checklists but keeps the ones with any entry or recen
         ->and(Checklist::find($answered->id))->not->toBeNull()->and(Checklist::find($withNote->id))->not->toBeNull()->and(Checklist::find($recent->id))->not->toBeNull();
 });
 
-it('only enables the finish button once the provisional score is 100%', function () {
+it('hides the finish button until the provisional score is 100%', function () {
     loggedIn($this->hod);
     $checklist = startedChecklist();
+    $finish = '<a href="'.route('checklists.show', $checklist).'" data-finish class="btn-primary ';
 
-    $this->get(route('checklists.fill', $checklist))->assertSee('aria-disabled="true"', false)->assertSee('Aktif saat skor 100%');
+    $this->get(route('checklists.fill', $checklist))->assertSee($finish.'hidden"', false)->assertDontSee('Aktif saat skor 100%');
 
     $this->postJson(route('checklists.rest-done', $checklist));
-    $this->get(route('checklists.fill', $checklist))->assertSee('aria-disabled="false"', false)->assertDontSee('pointer-events-none opacity-50');
+    $this->get(route('checklists.fill', $checklist))->assertSee($finish.'"', false)->assertDontSee($finish.'hidden"', false);
 
-    // Satu tugas Ongoing: skor di bawah 100%, tombol nonaktif lagi. "Lihat hasil" di atas tetap bisa dipakai.
+    // Satu tugas Ongoing: skor di bawah 100%, tombol disembunyikan lagi. "Lihat hasil" di atas halaman tetap ada.
     $checklist->items[0]->update(['status' => 'ongoing']);
-    $this->get(route('checklists.fill', $checklist))->assertSee('aria-disabled="true"', false)->assertSee(route('checklists.show', $checklist));
+    $this->get(route('checklists.fill', $checklist))->assertSee($finish.'hidden"', false)->assertSee('Lihat hasil');
 });

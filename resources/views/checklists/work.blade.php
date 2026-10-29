@@ -184,10 +184,8 @@
                     <p class="text-xs text-white/60"><button type="button" data-retry class="hidden underline">Coba simpan lagi</button><span data-save-state data-state="saved">Tersimpan otomatis</span></p>
                 </div>
                 @php($finishReady = ($progress['score'] ?? 0) === 100)
-                <div class="text-right">
-                    <a href="{{ route('checklists.show', $checklist) }}" data-finish class="btn-primary {{ $finishReady ? '' : 'pointer-events-none opacity-50' }}" aria-disabled="{{ $finishReady ? 'false' : 'true' }}" @if (! $finishReady) tabindex="-1" @endif>Selesai · lihat hasil</a>
-                    <p data-finish-hint class="mt-1 text-xs text-white/60 {{ $finishReady ? 'hidden' : '' }}">Aktif saat skor 100%</p>
-                </div>
+                {{-- Tombol selesai baru muncul saat skor sementara 100% (semua tugas Done). --}}
+                <a href="{{ route('checklists.show', $checklist) }}" data-finish class="btn-primary {{ $finishReady ? '' : 'hidden' }}">Selesai · lihat hasil</a>
             </div>
         </div>
     </div>

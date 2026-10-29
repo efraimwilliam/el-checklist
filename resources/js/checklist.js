@@ -21,7 +21,6 @@ if (root) {
         state: root.querySelector('[data-save-state]'),
         retry: root.querySelector('[data-retry]'),
         finish: root.querySelector('[data-finish]'),
-        finishHint: root.querySelector('[data-finish-hint]'),
     };
 
     const statusOf = (item) => item.querySelector('input[type=radio]:checked')?.value ?? null;
@@ -176,13 +175,8 @@ if (root) {
         ui.score.textContent = `${percent}%`;
         ui.score.style.color = scoreColor(percent);
         ui.complete.classList.toggle('hidden', !(items.length && filled === items.length && missingReasons === 0 && missingPhotos === 0));
-        // "Selesai" baru bisa diklik saat skor sementara 100% (semua tugas Done).
-        const ready = items.length > 0 && percent === 100;
-        ui.finish.classList.toggle('pointer-events-none', !ready);
-        ui.finish.classList.toggle('opacity-50', !ready);
-        ui.finish.setAttribute('aria-disabled', String(!ready));
-        ui.finish.tabIndex = ready ? 0 : -1;
-        ui.finishHint.classList.toggle('hidden', ready);
+        // "Selesai" disembunyikan sampai skor sementara 100% (semua tugas Done).
+        ui.finish.classList.toggle('hidden', !(items.length > 0 && percent === 100));
         paintDeck();
     }
 
