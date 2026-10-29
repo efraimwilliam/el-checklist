@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Enums\Role;
+use App\Models\Employee;
 use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -24,14 +25,16 @@ class AppServiceProvider extends ServiceProvider
         // Batas kasar per IP untuk form login; kunci per username + IP ada di AttendanceLoginController.
         RateLimiter::for('login', fn (Request $request) => Limit::perMinute(20)->by($request->ip()));
 
-        Gate::define('review-checklists', fn (User $user) => $user->canUseApp() && $user->role->reviews());
-        // Menugaskan tugas ke pegawai: Administrator & HR (semua departemen) dan HOD (departemen yang ditugaskan). Tidak untuk diri sendiri, kecuali Administrator.
-        Gate::define('manage-team-tasks', fn (User $user) => $user->canUseApp() && in_array($user->role, [Role::Admin, Role::Hr, Role::Hod], true));
-        Gate::define('assign-tasks', fn (User $actor, User $target) => Gate::forUser($actor)->allows('manage-team-tasks')
-            && $target->canUseApp()
-            && $target->checklistDepartmentId() !== null
-            && ($target->id !== $actor->id || $actor->isAdmin())
-            && $actor->canAccessDepartment($target->checklistDepartmentId()));
+        // Mengisi checklist (GM hanya melihat dan mereview) dan melihat daftar / riwayat checklist.
+        Gate::define('fill-checklists', fn (User $user) => $user->canUseApp() && $user->role !== Role::Gm);
+        Gate::define('view-checklists', fn (User $user) => $user->canUseApp() && $user->role !== Role::Staff);
+        // Memilih tugas per pegawai Absensi: Administrator & HR (semua departemen) dan HOD (departemen yang ditugaskan). Tidak untuk diri sendiri, kecuali Administrator.
+        Gate::define('manage-team-tasks', fn (User $user) => $user->canUseApp() && $user->role->managesOthers());
+        Gate::define('assign-tasks', fn (User $actor, Employee $target) => Gate::forUser($actor)->allows('manage-team-tasks')
+            && $target->is_active
+            && $target->department_id !== null
+            && ($target->id !== $actor->employee_id || $actor->isAdmin())
+            && $actor->canAccessDepartment($target->department_id));
         Gate::define('manage-tasks', fn (User $user) => $user->canUseApp() && in_array($user->role, [Role::Admin, Role::Hr], true));
         Gate::define('manage-access', fn (User $user) => $user->canUseApp() && $user->isAdmin());
     }

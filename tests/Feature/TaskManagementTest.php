@@ -1,13 +1,11 @@
 <?php
 
-use App\Checklists\ChecklistFactory;
 use App\Enums\Role;
 use App\Models\Checklist;
 use App\Models\Department;
 use App\Models\Employee;
 use App\Models\Position;
 use App\Models\Task;
-use App\Models\User;
 use Carbon\CarbonImmutable;
 
 beforeEach(function () {
@@ -95,17 +93,16 @@ it('moves tasks up and down, even when imported sort numbers are duplicated', fu
 });
 
 it('only changes checklists created afterwards, and keeps history when a task is deleted', function () {
-    $user = User::factory()->for(Employee::factory()->for($this->fo))->create(['position_id' => $this->position->id]);
-    $before = app(ChecklistFactory::class)->forDate($user, CarbonImmutable::yesterday());
-    $admin = userWithRole(Role::Admin);
-    loggedIn($admin);
+    $staff = Employee::factory()->for($this->fo)->create();
+    $before = makeChecklist($staff, $this->position, CarbonImmutable::yesterday());
+    loggedIn(userWithRole(Role::Admin));
 
     $this->put(route('admin.tasks.update', $this->first), ['title' => 'Diubah', 'is_active' => '0']);
     $this->put(route('admin.tasks.update', $this->second), ['title' => 'Read email', 'is_active' => '1', 'standard' => 'Standar baru']);
     $this->delete(route('admin.tasks.destroy', $this->third))->assertRedirect();
     $this->post(route('admin.tasks.store', $this->position), ['title' => 'Tugas baru']);
 
-    $after = app(ChecklistFactory::class)->forDate($user, CarbonImmutable::today());
+    $after = makeChecklist($staff, $this->position, CarbonImmutable::today());
     expect(Checklist::find($before->id)->items->pluck('title')->all())->toBe(['Take handover', 'Read email', 'Check lobby'])
         ->and($after->items->pluck('title')->all())->toBe(['Read email', 'Tugas baru'])
         ->and($after->items->first()->standard)->toBe('Standar baru');

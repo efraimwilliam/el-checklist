@@ -28,8 +28,21 @@ enum Role: string
         return in_array($this, [self::Admin, self::Hr, self::Gm], true);
     }
 
+    /** Menandai checklist sudah direview. */
     public function reviews(): bool
     {
-        return $this !== self::Staff;
+        return in_array($this, [self::Admin, self::Hr, self::Gm], true);
+    }
+
+    /** Mengisi, mengubah dan mengatur tugas untuk pegawai lain (HOD hanya departemennya). */
+    public function managesOthers(): bool
+    {
+        return in_array($this, [self::Admin, self::Hr, self::Hod], true);
+    }
+
+    /** Admin dan HR boleh mengubah / menghapus checklist yang sudah direview. */
+    public function overridesReview(): bool
+    {
+        return in_array($this, [self::Admin, self::Hr], true);
     }
 }

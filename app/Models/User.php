@@ -16,14 +16,14 @@ class User extends Authenticatable
 {
     use HasFactory;
 
-    protected $fillable = ['employee_id', 'role', 'position_id', 'custom_tasks', 'is_active', 'last_login_at'];
+    protected $fillable = ['employee_id', 'role', 'position_id', 'is_active', 'last_login_at'];
 
     // Tidak ada kolom password / remember_token.
     protected $rememberTokenName = '';
 
     protected function casts(): array
     {
-        return ['role' => Role::class, 'is_active' => 'boolean', 'custom_tasks' => 'boolean', 'last_login_at' => 'datetime'];
+        return ['role' => Role::class, 'is_active' => 'boolean', 'last_login_at' => 'datetime'];
     }
 
     public function employee(): BelongsTo
@@ -40,12 +40,6 @@ class User extends Authenticatable
     public function departments(): BelongsToMany
     {
         return $this->belongsToMany(Department::class);
-    }
-
-    /** Tugas yang dipilih HOD untuk pegawai ini (dipakai bila custom_tasks). */
-    public function assignedTasks(): BelongsToMany
-    {
-        return $this->belongsToMany(Task::class);
     }
 
     /** Departemen checklist pegawai ini: departemen di absensi, atau departemen jabatannya bila belum ada. */

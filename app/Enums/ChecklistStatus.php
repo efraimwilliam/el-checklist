@@ -2,26 +2,17 @@
 
 namespace App\Enums;
 
+/** Checklist selalu disimpan lengkap; status hanya menunjukkan sudah atau belum ditandai direview GM / HR. */
 enum ChecklistStatus: string
 {
-    case Draft = 'draft';
-    case Submitted = 'submitted';
-    case Approved = 'approved';
-    case Returned = 'returned';
+    case Saved = 'saved';
+    case Reviewed = 'reviewed';
 
     public function label(): string
     {
         return match ($this) {
-            self::Draft => 'Belum dikirim',
-            self::Submitted => 'Menunggu review',
-            self::Approved => 'Disetujui',
-            self::Returned => 'Dikembalikan',
+            self::Saved => 'Belum direview',
+            self::Reviewed => 'Sudah direview',
         };
-    }
-
-    /** Pegawai masih boleh mengisi / mengubah. */
-    public function editable(): bool
-    {
-        return in_array($this, [self::Draft, self::Returned], true);
     }
 }

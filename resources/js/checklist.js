@@ -76,9 +76,8 @@ if (form) {
         refresh();
     });
 
-    // Kirim untuk review: tunjukkan tugas pertama yang belum lengkap sebelum ke server.
+    // Simpan: tunjukkan tugas pertama yang belum lengkap sebelum ke server (checklist hanya bisa disimpan lengkap).
     form.addEventListener('submit', (event) => {
-        if (event.submitter?.value !== 'submit') return;
         for (const [index, item] of items.entries()) {
             const status = statusOf(item);
             if (!status) {
@@ -91,6 +90,17 @@ if (form) {
             }
         }
     });
+
+    // Tugas tambahan: baris bisa ditambah dan dihapus.
+    const extras = form.querySelector('[data-extras]');
+    const list = extras.querySelector('[data-extra-list]');
+    const template = extras.querySelector('[data-extra-template]');
+    let nextIndex = list.querySelectorAll('[data-extra-row]').length;
+    extras.querySelector('[data-extra-add]').addEventListener('click', () => {
+        list.insertAdjacentHTML('beforeend', template.innerHTML.replaceAll('__INDEX__', String(nextIndex++)));
+        list.lastElementChild.querySelector('input').focus();
+    });
+    list.addEventListener('click', (event) => event.target.closest('[data-extra-remove]')?.closest('[data-extra-row]').remove());
 
     refresh();
 }

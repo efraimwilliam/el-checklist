@@ -1,15 +1,11 @@
 <?php
 
-use App\Checklists\ChecklistFactory;
-use App\Enums\ChecklistStatus;
 use App\Enums\Role;
-use App\Models\Checklist;
 use App\Models\Department;
 use App\Models\Employee;
 use App\Models\Position;
 use App\Models\Task;
 use App\Models\User;
-use Carbon\CarbonImmutable;
 
 beforeEach(function () {
     $this->fo = Department::factory()->create(['name' => 'Front Office']);
@@ -21,20 +17,20 @@ beforeEach(function () {
 
     $this->budi = User::factory()->for(Employee::factory()->for($this->fo))->create(['position_id' => $gsa->id]);
     $this->sari = User::factory()->for(Employee::factory()->for($this->hk))->create(['position_id' => $ra->id]);
-    $this->budiList = app(ChecklistFactory::class)->forDate($this->budi, CarbonImmutable::today());
-    $this->sariList = app(ChecklistFactory::class)->forDate($this->sari, CarbonImmutable::today());
-    $this->budiList->update(['status' => ChecklistStatus::Submitted]);
-    $this->sariList->update(['status' => ChecklistStatus::Submitted]);
+    $this->budiList = makeChecklist($this->budi->employee, $gsa);
+    $this->sariList = makeChecklist($this->sari->employee, $ra);
 });
 
-it('does not let an employee see or change another employee\'s checklist', function () {
+it('does not let staff see or change another employee\'s checklist or open management pages', function () {
     loggedIn($this->budi);
 
     $this->get(route('checklists.show', $this->budiList))->assertOk();
     $this->get(route('checklists.show', $this->sariList))->assertForbidden();
-    $this->put(route('checklists.update', $this->sariList), ['action' => 'save'])->assertForbidden();
-    $this->post(route('checklists.review', $this->sariList), ['decision' => 'approve'])->assertForbidden();
+    $this->put(route('checklists.update', $this->sariList), ['items' => answers($this->sariList->items->pluck('id'))])->assertForbidden();
+    $this->post(route('checklists.review', $this->sariList))->assertForbidden();
+    $this->delete(route('checklists.destroy', $this->sariList))->assertForbidden();
     $this->get(route('checklists.index'))->assertForbidden();
+    $this->get(route('team.index'))->assertForbidden();
     $this->get(route('admin.access.index'))->assertForbidden();
 });
 
@@ -44,12 +40,8 @@ it('limits HODs to the departments assigned to them', function () {
 
     $this->get(route('checklists.show', $this->budiList))->assertOk();
     $this->get(route('checklists.show', $this->sariList))->assertForbidden();
-    $this->post(route('checklists.review', $this->sariList), ['decision' => 'approve'])->assertForbidden();
     $this->get(route('checklists.index', ['department' => $this->hk->id]))->assertForbidden();
     $this->get(route('checklists.index'))->assertOk()->assertSee($this->budi->employee->name)->assertDontSee($this->sari->employee->name);
-
-    $this->post(route('checklists.review', $this->budiList), ['decision' => 'approve'])->assertRedirect();
-    expect($this->budiList->fresh())->status->toBe(ChecklistStatus::Approved)->reviewed_by->toBe($hod->id);
 });
 
 it('does not grant HOD access from the attendance department or position alone', function () {
@@ -58,27 +50,15 @@ it('does not grant HOD access from the attendance department or position alone',
     loggedIn($hod);
 
     $this->get(route('checklists.show', $this->budiList))->assertForbidden();
+    $this->get(route('fill.create'))->assertOk()->assertDontSee('GSA (');
 });
 
-it('lets HR, GM and Administrator review every department', function (Role $role) {
+it('lets HR, GM and administrators see every department', function (Role $role) {
     loggedIn(userWithRole($role));
 
     $this->get(route('checklists.index'))->assertOk()->assertSee($this->budi->employee->name)->assertSee($this->sari->employee->name);
-    $this->post(route('checklists.review', $this->sariList), ['decision' => 'return', 'review_note' => 'Lengkapi foto'])->assertRedirect();
-
-    expect($this->sariList->fresh()->status)->toBe(ChecklistStatus::Returned);
+    $this->get(route('checklists.show', $this->sariList))->assertOk();
 })->with([Role::Hr, Role::Gm, Role::Admin]);
-
-it('never lets anyone approve their own checklist', function () {
-    // HOD Front Office yang juga mengisi checklist Front Office.
-    $hod = User::factory()->for(Employee::factory()->for($this->fo))->hodOf($this->fo)->create(['position_id' => $this->budi->position_id]);
-    $own = app(ChecklistFactory::class)->forDate($hod, CarbonImmutable::today());
-    $own->update(['status' => ChecklistStatus::Submitted]);
-    loggedIn($hod);
-
-    $this->post(route('checklists.review', $own), ['decision' => 'approve'])->assertForbidden();
-    expect($own->fresh()->status)->toBe(ChecklistStatus::Submitted);
-});
 
 it('applies revoked roles and departments on the next request', function () {
     $hod = User::factory()->hodOf($this->fo)->create();

@@ -1,8 +1,12 @@
 <?php
 
+use App\Checklists\ChecklistService;
 use App\Enums\Role;
+use App\Models\Checklist;
 use App\Models\Employee;
+use App\Models\Position;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Support\Facades\Http;
@@ -66,4 +70,30 @@ function nextRequest()
 function userWithRole(Role $role = Role::Staff, array $attributes = []): User
 {
     return User::factory()->role($role)->create($attributes);
+}
+
+/** Checklist lengkap lewat layanan yang sama dengan aplikasi (semua tugas berstatus $status). */
+function makeChecklist(Employee $employee, Position $position, ?CarbonImmutable $date = null, string $status = 'done', ?User $by = null): Checklist
+{
+    $service = app(ChecklistService::class);
+    $items = $service->tasksFor($employee, $position)->mapWithKeys(fn ($task) => [
+        $task->id => ['status' => $status, 'note' => $status === 'pending' ? 'alasan' : null],
+    ])->all();
+
+    return $service->create($employee, $position, $date ?? CarbonImmutable::today(), $by ?? User::factory()->role(Role::Admin)->create(), [
+        'items' => $items, 'note' => null, 'checked_by' => 'HOD Uji', 'extras' => [],
+    ]);
+}
+
+/**
+ * Isian form: semua kunci berstatus $status; $overrides mengganti isian kunci tertentu.
+ * (Jangan memakai [...$array] pada kunci angka: PHP menomori ulang kuncinya.)
+ *
+ * @param  array<int, array{status?: string, note?: string}>  $overrides
+ */
+function answers(iterable $keys, string $status = 'done', array $overrides = []): array
+{
+    $items = collect($keys)->mapWithKeys(fn ($key) => [$key => ['status' => $status, 'note' => $status === 'pending' ? 'alasan' : '']])->all();
+
+    return array_replace($items, $overrides);
 }

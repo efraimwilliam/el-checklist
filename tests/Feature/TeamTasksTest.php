@@ -1,14 +1,12 @@
 <?php
 
-use App\Checklists\ChecklistFactory;
+use App\Checklists\ChecklistService;
 use App\Enums\Role;
-use App\Models\Checklist;
 use App\Models\Department;
 use App\Models\Employee;
 use App\Models\Position;
 use App\Models\Task;
 use App\Models\User;
-use Carbon\CarbonImmutable;
 
 beforeEach(function () {
     $this->fo = Department::factory()->create(['name' => 'Front Office']);
@@ -17,36 +15,25 @@ beforeEach(function () {
     $this->gsa = Position::factory()->for($this->fo)->create(['name' => 'GSA', 'sort' => 2]);
     $this->gsaTasks = collect(['Check-in tamu', 'Check-out tamu', 'Handover shift'])
         ->map(fn ($title, $i) => Task::factory()->for($this->gsa)->create(['title' => $title, 'sort' => $i + 1]));
-
     $this->dm = Position::factory()->for($this->fo)->create(['name' => 'Duty Manager', 'sort' => 1]);
-    $this->dmTask = Task::factory()->for($this->dm)->create(['title' => 'Review laporan harian', 'sort' => 1]);
-
+    $this->dmTask = Task::factory()->for($this->dm)->create(['title' => 'Review laporan harian']);
     $ra = Position::factory()->for($this->hk)->create(['name' => 'Room Attendant']);
     $this->raTask = Task::factory()->for($ra)->create(['title' => 'Bersihkan kamar']);
 
-    $this->staff = User::factory()->for(Employee::factory()->for($this->fo))->create(['position_id' => $this->gsa->id]);
+    $this->staff = Employee::factory()->for($this->fo)->create(['name' => 'Budi Santoso', 'position_title' => 'GSA']);
     $this->hod = User::factory()->hodOf($this->fo)->create();
 });
 
-function todaysTitles(User $user): array
-{
-    // Muat ulang pengguna, seperti permintaan baru: permintaan HTTP di tes mengubah database, bukan objek ini.
-    return app(ChecklistFactory::class)->forDate($user->fresh(), CarbonImmutable::today())->items->pluck('title')->all();
-}
-
-it('uses all active tasks of the position by default', function () {
-    expect(todaysTitles($this->staff))->toBe(['Check-in tamu', 'Check-out tamu', 'Handover shift']);
-});
-
-it('lets the HOD choose the tasks, including tasks of other positions in the department', function () {
+it('lets the HOD choose tasks for staff who have no account, including tasks of other positions in the department', function () {
     loggedIn($this->hod);
 
     $this->put(route('team.tasks.update', $this->staff), ['tasks' => [$this->dmTask->id, $this->gsaTasks[2]->id, $this->gsaTasks[0]->id]])->assertRedirect(route('team.index'));
 
-    expect($this->staff->fresh()->custom_tasks)->toBeTrue()
-        // Tugas jabatan staff sendiri lebih dulu (urutan jabatan), lalu tugas jabatan lain.
-        ->and(todaysTitles($this->staff))->toBe(['Check-in tamu', 'Handover shift', 'Review laporan harian'])
-        ->and(Checklist::sole()->items->pluck('sort')->all())->toBe([1, 2, 3]);
+    $staff = $this->staff->fresh();
+    expect($staff->custom_tasks)->toBeTrue()
+        ->and($staff->assignedTasks->pluck('id')->sort()->values()->all())->toBe(collect([$this->dmTask->id, $this->gsaTasks[2]->id, $this->gsaTasks[0]->id])->sort()->values()->all())
+        // Jabatan yang dipilih saat mengisi (GSA) lebih dulu, lalu jabatan lain.
+        ->and(app(ChecklistService::class)->tasksFor($staff, $this->gsa)->pluck('title')->all())->toBe(['Check-in tamu', 'Handover shift', 'Review laporan harian']);
 });
 
 it('does not accept tasks from another department, inactive tasks, or an empty selection', function () {
@@ -61,6 +48,19 @@ it('does not accept tasks from another department, inactive tasks, or an empty s
     expect($this->staff->fresh()->custom_tasks)->toBeFalse()->and($this->staff->assignedTasks()->count())->toBe(0);
 });
 
+it('pre-selects the tasks of a position on request, or the saved choice', function () {
+    loggedIn($this->hod);
+
+    $this->get(route('team.tasks.edit', $this->staff))->assertOk()->assertSee('Memakai semua tugas jabatan')->assertDontSee('checked');
+    $html = $this->get(route('team.tasks.edit', ['employee' => $this->staff, 'dari' => $this->gsa->id]))->assertOk()->getContent();
+    expect(substr_count($html, 'checked'))->toBe(3);
+
+    $this->staff->assignedTasks()->sync([$this->dmTask->id]);
+    $this->staff->update(['custom_tasks' => true]);
+    $html = $this->get(route('team.tasks.edit', $this->staff))->assertSee('Tugas sudah disesuaikan')->getContent();
+    expect(substr_count($html, 'checked'))->toBe(1);
+});
+
 it('returns to the default tasks of the position on reset', function () {
     $this->staff->assignedTasks()->sync([$this->dmTask->id]);
     $this->staff->update(['custom_tasks' => true]);
@@ -69,16 +69,7 @@ it('returns to the default tasks of the position on reset', function () {
     $this->delete(route('team.tasks.reset', $this->staff))->assertRedirect(route('team.index'));
 
     expect($this->staff->fresh()->custom_tasks)->toBeFalse()->and($this->staff->assignedTasks()->count())->toBe(0)
-        ->and(todaysTitles($this->staff))->toBe(['Check-in tamu', 'Check-out tamu', 'Handover shift']);
-});
-
-it('only changes checklists created afterwards', function () {
-    $existing = app(ChecklistFactory::class)->forDate($this->staff, CarbonImmutable::yesterday());
-    loggedIn($this->hod);
-
-    $this->put(route('team.tasks.update', $this->staff), ['tasks' => [$this->gsaTasks[1]->id]]);
-
-    expect(Checklist::find($existing->id)->items->count())->toBe(3)->and(todaysTitles($this->staff))->toBe(['Check-out tamu']);
+        ->and(app(ChecklistService::class)->tasksFor($this->staff->fresh(), $this->gsa)->pluck('title')->all())->toBe(['Check-in tamu', 'Check-out tamu', 'Handover shift']);
 });
 
 it('skips assigned tasks that were deactivated or deleted later', function () {
@@ -88,63 +79,52 @@ it('skips assigned tasks that were deactivated or deleted later', function () {
     $this->gsaTasks[0]->update(['is_active' => false]);
     $this->dmTask->delete();
 
-    expect(todaysTitles($this->staff))->toBe(['Check-out tamu']);
+    expect(app(ChecklistService::class)->tasksFor($this->staff->fresh(), $this->gsa)->pluck('title')->all())->toBe(['Check-out tamu']);
 });
 
-it('limits HODs to staff of their own departments', function () {
-    $other = User::factory()->for(Employee::factory()->for($this->hk))->create();
+it('limits HODs to staff of their own departments and not themselves', function () {
+    $other = Employee::factory()->for($this->hk)->create();
     loggedIn($this->hod);
 
     $this->get(route('team.tasks.edit', $this->staff))->assertOk()->assertSee('Check-in tamu')->assertSee('Review laporan harian')->assertDontSee('Bersihkan kamar');
     $this->get(route('team.tasks.edit', $other))->assertForbidden();
     $this->put(route('team.tasks.update', $other), ['tasks' => [$this->raTask->id]])->assertForbidden();
     $this->delete(route('team.tasks.reset', $other))->assertForbidden();
+
+    $this->hod->employee->update(['department_id' => $this->fo->id]);
+    $this->get(route('team.tasks.edit', $this->hod->employee))->assertForbidden();
     expect($other->fresh()->custom_tasks)->toBeFalse();
 });
 
-it('does not let a HOD change their own tasks, but an administrator can', function () {
-    $own = Position::factory()->for($this->fo)->create();
-    $task = Task::factory()->for($own)->create();
-    $this->hod->update(['position_id' => $own->id]);
-    loggedIn($this->hod);
-
-    $this->get(route('team.tasks.edit', $this->hod))->assertForbidden();
-    $this->put(route('team.tasks.update', $this->hod), ['tasks' => [$task->id]])->assertForbidden();
-
+it('lets an administrator change their own tasks, and HR any department, but not GM or staff', function () {
+    loggedIn(userWithRole(Role::Admin, ['position_id' => null]));
+    $admin = auth()->user();
+    $admin->employee->update(['department_id' => $this->fo->id]);
+    $this->get(route('team.tasks.edit', $admin->employee))->assertOk();
     $this->post('/logout');
-    $admin = User::factory()->role(Role::Admin)->for(Employee::factory()->for($this->fo))->create(['position_id' => $own->id]);
-    loggedIn($admin);
-    $this->get(route('team.tasks.edit', $admin))->assertOk();
+
+    foreach ([[Role::Hr, 200], [Role::Admin, 200], [Role::Gm, 403], [Role::Staff, 403]] as [$role, $status]) {
+        loggedIn(userWithRole($role));
+        $this->get(route('team.index'))->assertStatus($status);
+        $this->get(route('team.tasks.edit', $this->staff))->assertStatus($status);
+        $this->post('/logout');
+    }
 });
 
-it('lets HR and administrators assign tasks in any department but not GM or staff', function (Role $role, bool $allowed) {
-    loggedIn(userWithRole($role));
-
-    $this->get(route('team.index'))->assertStatus($allowed ? 200 : 403);
-    $this->get(route('team.tasks.edit', $this->staff))->assertStatus($allowed ? 200 : 403);
-    $this->put(route('team.tasks.update', $this->staff), ['tasks' => [$this->gsaTasks[0]->id]])->assertStatus($allowed ? 302 : 403);
-})->with([
-    'admin' => [Role::Admin, true],
-    'hr' => [Role::Hr, true],
-    'gm' => [Role::Gm, false],
-    'staff' => [Role::Staff, false],
-]);
-
 it('lists only staff the viewer may manage, with their status', function () {
-    $other = User::factory()->for(Employee::factory()->for($this->hk))->create();
+    $other = Employee::factory()->for($this->hk)->create(['name' => 'Sari Dewi']);
+    Employee::factory()->for($this->fo)->create(['name' => 'Sudah Keluar', 'is_active' => false]);
     $this->staff->assignedTasks()->sync([$this->gsaTasks[0]->id, $this->gsaTasks[1]->id]);
     $this->staff->update(['custom_tasks' => true]);
     loggedIn($this->hod);
 
-    $this->get(route('team.index'))->assertOk()
-        ->assertSee($this->staff->name())->assertSee('Disesuaikan · 2 tugas')
-        ->assertDontSee($other->name())
-        ->assertDontSee(route('team.tasks.edit', $this->hod)); // HOD tidak mengatur dirinya sendiri
+    $this->get(route('team.index'))->assertOk()->assertSee('Budi Santoso')->assertSee('Disesuaikan · 2 tugas')
+        ->assertDontSee('Sari Dewi')->assertDontSee('Sudah Keluar')->assertDontSee(route('team.tasks.edit', $this->hod->employee));
 });
 
 it('shows the team link to HODs, HR and administrators only', function () {
     loggedIn($this->hod);
-    $this->get(route('checklists.index'))->assertSee('Atur tugas tim');
+    $this->get(route('fill.create'))->assertSee('Atur tugas tim');
 
     $this->post('/logout');
     loggedIn(userWithRole(Role::Gm));

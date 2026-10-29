@@ -1,20 +1,33 @@
-<x-app-layout :title="'Tugas '.$member->name()">
+<x-app-layout :title="'Tugas '.$member->name">
     <a href="{{ route('team.index') }}" class="text-sm text-sky-700 hover:underline">← Tim</a>
-    <h1 class="mt-1 text-3xl text-slate-900">{{ $member->name() }}</h1>
-    <p class="text-sm text-slate-500">{{ $member->employee->department->name }} · {{ $member->position?->name ?? 'Jabatan checklist belum diatur' }}</p>
+    <h1 class="mt-1 text-3xl text-slate-900">{{ $member->name }}</h1>
+    <p class="text-sm text-slate-500">{{ $member->department->name }} · {{ $member->position_title ?? 'Jabatan di Absensi belum diisi' }}</p>
     <p class="mb-4 mt-1 text-sm {{ $member->custom_tasks ? 'text-sky-800' : 'text-slate-500' }}">
-        {{ $member->custom_tasks ? 'Tugas sudah disesuaikan.' : 'Memakai semua tugas jabatan (bawaan).' }}
+        {{ $member->custom_tasks ? 'Tugas sudah disesuaikan.' : 'Memakai semua tugas jabatan yang dipilih saat mengisi (bawaan).' }}
         Perubahan berlaku untuk checklist yang dibuat sesudahnya; checklist yang sudah ada tidak berubah.
     </p>
 
-    @error('tasks') <p class="mb-4 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-700">{{ $message }}</p> @enderror
+    @error('tasks') <p class="mb-4 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{{ $message }}</p> @enderror
+
+    <form method="GET" action="{{ route('team.tasks.edit', $member) }}" class="card mb-4 flex flex-wrap items-end gap-3 p-4">
+        <div class="min-w-48 flex-1">
+            <label for="dari" class="label">Mulai dari tugas jabatan</label>
+            <select id="dari" name="dari" class="input">
+                <option value="">{{ $member->custom_tasks ? '— Pilihan tersimpan —' : '— Kosong —' }}</option>
+                @foreach ($groups as $group)
+                    <option value="{{ $group->id }}" @selected($from === $group->id)>{{ $group->name }}</option>
+                @endforeach
+            </select>
+        </div>
+        <button class="btn-secondary">Centang semua tugas jabatan ini</button>
+    </form>
 
     <form method="POST" action="{{ route('team.tasks.update', $member) }}" class="space-y-4">
         @csrf
         @method('PUT')
         @foreach ($groups as $group)
             <fieldset class="card p-4">
-                <legend class="px-1 font-semibold">{{ $group->name }}@if ($group->id === $member->position_id) <span class="text-sm font-normal text-slate-500">(jabatan pegawai ini)</span>@endif</legend>
+                <legend class="px-1 font-display text-xl">{{ $group->name }}</legend>
                 <div class="mt-2 space-y-2">
                     @foreach ($group->tasks as $task)
                         <label class="flex items-start gap-3 text-sm">

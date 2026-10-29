@@ -27,9 +27,12 @@ Laravel 13 + Blade + Tailwind 4 (Vite), MySQL, Pest. Timezone Asia/Makassar (WIT
 
 ## Peran & otorisasi
 - `App\Enums\Role`: admin, hr, gm, hod, staff. Diatur Administrator di `/admin/akses` (`Admin\AccessController`), BUKAN dari jabatan/departemen absensi.
-  HOD hanya melihat departemen yang dicentang (`department_user`); peran lain dikosongkan departemennya. Admin tidak bisa mencabut admin dirinya.
-- `ChecklistPolicy`: lihat = pemilik / HOD departemen checklist / HR-GM-Admin; ubah = pemilik selama draft/dikembalikan; review = status submitted, bukan milik sendiri.
-  Gate `review-checklists`, `manage-access`.
+  HOD hanya departemen yang dicentang (`department_user`); peran lain dikosongkan departemennya. Admin tidak bisa mencabut admin dirinya.
+- Pembagian (mengikuti tutorial "Daily Department Checklist", lihat `Role`): HOD mengisi untuk staff di departemennya; staff berakun mengisi miliknya sendiri; HR & Administrator semua departemen
+  (juga edit/hapus setelah direview, kelola tugas); GM hanya melihat & mereview (tidak mengisi). Gate: `fill-checklists` (bukan GM), `view-checklists` (bukan Staff), `manage-team-tasks`/`assign-tasks`,
+  `manage-tasks` (Admin, HR), `manage-access` (Admin).
+- `ChecklistPolicy` (selalu dicek di server): `view` = pemilik / HOD departemen / HR-GM-Admin; `fill` (checklist baru) = jabatan & pegawai harus satu departemen dan pegawai aktif; HOD departemennya,
+  staff hanya dirinya + jabatannya sendiri, GM tidak; `update` = sebelum direview HOD/HR/Admin/pemilik, sesudah direview hanya HR/Admin; `review` = GM/HR/Admin, belum direview, bukan checklist sendiri; `delete` = HR/Admin.
 
 ## Kelola tugas
 - `/admin/tugas` (`Admin\TaskController`, gate `manage-tasks` = Administrator & HR): tambah jabatan per departemen (nama unik per departemen), ubah nama / nonaktifkan jabatan,
@@ -37,13 +40,21 @@ Laravel 13 + Blade + Tailwind 4 (Vite), MySQL, Pest. Timezone Asia/Makassar (WIT
   (checklist menyalin isi tugas), jadi riwayat tetap utuh walau tugas dihapus.
 
 ## Atur tugas tim
-- `/tim` (`TeamTaskController`, gate `manage-team-tasks` = Administrator, HR, HOD; `assign-tasks` per pegawai): memilih tugas apa saja yang masuk checklist harian seorang pegawai.
-  HOD hanya untuk pegawai di departemen yang ditugaskan dan tidak untuk dirinya sendiri (Administrator boleh); HR/Admin semua departemen.
-- Bawaan (`users.custom_tasks = false`): semua tugas aktif jabatan. Setelah HOD menyimpan: `custom_tasks = true` dan hanya tugas di `task_user` yang dipakai, boleh dari jabatan lain di departemen
-  pegawai yang sama (divalidasi di server: aktif + departemen sama + minimal satu). "Kembalikan ke bawaan" mengosongkan `task_user`. `User::checklistDepartmentId()` = departemen checklist.
-- `ChecklistFactory::tasksFor()`: tugas jabatan pegawai lebih dulu, lalu jabatan lain; item dinomori ulang 1..n. Tugas nonaktif / terhapus dilewati. Hanya berlaku untuk checklist yang dibuat sesudahnya.
+- `/tim` (`TeamTaskController`, `assign-tasks` per pegawai): memilih tugas apa saja yang masuk checklist seorang PEGAWAI ABSENSI (tabel `employee_task`, `employees.custom_tasks`; tidak perlu punya akun,
+  karena kebanyakan staff diisi HOD). HOD hanya departemennya dan tidak untuk dirinya sendiri (Administrator boleh); HR/Admin semua departemen.
+- Bawaan (`custom_tasks = false`): semua tugas aktif jabatan yang dipilih saat mengisi. Setelah disimpan: hanya tugas terpilih, boleh dari jabatan lain di departemen pegawai itu (divalidasi di server:
+  aktif + departemen sama + minimal satu). Halaman edit punya "Mulai dari tugas jabatan" untuk mencentang semua tugas satu jabatan lebih dulu. "Kembalikan ke bawaan" mengosongkan pilihan.
+- `ChecklistService::tasksFor(Employee, Position)`: tugas jabatan yang dipilih lebih dulu, lalu jabatan lain; tugas nonaktif / terhapus dilewati. Hanya berlaku untuk checklist yang dibuat sesudahnya.
 
-## Checklist
-- `users.position_id` = jabatan checklist pegawai. `ChecklistFactory::forDate()` membuat checklist sekali per pegawai per tanggal dari tugas aktif jabatannya.
-- Checklist menyalin departemen, nama jabatan, judul & standar tugas supaya riwayat utuh saat pegawai pindah/keluar atau templat diubah.
-- Alur: draft → kirim (`submitted`, semua tugas wajib berstatus; Pending wajib catatan bila `CHECKLIST_PENDING_NOTE_REQUIRED`) → disetujui / dikembalikan (catatan wajib) → kirim ulang.
+## Checklist (alur pengisian)
+- Satu checklist = satu staff + satu jabatan + satu tanggal (unik `employee_id, position_id, date`). Disalin saat dibuat (departemen, nama jabatan, judul & standar tugas) sehingga riwayat utuh saat pegawai pindah /
+  keluar atau tugas diubah. Hanya dibuat saat disimpan dan selalu lengkap: semua tugas berstatus Done / Ongoing / Pending, Pending wajib beralasan bila `CHECKLIST_PENDING_NOTE_REQUIRED`
+  (`ChecklistInput`; skrip `resources/js/checklist.js` menunjukkan tugas bermasalah sebelum dikirim). Draft sebagian tidak ada di server.
+- Halaman isi `/isi` (`FillController`): HOD / HR / Admin memilih Departemen (bila lebih dari satu), Jabatan (dengan jumlah tugas), Tanggal (boleh mundur, tidak ke depan), Nama staff (dari data Absensi, aktif) dan
+  "Dicek oleh" (bawaan: yang terakhir dipakai akun itu, lalu nama sendiri), lalu "Mulai checklist" menampilkan form. Staff berakun langsung melihat form miliknya (`/checklist` mengalihkan ke sini).
+  Isi ulang kombinasi yang sama = memperbarui (`PUT /checklists/{id}` lewat `/isi?...&mulai=1`, ada pemberitahuan); simpan ganda bersamaan -> `DuplicateChecklist`.
+- Form: "Cara / standar", catatan otomatis untuk Ongoing/Pending, "Sisa tugas = Done", "Kosongkan", progres + skor sementara, "Tugas tambahan" (`checklist_extra_tasks`, tidak dihitung skor), catatan umum.
+- Status: `saved` (Belum direview) / `reviewed` (Sudah direview). GM/HR/Admin menekan "Tandai sudah direview" (tercatat siapa & kapan, bukan checklist sendiri); sesudahnya HOD/staff tidak bisa mengubah,
+  HR/Admin masih bisa edit dan hapus. Detail `/checklists/{id}` (ringkasan, skor n/N Done, pil, tugas tambahan, Edit, Cetak, Hapus). Daftar `/checklists` (menu Riwayat) per tanggal.
+- Skor = persentase tugas Done; warna: >= 90 hijau, 70-89 emas, < 70 merah.
+- Belum ada (rencana dari tutorial): dashboard, riwayat dengan filter lengkap + unduh CSV, draft di HP, email ringkasan harian.

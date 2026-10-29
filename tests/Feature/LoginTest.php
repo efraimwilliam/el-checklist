@@ -165,12 +165,13 @@ it('throttles the login form per IP', function () {
     $this->post('/login', ['username' => 'lain', 'pin' => '1234'])->assertTooManyRequests();
 });
 
-it('sends staff to their checklist and reviewers to the review list', function () {
+it('sends each role to its own first page', function () {
     loggedIn($this->user)->get('/')->assertRedirect(route('checklists.today'));
 
-    $this->post('/logout');
-    $hr = userWithRole(Role::Hr);
-    loggedIn($hr)->get('/')->assertRedirect(route('checklists.index'));
+    foreach ([[Role::Hod, 'fill.create'], [Role::Hr, 'checklists.index'], [Role::Gm, 'checklists.index'], [Role::Admin, 'checklists.index']] as [$role, $route]) {
+        $this->post('/logout');
+        loggedIn(userWithRole($role))->get('/')->assertRedirect(route($route));
+    }
 });
 
 it('invalidates the session on logout', function () {
@@ -187,10 +188,10 @@ it('invalidates the session on logout', function () {
 
 it('ends sessions past the absolute lifetime even when active', function () {
     loggedIn($this->user);
-    $this->get('/checklist')->assertOk();
+    $this->get(route('fill.create'))->assertOk();
 
     $this->travel(config('session.absolute_lifetime') + 1)->minutes();
 
-    $this->get('/checklist')->assertRedirect('/login');
+    $this->get(route('fill.create'))->assertRedirect('/login');
     $this->assertGuest();
 });

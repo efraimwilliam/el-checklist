@@ -2,38 +2,24 @@
 
 namespace App\Http\Controllers;
 
-use App\Checklists\ChecklistFactory;
+use App\Checklists\ChecklistInput;
+use App\Checklists\ChecklistService;
 use App\Enums\ChecklistStatus;
-use App\Enums\ItemStatus;
 use App\Models\Checklist;
 use App\Models\Department;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class ChecklistController extends Controller
 {
-    /** Checklist hari ini milik pengguna (dibuat dari templat jabatannya bila belum ada). */
-    public function today(Request $request, ChecklistFactory $factory): View|RedirectResponse
-    {
-        $user = $request->user();
-        $checklist = $factory->forDate($user, CarbonImmutable::today());
-        $history = Checklist::where('employee_id', $user->employee_id)->latest('date')->limit(14)->get();
-
-        return $checklist
-            ? redirect()->route('checklists.show', $checklist)
-            : view('checklists.no-position', ['history' => $history]);
-    }
-
-    /** Daftar untuk direview, dibatasi departemen yang boleh diakses. */
+    /** Daftar checklist per tanggal, dibatasi departemen yang boleh diakses. */
     public function index(Request $request): View
     {
-        Gate::authorize('review-checklists');
+        Gate::authorize('view-checklists');
         $user = $request->user();
         $allowed = $user->accessibleDepartmentIds();
         $filters = $request->validate([
@@ -50,7 +36,7 @@ class ChecklistController extends Controller
             ->when($allowed !== null, fn ($q) => $q->whereIn('department_id', $allowed))
             ->when($departmentId, fn ($q) => $q->where('department_id', $departmentId))
             ->when($filters['status'] ?? null, fn ($q, $status) => $q->where('status', $status))
-            ->orderBy('department_id')->orderBy('position_name')
+            ->orderBy('department_id')->orderBy('position_name')->orderBy('id')
             ->get();
 
         return view('checklists.index', [
@@ -64,78 +50,41 @@ class ChecklistController extends Controller
     public function show(Request $request, Checklist $checklist): View
     {
         Gate::authorize('view', $checklist);
-        $checklist->load(['items', 'employee', 'department', 'reviewer.employee']);
+        $checklist->load(['items', 'extraTasks', 'employee', 'department', 'filler.employee', 'reviewer.employee']);
+        $user = $request->user();
 
         return view('checklists.show', [
             'checklist' => $checklist,
-            'canEdit' => $request->user()->can('update', $checklist),
-            'canReview' => $request->user()->can('review', $checklist),
-            'statuses' => ItemStatus::cases(),
+            'canEdit' => $user->can('update', $checklist) && $checklist->position_id !== null,
+            'canReview' => $user->can('review', $checklist),
+            'canDelete' => $user->can('delete', $checklist),
         ]);
     }
 
-    /** Simpan isian; "submit" mengirim ke HOD (semua tugas wajib berstatus, Pending wajib bercatatan). */
-    public function update(Request $request, Checklist $checklist): RedirectResponse
+    /** Memperbarui checklist yang sudah ada (dari halaman isi). */
+    public function update(Request $request, Checklist $checklist, ChecklistService $service): RedirectResponse
     {
         Gate::authorize('update', $checklist);
-        $itemIds = $checklist->items()->pluck('id')->all();
-        $data = $request->validate([
-            'items' => ['array'],
-            'items.*.status' => ['nullable', Rule::enum(ItemStatus::class)],
-            'items.*.note' => ['nullable', 'string', 'max:1000'],
-            'note' => ['nullable', 'string', 'max:2000'],
-            'action' => ['required', Rule::in(['save', 'submit'])],
-        ]);
-        $input = collect($data['items'] ?? [])->only($itemIds);
+        $input = ChecklistInput::validate($request, $checklist->items()->pluck('id')->all());
+        $service->update($checklist->load('items'), $request->user(), $input);
 
-        if ($data['action'] === 'submit') {
-            $errors = [];
-            foreach ($itemIds as $id) {
-                $status = $input[$id]['status'] ?? null;
-                if (! $status) {
-                    $errors["items.{$id}.status"] = __('Pilih status tugas ini.');
-                } elseif ($status === ItemStatus::Pending->value && config('checklist.pending_note_required') && blank($input[$id]['note'] ?? null)) {
-                    $errors["items.{$id}.note"] = __('Tugas Pending wajib diberi alasan.');
-                }
-            }
-            if ($errors) {
-                throw ValidationException::withMessages($errors);
-            }
-        }
-
-        DB::transaction(function () use ($checklist, $input, $data) {
-            foreach ($checklist->items as $item) {
-                $item->update(['status' => $input[$item->id]['status'] ?? null, 'note' => $input[$item->id]['note'] ?? null]);
-            }
-            $checklist->note = $data['note'] ?? null;
-            if ($data['action'] === 'submit') {
-                $checklist->fill(['status' => ChecklistStatus::Submitted, 'submitted_at' => now(), 'reviewed_by' => null, 'reviewed_at' => null]);
-            }
-            $checklist->save();
-        });
-
-        return redirect()->route('checklists.show', $checklist)->with('status', $data['action'] === 'submit'
-            ? __('Checklist dikirim untuk direview.')
-            : __('Checklist disimpan.'));
+        return redirect()->route('checklists.show', $checklist)->with('status', __('Checklist diperbarui.'));
     }
 
+    /** "Tandai sudah direview": nama dan waktu reviewer tercatat, lalu isian terkunci untuk HOD. */
     public function review(Request $request, Checklist $checklist): RedirectResponse
     {
         Gate::authorize('review', $checklist);
-        $data = $request->validate([
-            'decision' => ['required', Rule::in(['approve', 'return'])],
-            'review_note' => ['nullable', 'string', 'max:2000', 'required_if:decision,return'],
-        ], ['review_note.required_if' => __('Tulis alasan checklist dikembalikan.')]);
+        $checklist->update(['status' => ChecklistStatus::Reviewed, 'reviewed_by' => $request->user()->id, 'reviewed_at' => now()]);
 
-        $checklist->update([
-            'status' => $data['decision'] === 'approve' ? ChecklistStatus::Approved : ChecklistStatus::Returned,
-            'reviewed_by' => $request->user()->id,
-            'reviewed_at' => now(),
-            'review_note' => $data['review_note'] ?? null,
-        ]);
+        return redirect()->route('checklists.show', $checklist)->with('status', __('Checklist ditandai sudah direview.'));
+    }
 
-        return redirect()->route('checklists.show', $checklist)->with('status', $data['decision'] === 'approve'
-            ? __('Checklist disetujui.')
-            : __('Checklist dikembalikan ke pegawai.'));
+    public function destroy(Checklist $checklist): RedirectResponse
+    {
+        Gate::authorize('delete', $checklist);
+        $checklist->delete();
+
+        return redirect()->route('checklists.index', ['date' => $checklist->date->toDateString()])->with('status', __('Checklist dihapus.'));
     }
 }

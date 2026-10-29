@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AccessController;
 use App\Http\Controllers\Admin\TaskController;
 use App\Http\Controllers\Auth\AttendanceLoginController;
 use App\Http\Controllers\ChecklistController;
+use App\Http\Controllers\FillController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\TeamTaskController;
 use App\Http\Middleware\EnsureActiveSession;
@@ -18,16 +19,19 @@ Route::middleware(['auth', EnsureActiveSession::class])->group(function () {
     Route::post('/logout', [AttendanceLoginController::class, 'destroy'])->name('logout');
     Route::get('/', HomeController::class)->name('home');
 
-    Route::get('/checklist', [ChecklistController::class, 'today'])->name('checklists.today');
+    Route::get('/checklist', [FillController::class, 'today'])->name('checklists.today');
+    Route::get('/isi', [FillController::class, 'create'])->name('fill.create');
+    Route::post('/isi', [FillController::class, 'store'])->name('fill.store');
     Route::get('/checklists', [ChecklistController::class, 'index'])->name('checklists.index');
     Route::get('/checklists/{checklist}', [ChecklistController::class, 'show'])->name('checklists.show');
     Route::put('/checklists/{checklist}', [ChecklistController::class, 'update'])->name('checklists.update');
     Route::post('/checklists/{checklist}/review', [ChecklistController::class, 'review'])->name('checklists.review');
+    Route::delete('/checklists/{checklist}', [ChecklistController::class, 'destroy'])->name('checklists.destroy');
 
     Route::get('/tim', [TeamTaskController::class, 'index'])->name('team.index');
-    Route::get('/tim/{user}/tugas', [TeamTaskController::class, 'edit'])->name('team.tasks.edit');
-    Route::put('/tim/{user}/tugas', [TeamTaskController::class, 'update'])->name('team.tasks.update');
-    Route::delete('/tim/{user}/tugas', [TeamTaskController::class, 'reset'])->name('team.tasks.reset');
+    Route::get('/tim/{employee}/tugas', [TeamTaskController::class, 'edit'])->name('team.tasks.edit');
+    Route::put('/tim/{employee}/tugas', [TeamTaskController::class, 'update'])->name('team.tasks.update');
+    Route::delete('/tim/{employee}/tugas', [TeamTaskController::class, 'reset'])->name('team.tasks.reset');
 
     Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/akses', [AccessController::class, 'index'])->name('access.index');

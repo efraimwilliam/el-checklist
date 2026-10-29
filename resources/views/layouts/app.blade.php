@@ -12,7 +12,7 @@
 <body class="min-h-screen bg-slate-50 text-slate-800 antialiased">
 @auth
     @php($navLink = fn (bool $active) => 'whitespace-nowrap border-b-2 py-2.5 transition '.($active ? 'border-gold-500 font-semibold text-gold-400' : 'border-transparent text-white/70 hover:text-white'))
-    <header class="bg-ink text-white">
+    <header class="bg-ink text-white print:hidden">
         <div class="gold-rule h-[3px]"></div>
         <div class="mx-auto max-w-6xl px-4 sm:px-6">
             <div class="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 pt-3">
@@ -33,9 +33,11 @@
                 </div>
             </div>
             <nav class="mt-2 flex gap-6 overflow-x-auto text-[13px]">
-                <a href="{{ route('checklists.today') }}" class="{{ $navLink(request()->routeIs('checklists.today')) }}">Checklist saya</a>
-                @can('review-checklists')
-                    <a href="{{ route('checklists.index') }}" class="{{ $navLink(request()->routeIs('checklists.index')) }}">Review</a>
+                @can('fill-checklists')
+                    <a href="{{ route('fill.create') }}" class="{{ $navLink(request()->routeIs('fill.*', 'checklists.today')) }}">{{ auth()->user()->role === \App\Enums\Role::Staff ? 'Checklist saya' : 'Isi checklist' }}</a>
+                @endcan
+                @can('view-checklists')
+                    <a href="{{ route('checklists.index') }}" class="{{ $navLink(request()->routeIs('checklists.index', 'checklists.show')) }}">Riwayat</a>
                 @endcan
                 @can('manage-team-tasks')
                     <a href="{{ route('team.index') }}" class="{{ $navLink(request()->routeIs('team.*')) }}">Atur tugas tim</a>

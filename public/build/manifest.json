@@ -48,7 +48,7 @@
     "src": "node_modules/@fontsource/jost/files/jost-latin-600-normal.woff2"
   },
   "resources/css/app.css": {
-    "file": "assets/app-BLL3F_Am.css",
+    "file": "assets/app-DRwBh5ab.css",
     "name": "app",
     "names": [
       "app.css"
@@ -71,7 +71,7 @@
     ]
   },
   "resources/js/checklist.js": {
-    "file": "assets/checklist-DAinlOhy.js",
+    "file": "assets/checklist-weqPWy4Z.js",
     "name": "checklist",
     "src": "resources/js/checklist.js",
     "isEntry": true
