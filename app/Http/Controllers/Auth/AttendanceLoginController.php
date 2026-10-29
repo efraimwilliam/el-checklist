@@ -28,7 +28,15 @@ class AttendanceLoginController extends Controller
 
     public function show(): View
     {
-        return view('auth.login', ['pinHelpUrl' => config('attendance.pin_help_url')]);
+        return view('auth.login', ['pinHelpUrl' => $this->pinSetupUrl()]);
+    }
+
+    /** Tautan ke menu PIN di absensi, dengan halaman login ini sebagai tujuan kembali setelah PIN dibuat. */
+    private function pinSetupUrl(): ?string
+    {
+        $url = config('attendance.pin_help_url');
+
+        return $url ? $url.(str_contains($url, '?') ? '&' : '?').http_build_query(['kembali' => route('login')]) : null;
     }
 
     public function store(Request $request, AttendanceApiService $api): RedirectResponse

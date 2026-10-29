@@ -19,10 +19,11 @@
             @if (session('pin_not_set'))
                 <div class="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900">
                     <p class="font-medium">PIN belum dibuat</p>
-                    <p class="mt-1">PIN dibuat di aplikasi absensi, di HP: scan QR absen di pintu masuk, lakukan clock in, lalu buka <strong>Akun saya</strong>.</p>
+                    <p class="mt-1">PIN dibuat di aplikasi absensi, lalu Anda kembali ke sini. Buka tautan ini di HP yang Anda pakai untuk absen.</p>
                     @if ($pinHelpUrl)
-                        <a href="{{ $pinHelpUrl }}" class="btn-primary mt-3 w-full" rel="noopener">Buka aplikasi absensi untuk membuat PIN</a>
+                        <a href="{{ $pinHelpUrl }}" class="btn-primary mt-3 w-full" rel="noopener">Buat PIN di aplikasi absensi</a>
                     @endif
+                    <p class="mt-2 text-xs text-sky-800">Belum pernah absen dari HP itu? Scan QR absen di pintu masuk dan clock in dulu, lalu tekan tombol di atas lagi.</p>
                 </div>
             @endif
             <button class="btn-primary w-full">Masuk</button>

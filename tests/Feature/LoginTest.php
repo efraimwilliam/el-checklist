@@ -103,16 +103,17 @@ it('explains a missing PIN, a locked PIN and a disabled PIN feature', function (
     $this->assertGuest();
 });
 
-it('shows a button to the attendance app only when the employee has no PIN yet', function () {
-    config(['attendance.pin_help_url' => 'https://absensi.test']);
+it('shows a button to the attendance app that returns to the checklist only when the employee has no PIN yet', function () {
+    config(['attendance.pin_help_url' => 'https://absensi.test/absen/pin/mulai']);
 
     attendanceRefuses('pin_not_set');
     login($this->employee->username)->assertSessionHas('pin_not_set');
-    $this->get('/login')->assertSee('Buka aplikasi absensi untuk membuat PIN')->assertSee('href="https://absensi.test"', false);
+    $this->get('/login')->assertSee('Buat PIN di aplikasi absensi')
+        ->assertSee('href="https://absensi.test/absen/pin/mulai?kembali='.urlencode(route('login')).'"', false);
 
     attendanceRefuses('invalid_credentials');
     login($this->employee->username)->assertSessionMissing('pin_not_set');
-    $this->get('/login')->assertDontSee('Buka aplikasi absensi untuk membuat PIN');
+    $this->get('/login')->assertDontSee('Buat PIN di aplikasi absensi');
 });
 
 it('regenerates the session ID after a successful login', function () {
