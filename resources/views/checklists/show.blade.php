@@ -10,7 +10,7 @@
         <div class="flex flex-wrap items-start justify-between gap-3">
             <div>
                 <h1 class="text-3xl leading-tight text-slate-900">{{ $checklist->employee->name }}</h1>
-                <p class="mt-1 text-[13px] text-slate-500">{{ $checklist->position_name }} · {{ $checklist->department->name }}</p>
+                <p class="mt-1 text-sm text-slate-500">{{ $checklist->position_name }} · {{ $checklist->department->name }}</p>
             </div>
             <x-status-badge :status="$checklist->status" />
         </div>
@@ -47,7 +47,7 @@
         @foreach ($checklist->items->groupBy(fn ($item) => $item->section ?? '') as $section => $items)
             <div class="{{ $loop->first ? '' : 'mt-3 border-t border-slate-200 pt-3' }}">
                 @if ($section !== '' || $checklist->items->pluck('section')->filter()->isNotEmpty())
-                    <div class="flex items-center justify-between py-2 text-[11px] font-semibold uppercase tracking-[0.18em]">
+                    <div class="flex items-center justify-between py-2 text-xs font-semibold uppercase tracking-[0.1em]">
                         <span class="text-gold-600">{{ $section !== '' ? $section : 'Tugas' }}</span>
                         <span class="text-slate-400">{{ $items->count() }} tugas</span>
                     </div>
@@ -56,11 +56,11 @@
                     @php($number++)
                     <div class="border-t border-slate-100 py-2.5 first:border-t-0">
                         <div class="flex items-start justify-between gap-4">
-                            <p class="text-[15px] leading-snug text-slate-800"><span class="font-display text-lg text-slate-400">{{ $number }}.</span> {{ $item->title }}</p>
+                            <p class="text-base leading-snug text-slate-800"><span class="mr-0.5 font-semibold tabular-nums text-slate-400">{{ $number }}.</span> {{ $item->title }}</p>
                             <x-status-badge :status="$item->status" class="shrink-0" />
                         </div>
                         @if ($item->note)
-                            <p class="mt-1 text-[13px] text-slate-500">Catatan: {{ $item->note }}</p>
+                            <p class="mt-1 text-sm text-slate-500">Catatan: {{ $item->note }}</p>
                         @endif
                     </div>
                 @endforeach
@@ -74,8 +74,8 @@
             @foreach ($checklist->extraTasks as $extra)
                 <div class="flex items-start justify-between gap-4 border-t border-slate-100 py-2.5">
                     <div>
-                        <p class="text-[15px] text-slate-800">{{ $extra->title }}</p>
-                        @if ($extra->note) <p class="mt-1 text-[13px] text-slate-500">Catatan: {{ $extra->note }}</p> @endif
+                        <p class="text-base text-slate-800">{{ $extra->title }}</p>
+                        @if ($extra->note) <p class="mt-1 text-sm text-slate-500">Catatan: {{ $extra->note }}</p> @endif
                     </div>
                     <x-status-badge :status="$extra->status" class="shrink-0" />
                 </div>

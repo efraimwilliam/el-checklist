@@ -77,7 +77,7 @@
 
     @if ($staffMode && $history->isNotEmpty())
         <div class="card mt-6 p-4">
-            <h2 class="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Riwayat 14 terakhir</h2>
+            <h2 class="mb-2 text-xs font-semibold uppercase tracking-[0.1em] text-slate-500">Riwayat 14 terakhir</h2>
             <ul class="divide-y divide-slate-100 text-sm">
                 @foreach ($history as $past)
                     <li class="flex items-center justify-between py-2">

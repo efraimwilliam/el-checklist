@@ -4,8 +4,12 @@
     {
       "name": "checklist",
       "runtimeExecutable": "php",
-      "runtimeArgs": ["artisan", "serve", "--port=8010"],
-      "port": 8010
+      "runtimeArgs": [
+        "artisan",
+        "serve",
+        "--port=8011"
+      ],
+      "port": 8011
     }
   ]
 }

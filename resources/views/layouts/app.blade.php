@@ -20,19 +20,19 @@
                     <img src="{{ asset('images/logo-el.png') }}" alt="éL" class="h-8 w-auto">
                     <span class="h-8 w-px bg-white/20"></span>
                     <span class="leading-tight">
-                        <span class="block text-[15px] font-semibold text-gold-400">éL Hotel &amp; Resort Bali Sanur</span>
-                        <span class="block text-[10px] uppercase tracking-[0.22em] text-white/50">Daily Department Checklist</span>
+                        <span class="block text-base font-semibold text-gold-400">éL Hotel &amp; Resort Bali Sanur</span>
+                        <span class="block text-[11px] uppercase tracking-[0.12em] text-white/60">Daily Department Checklist</span>
                     </span>
                 </a>
-                <div class="flex items-center gap-3 text-[12px] text-white/70">
+                <div class="flex items-center gap-3 text-[13px] text-white/70">
                     <span class="hidden sm:inline">{{ auth()->user()->name() }} · {{ auth()->user()->role->label() }}@if (auth()->user()->employee?->department) · {{ auth()->user()->employee->department->name }}@endif</span>
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
-                        <button class="rounded-full bg-white/10 px-3.5 py-1.5 text-[12px] font-semibold text-white transition hover:bg-white/20">Keluar</button>
+                        <button class="rounded-full bg-white/10 px-3.5 py-1.5 text-[13px] font-semibold text-white transition hover:bg-white/20">Keluar</button>
                     </form>
                 </div>
             </div>
-            <nav class="mt-2 flex gap-6 overflow-x-auto text-[13px]">
+            <nav class="mt-2 flex gap-6 overflow-x-auto text-sm">
                 @can('fill-checklists')
                     <a href="{{ route('fill.create') }}" class="{{ $navLink(request()->routeIs('fill.*', 'checklists.today')) }}">{{ auth()->user()->role === \App\Enums\Role::Staff ? 'Checklist saya' : 'Isi checklist' }}</a>
                 @endcan

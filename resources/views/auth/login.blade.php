@@ -7,11 +7,11 @@
             <div class="relative flex h-full flex-col justify-between p-6 pb-14 lg:p-12">
                 <div>
                     <img src="{{ asset('images/logo-el.png') }}" alt="éL Hotel &amp; Resort" class="h-14 w-auto lg:h-24">
-                    <p class="mt-2 text-[9px] font-medium uppercase tracking-[0.3em] text-gold-400 lg:text-[11px]">Hotel &amp; Resort · ★★★★ · Bali - Sanur</p>
+                    <p class="mt-2 text-[10px] font-medium uppercase tracking-[0.2em] text-gold-400 lg:text-xs">Hotel &amp; Resort · ★★★★ · Bali - Sanur</p>
                 </div>
                 <div class="text-white">
                     <p class="eyebrow !text-gold-400"><span class="h-px w-8 bg-gold-500"></span>Daily Department Checklist</p>
-                    <p class="mt-2 max-w-md font-display text-[26px] italic leading-tight lg:text-[40px]">Standar terjaga, setiap hari, di setiap departemen.</p>
+                    <p class="mt-2 max-w-md font-display text-2xl leading-snug lg:text-4xl">Standar terjaga, setiap hari, di setiap departemen.</p>
                 </div>
             </div>
         </section>

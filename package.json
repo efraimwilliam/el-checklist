@@ -17,7 +17,6 @@
         "@laravel/multiplex": "^0.4.1"
     },
     "dependencies": {
-        "@fontsource/cormorant-garamond": "^5.3.0",
-        "@fontsource/jost": "^5.3.0"
+        "@fontsource/inter": "^5.3.0"
     }
 }
