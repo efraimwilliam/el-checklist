@@ -22,6 +22,7 @@ return [
     // Header tambahan bila API absensi memintanya, mis. versi API.
     'headers' => [],
 
-    // Alamat aplikasi absensi tempat pegawai membuat / mereset PIN (bawaan: sama dengan ATTENDANCE_API_URL; isi bila alamat untuk browser berbeda).
-    'pin_help_url' => env('ATTENDANCE_PIN_HELP_URL') ?: env('ATTENDANCE_API_URL'),
+    // Halaman HP absensi tempat pegawai membuat / mereset PIN (staff tidak punya akses dashboard). Bawaan: {ATTENDANCE_API_URL}/absen/app,
+    // yang membuka halaman absen bila HP sudah pernah scan QR, selain itu meminta scan QR. Isi bila alamat untuk browser berbeda.
+    'pin_help_url' => env('ATTENDANCE_PIN_HELP_URL') ?: (env('ATTENDANCE_API_URL') ? rtrim((string) env('ATTENDANCE_API_URL'), '/').'/absen/app' : null),
 ];

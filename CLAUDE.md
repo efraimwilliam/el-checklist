@@ -12,7 +12,7 @@ Laravel 13 + Blade + Tailwind 4 (Vite), MySQL, Pest. Timezone Asia/Makassar (WIT
 - Tidak ada password/PIN di database ini, di sesi, maupun di log. `users` tanpa kolom password; tanpa "ingat saya".
 - `App\Attendance\AttendanceApiService` menormalkan respons ke `AuthOutcome` (alasan dari API + `timeout`/`unavailable`/`malformed`/`not_configured`); login tidak diulang otomatis.
 - `Auth\AttendanceLoginController`: kunci 5 gagal / 15 menit per username+IP (gangguan API tidak dihitung) + throttle `login` 20/menit per IP;
-  pesan umum untuk salah PIN & nonaktif; `pin_not_set` mengarahkan ke HP absensi (PIN dibuat/direset hanya di aplikasi absensi, `ATTENDANCE_PIN_HELP_URL`).
+  pesan umum untuk salah PIN & nonaktif; `pin_not_set` menampilkan tombol ke HP absensi (`ATTENDANCE_PIN_HELP_URL`, bawaan `{ATTENDANCE_API_URL}/absen/app`; staff tidak punya dashboard absensi, PIN dibuat/direset hanya di halaman HP setelah scan QR).
   Berhasil = pegawai lokal dicocokkan lewat `external_id` (id absensi), harus punya `users` aktif, sesi diregenerasi, `auth.logged_in_at` disimpan.
 - `EnsureActiveSession` (semua route login): keluar otomatis bila akun dicabut, pegawai nonaktif di absensi, atau melewati `session.absolute_lifetime`
   (default 720 menit). Batas diam = `SESSION_LIFETIME` (30). Logout = invalidate + token CSRF baru. Log hasil login: channel `auth` (`storage/logs/auth-*.log`).
