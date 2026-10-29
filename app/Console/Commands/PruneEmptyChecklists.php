@@ -17,6 +17,7 @@ class PruneEmptyChecklists extends Command
         $deleted = Checklist::where('status', 'saved')
             ->where('updated_at', '<', now()->subDays((int) $this->option('days')))
             ->whereNull('note')
+            ->whereNull('assigned_at')
             ->whereDoesntHave('extraTasks')
             ->whereDoesntHave('items', fn ($q) => $q->whereNotNull('status')->orWhereHas('photos'))
             ->delete();

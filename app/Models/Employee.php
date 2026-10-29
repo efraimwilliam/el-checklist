@@ -13,7 +13,7 @@ class Employee extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['external_id', 'username', 'name', 'department_id', 'position_title', 'is_active', 'custom_tasks', 'synced_at'];
+    protected $fillable = ['external_id', 'username', 'name', 'department_id', 'position_title', 'is_active', 'custom_tasks', 'checklist_position_id', 'synced_at'];
 
     protected function casts(): array
     {
@@ -29,6 +29,12 @@ class Employee extends Model
     public function assignedTasks(): BelongsToMany
     {
         return $this->belongsToMany(Task::class);
+    }
+
+    /** Jabatan checklist pegawai ini (diatur HOD sekali); dipakai saat checklist dibuatkan sekaligus. */
+    public function checklistPosition(): BelongsTo
+    {
+        return $this->belongsTo(Position::class, 'checklist_position_id');
     }
 
     public function user(): HasOne

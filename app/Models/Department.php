@@ -10,11 +10,11 @@ class Department extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['external_id', 'code', 'name', 'sort', 'is_active'];
+    protected $fillable = ['external_id', 'code', 'name', 'sort', 'is_active', 'auto_assign_at', 'auto_assigned_on'];
 
     protected function casts(): array
     {
-        return ['is_active' => 'boolean'];
+        return ['is_active' => 'boolean', 'auto_assigned_on' => 'date'];
     }
 
     public function positions(): HasMany

@@ -4,6 +4,7 @@ namespace App\Checklists;
 
 use App\Enums\ChecklistStatus;
 use App\Enums\ItemStatus;
+use App\Enums\Role;
 use App\Models\Checklist;
 use App\Models\ChecklistItem;
 use App\Models\Employee;
@@ -49,10 +50,10 @@ class ChecklistService
     }
 
     /** Membuka checklist staff + jabatan + tanggal itu, atau membuatnya (semua tugas belum diisi) bila belum ada. $checkedBy = nama pemeriksa (akun HOD / HR / Admin yang memulai); null untuk staff yang mengisi sendiri. */
-    public function start(Employee $employee, Position $position, CarbonImmutable $date, User $by, ?string $checkedBy): Checklist
+    public function start(Employee $employee, Position $position, CarbonImmutable $date, ?User $by, ?string $checkedBy, bool $assigned = false): Checklist
     {
         try {
-            return DB::transaction(function () use ($employee, $position, $date, $by, $checkedBy) {
+            return DB::transaction(function () use ($employee, $position, $date, $by, $checkedBy, $assigned) {
                 if ($existing = $this->find($employee, $position, $date)) {
                     return $existing;
                 }
@@ -65,7 +66,8 @@ class ChecklistService
                     'date' => $date->toDateString(),
                     'status' => ChecklistStatus::Saved,
                     'checked_by' => $checkedBy,
-                    'filled_by' => $by->id,
+                    'filled_by' => $by?->id,
+                    'assigned_at' => $assigned ? now() : null,
                 ]);
                 $checklist->items()->createMany($this->tasksFor($employee, $position)->values()->map(fn (Task $task, int $i) => [
                     'task_id' => $task->id,
@@ -154,6 +156,10 @@ class ChecklistService
     /** Waktu simpan terakhir dan akun yang menyimpan. */
     private function touch(Checklist $checklist, User $by): void
     {
+        // Checklist yang dibuatkan sekaligus belum punya pemeriksa: atasan yang pertama mengisinya (bukan stafnya sendiri) tercatat sebagai pemeriksa.
+        if ($checklist->assigned_at && $checklist->checked_by === null && $by->role !== Role::Staff && $by->employee_id !== $checklist->employee_id) {
+            $checklist->checked_by = $by->name();
+        }
         $checklist->forceFill(['filled_by' => $by->id])->save();
         $checklist->touch();
     }

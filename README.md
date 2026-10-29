@@ -17,4 +17,6 @@ php artisan checklist:grant <username-admin> admin
 Jadwalkan `php artisan schedule:run` setiap menit (sinkron pegawai tiap jam, pembersihan checklist kosong dan foto lama tiap hari).
 Foto bukti disimpan di `storage/app/private`: pastikan folder itu ikut backup, dan atur PHP `upload_max_filesize` >= 8M serta `post_max_size` >= 10M. Produksi: HTTPS dan `SESSION_SECURE_COOKIE=true`.
 
+Pembuatan checklist otomatis tiap departemen memakai scheduler yang sama (`php artisan schedule:run` tiap menit) dan membaca jadwal dari Sistem Absensi (`ATTENDANCE_API_SCHEDULES_PATH`).
+
 Catatan lengkap untuk pengembang: `CLAUDE.md`.

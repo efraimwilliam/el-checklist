@@ -4,11 +4,13 @@ use App\Http\Controllers\Admin\AccessController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\TaskController;
 use App\Http\Controllers\Auth\AttendanceLoginController;
+use App\Http\Controllers\BulkAssignController;
 use App\Http\Controllers\ChecklistController;
 use App\Http\Controllers\ChecklistItemController;
 use App\Http\Controllers\ChecklistPhotoController;
 use App\Http\Controllers\FillController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\TeamPositionController;
 use App\Http\Controllers\TeamTaskController;
 use App\Http\Middleware\EnsureActiveSession;
 use Illuminate\Support\Facades\Route;
@@ -25,6 +27,8 @@ Route::middleware(['auth', EnsureActiveSession::class])->group(function () {
     Route::get('/checklist', [FillController::class, 'today'])->name('checklists.today');
     Route::get('/isi', [FillController::class, 'create'])->name('fill.create');
     Route::post('/isi/mulai', [FillController::class, 'start'])->name('fill.start');
+    Route::post('/isi/semua', [BulkAssignController::class, 'store'])->name('fill.assign-all');
+    Route::put('/isi/otomatis/{department}', [BulkAssignController::class, 'auto'])->name('fill.auto-assign');
     Route::get('/checklists', [ChecklistController::class, 'index'])->name('checklists.index');
     Route::get('/checklists/{checklist}', [ChecklistController::class, 'show'])->name('checklists.show');
     Route::get('/checklists/{checklist}/isi', [ChecklistController::class, 'fill'])->name('checklists.fill');
@@ -39,6 +43,8 @@ Route::middleware(['auth', EnsureActiveSession::class])->group(function () {
     Route::delete('/checklists/{checklist}', [ChecklistController::class, 'destroy'])->name('checklists.destroy');
 
     Route::get('/tim', [TeamTaskController::class, 'index'])->name('team.index');
+    Route::get('/tim/jabatan', [TeamPositionController::class, 'edit'])->name('team.positions.edit');
+    Route::put('/tim/jabatan', [TeamPositionController::class, 'update'])->name('team.positions.update');
     Route::get('/tim/{employee}/tugas', [TeamTaskController::class, 'edit'])->name('team.tasks.edit');
     Route::put('/tim/{employee}/tugas', [TeamTaskController::class, 'update'])->name('team.tasks.update');
     Route::delete('/tim/{employee}/tugas', [TeamTaskController::class, 'reset'])->name('team.tasks.reset');

@@ -2,6 +2,7 @@
 
 namespace App\Attendance;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
@@ -90,15 +91,35 @@ class AttendanceApiService
         return $rows;
     }
 
+    /**
+     * Status jadwal semua pegawai aktif pada satu tanggal, dikunci id Absensi.
+     * work = ada shift, off = libur biasa, leave = izin / cuti / sakit, unscheduled = belum ada jadwal.
+     *
+     * @return array<int, array{status: string, code: ?string}>
+     *
+     * @throws AttendanceUnavailable
+     */
+    public function schedules(CarbonImmutable $date): array
+    {
+        $result = [];
+        foreach ($this->fetch('schedules', ['date' => $date->toDateString()]) as $row) {
+            if (is_array($row) && is_int($row['employee_id'] ?? null) && in_array($row['status'] ?? null, ['work', 'off', 'leave', 'unscheduled'], true)) {
+                $result[$row['employee_id']] = ['status' => $row['status'], 'code' => filled($row['code'] ?? null) ? (string) $row['code'] : null];
+            }
+        }
+
+        return $result;
+    }
+
     /** @return list<mixed> */
-    private function fetch(string $resource): array
+    private function fetch(string $resource, array $query = []): array
     {
         if (! $this->configured()) {
             throw new AttendanceUnavailable(__('Koneksi Sistem Absensi belum diatur (ATTENDANCE_API_URL & ATTENDANCE_API_TOKEN).'));
         }
 
         try {
-            $response = $this->client()->get(config("attendance.paths.{$resource}"));
+            $response = $this->client()->get(config("attendance.paths.{$resource}"), $query);
         } catch (ConnectionException) {
             throw new AttendanceUnavailable(__('Sistem Absensi tidak dapat dihubungi.'));
         }

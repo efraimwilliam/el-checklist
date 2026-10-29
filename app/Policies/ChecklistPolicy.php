@@ -37,7 +37,7 @@ class ChecklistPolicy
         return match ($user->role) {
             Role::Admin, Role::Hr => true,
             Role::Hod => $user->canAccessDepartment($position->department_id),
-            Role::Staff => $employee->id === $user->employee_id && $user->position_id === $position->id,
+            Role::Staff => $employee->id === $user->employee_id && $position->id === ($employee->checklist_position_id ?? $user->position_id),
             Role::Gm => false,
         };
     }

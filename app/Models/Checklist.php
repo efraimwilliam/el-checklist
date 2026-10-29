@@ -13,13 +13,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Checklist extends Model
 {
     protected $fillable = [
-        'employee_id', 'department_id', 'position_id', 'position_name', 'date', 'status', 'note', 'checked_by', 'filled_by',
+        'employee_id', 'department_id', 'position_id', 'position_name', 'date', 'status', 'note', 'checked_by', 'filled_by', 'assigned_at',
         'reviewed_by', 'reviewed_at',
     ];
 
     protected function casts(): array
     {
-        return ['date' => 'date', 'status' => ChecklistStatus::class, 'reviewed_at' => 'datetime'];
+        return ['date' => 'date', 'status' => ChecklistStatus::class, 'reviewed_at' => 'datetime', 'assigned_at' => 'datetime'];
     }
 
     public function employee(): BelongsTo

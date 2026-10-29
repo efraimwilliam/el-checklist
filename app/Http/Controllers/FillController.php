@@ -36,17 +36,17 @@ class FillController extends Controller
         $today = CarbonImmutable::today();
         $date = $this->date($request->query('date')) ?? $today;
         $staffMode = $user->role === Role::Staff;
+        $allowedIds = $staffMode ? [] : $user->accessibleDepartmentIds();
 
         if ($staffMode) {
             $employee = $user->employee;
-            $position = $user->position;
+            $position = $employee->checklistPosition ?? $user->position;
             $departments = collect();
             $department = $employee->department;
             $positions = collect();
             $employees = collect();
         } else {
-            $allowed = $user->accessibleDepartmentIds();
-            $departments = Department::where('is_active', true)->when($allowed !== null, fn ($q) => $q->whereIn('id', $allowed))->orderBy('sort')->orderBy('name')->get();
+            $departments = Department::where('is_active', true)->when($allowedIds !== null, fn ($q) => $q->whereIn('id', $allowedIds))->orderBy('sort')->orderBy('name')->get();
             $department = $departments->firstWhere('id', (int) $request->query('department'))
                 ?? $departments->firstWhere('id', $user->employee?->department_id)
                 ?? $departments->first();
@@ -64,10 +64,11 @@ class FillController extends Controller
             ? __('Jabatan checklist Anda belum diatur atau tidak sesuai departemen Anda, jadi daftar tugas belum bisa dibuat. Hubungi HR atau Administrator.')
             : null;
 
-        // Checklist yang belum lengkap (tersimpan otomatis tapi belum selesai) supaya mudah dilanjutkan.
+        // Checklist yang belum lengkap (dibuatkan sekaligus atau tersimpan setengah jalan) supaya mudah dilanjutkan:
+        // staff melihat miliknya, HOD / HR / Administrator melihat milik departemen yang boleh mereka akses.
         $resume = Checklist::with(['items', 'employee'])->where('status', 'saved')->whereDate('date', '>=', $today->subDays(7))
-            ->where(fn ($q) => $q->where('filled_by', $user->id)->orWhere('employee_id', $user->employee_id))
-            ->latest('date')->latest('id')->limit(30)->get()->reject(fn (Checklist $c) => $c->isComplete())->take(10);
+            ->when($staffMode, fn ($q) => $q->where('employee_id', $user->employee_id), fn ($q) => $q->when($allowedIds !== null, fn ($q) => $q->whereIn('department_id', $allowedIds)))
+            ->latest('date')->latest('id')->limit(60)->get()->reject(fn (Checklist $c) => $c->isComplete())->take(30);
 
         return view('checklists.fill', [
             'staffMode' => $staffMode,
@@ -81,6 +82,7 @@ class FillController extends Controller
             'today' => $today,
             'problem' => $problem,
             'resume' => $resume,
+            'summary' => session('assign_summary'),
             'history' => $staffMode ? Checklist::where('employee_id', $user->employee_id)->latest('date')->limit(14)->get() : collect(),
         ]);
     }

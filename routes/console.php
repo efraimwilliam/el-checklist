@@ -10,3 +10,6 @@ Schedule::command('checklist:prune-empty')->dailyAt('03:00');
 
 // Foto bukti yang melewati masa simpan (Pengaturan) dihapus tiap hari.
 Schedule::command('checklist:prune-photos')->dailyAt('03:30')->withoutOverlapping();
+
+// Pembuatan otomatis checklist harian per departemen (jam diatur HOD / HR / Administrator di halaman Isi checklist).
+Schedule::command('checklist:auto-assign')->everyFiveMinutes()->withoutOverlapping();

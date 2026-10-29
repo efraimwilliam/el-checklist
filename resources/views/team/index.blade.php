@@ -4,6 +4,8 @@
         <p class="text-sm text-slate-500">Pilih tugas apa saja yang masuk checklist tiap pegawai (data dari Absensi, tidak perlu punya akun). Perubahan berlaku untuk checklist yang dibuat sesudahnya.</p>
     </div>
 
+    <p class="mb-4 text-sm"><a href="{{ route('team.positions.edit') }}" class="font-semibold text-sky-700 hover:underline">Atur jabatan checklist tiap staff</a> <span class="text-slate-500">(dipakai saat checklist dibuatkan sekaligus)</span></p>
+
     <div class="space-y-4">
         @forelse ($membersByDepartment as $department => $members)
             <section class="card overflow-x-auto">
