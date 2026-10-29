@@ -17,8 +17,8 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\View\View;
 
 /**
- * Login dengan username + PIN Sistem Absensi. PIN diteruskan ke API absensi dari server ini lalu dibuang;
- * setelah berhasil, aplikasi memakai sesi Laravel sendiri (tanpa "ingat saya").
+ * Login dengan username + PIN Sistem Absensi, atau password dashboard untuk HOD / HR / Administrator (satu kolom).
+ * Kredensial diteruskan ke API absensi dari server ini lalu dibuang; setelah berhasil, aplikasi memakai sesi Laravel sendiri (tanpa "ingat saya").
  */
 class AttendanceLoginController extends Controller
 {
@@ -36,7 +36,7 @@ class AttendanceLoginController extends Controller
     {
         $data = $request->validate([
             'username' => ['required', 'string', 'max:100'],
-            'pin' => ['required', 'string', 'max:20'],
+            'pin' => ['required', 'string', 'max:255'], // PIN atau password dashboard
         ]);
         $username = mb_strtolower(trim($data['username']));
         $key = 'login-failures:'.sha1($username.'|'.$request->ip());
@@ -47,7 +47,7 @@ class AttendanceLoginController extends Controller
             return $this->failed(__('Terlalu banyak percobaan login. Coba lagi dalam :n menit.', ['n' => (int) ceil(RateLimiter::availableIn($key) / 60)]));
         }
 
-        $result = $api->authenticate($username, $data['pin']);
+        $result = $this->authenticateSecret($api, $username, $data['pin']);
 
         if (! $result->succeeded()) {
             // Gangguan API bukan kesalahan pegawai: tidak menambah hitungan gagal, dan PIN tidak pernah diterima dari data lama.
@@ -88,6 +88,19 @@ class AttendanceLoginController extends Controller
     }
 
     /**
+     * Password dicoba dulu: Absensi hanya memeriksanya untuk akun dashboard dan tidak menghitung kegagalan PIN di HP.
+     * Bila bukan akun dashboard (atau password salah), isian yang sama dicoba sebagai PIN.
+     */
+    private function authenticateSecret(AttendanceApiService $api, string $username, string $secret): AuthResult
+    {
+        $byPassword = $api->authenticatePassword($username, $secret);
+
+        return $byPassword->outcome === AuthOutcome::InvalidCredentials
+            ? $api->authenticate($username, $secret)
+            : $byPassword;
+    }
+
+    /**
      * Pegawai lokal dari profil yang dikembalikan absensi (dicocokkan lewat id absensi), sekaligus memperbarui datanya.
      *
      * @param  array{id: int, username: string, name: string, department_id: ?int, position: ?string, is_active: bool}  $profile
@@ -110,12 +123,13 @@ class AttendanceLoginController extends Controller
     private function message(AuthResult $result): string
     {
         return match ($result->outcome) {
-            AuthOutcome::Locked => __('Terlalu banyak PIN salah. Coba lagi dalam :n menit, atau reset PIN di aplikasi absensi.', ['n' => max(1, (int) ceil(($result->retryAfter ?? 900) / 60))]),
+            AuthOutcome::Locked => __('Terlalu banyak percobaan salah. Coba lagi dalam :n menit.', ['n' => max(1, (int) ceil(($result->retryAfter ?? 900) / 60))]),
+            AuthOutcome::PasswordMustChange => __('Password sementara Anda harus diganti dulu. Buat password baru di aplikasi absensi (menu Akun saya), lalu kembali ke sini.'),
             AuthOutcome::PinNotSet => __('Anda belum memiliki PIN. Minta HR/HOD membuka izin buat PIN, lalu buat PIN di aplikasi absensi. Setelah itu kembali ke aplikasi ini.'),
             AuthOutcome::PinDisabled => __('Login dengan PIN sedang tidak tersedia. Hubungi HR.'),
             AuthOutcome::Timeout, AuthOutcome::Unavailable, AuthOutcome::Malformed, AuthOutcome::NotConfigured => __('Sistem absensi sedang tidak dapat dihubungi. Coba lagi beberapa saat.'),
             // Username/PIN salah dan pegawai nonaktif sengaja satu pesan umum.
-            default => __('Username atau PIN tidak sesuai.'),
+            default => __('Username atau PIN/password tidak sesuai.'),
         };
     }
 

@@ -27,7 +27,7 @@ it('logs in with a valid username and PIN and sends them only from the server', 
 it('does not log in with invalid credentials and shows a generic message', function () {
     attendanceRefuses('invalid_credentials');
 
-    login($this->employee->username, '000000')->assertRedirect('/login')->assertSessionHasErrors(['username' => 'Username atau PIN tidak sesuai.']);
+    login($this->employee->username, '000000')->assertRedirect('/login')->assertSessionHasErrors(['username' => 'Username atau PIN/password tidak sesuai.']);
 
     $this->assertGuest();
     expect(session()->getOldInput())->not->toHaveKey('pin');
@@ -35,7 +35,7 @@ it('does not log in with invalid credentials and shows a generic message', funct
 
 it('refuses an employee who is inactive at the attendance system, with the same generic message', function () {
     attendanceRefuses('inactive');
-    login($this->employee->username)->assertSessionHasErrors(['username' => 'Username atau PIN tidak sesuai.']);
+    login($this->employee->username)->assertSessionHasErrors(['username' => 'Username atau PIN/password tidak sesuai.']);
     $this->assertGuest();
 
     // Profil lama di sini masih aktif tapi absensi bilang nonaktif.
@@ -71,7 +71,7 @@ it('does not authenticate when the attendance API times out, is down, or answers
     login($this->employee->username)->assertSessionHasErrors(['username' => 'Sistem absensi sedang tidak dapat dihubungi. Coba lagi beberapa saat.']);
 
     $this->assertGuest();
-    Http::assertSentCount(1); // tidak diulang otomatis
+    Http::assertSentCount(2); // sandi lalu PIN, masing-masing sekali; tidak diulang otomatis
 })->with([
     'timeout' => fn () => fakeAttendance([ATTENDANCE_LOGIN => Http::failedConnection('cURL error 28: Operation timed out')]),
     'server error' => fn () => fakeAttendance([ATTENDANCE_LOGIN => Http::response('oops', 500)]),
@@ -96,7 +96,7 @@ it('explains a missing PIN, a locked PIN and a disabled PIN feature', function (
     login($this->employee->username)->assertSessionHasErrors(['username' => 'Anda belum memiliki PIN. Minta HR/HOD membuka izin buat PIN, lalu buat PIN di aplikasi absensi. Setelah itu kembali ke aplikasi ini.']);
 
     attendanceRefuses('locked', ['retry_after' => 600]);
-    login($this->employee->username)->assertSessionHasErrors(['username' => 'Terlalu banyak PIN salah. Coba lagi dalam 10 menit, atau reset PIN di aplikasi absensi.']);
+    login($this->employee->username)->assertSessionHasErrors(['username' => 'Terlalu banyak percobaan salah. Coba lagi dalam 10 menit.']);
 
     attendanceRefuses('pin_disabled');
     login($this->employee->username)->assertSessionHasErrors(['username' => 'Login dengan PIN sedang tidak tersedia. Hubungi HR.']);
@@ -141,7 +141,7 @@ it('locks login for a username after repeated failures without calling the API',
 
     login($this->employee->username)->assertSessionHasErrors(['username' => 'Terlalu banyak percobaan login. Coba lagi dalam 15 menit.']);
 
-    Http::assertSentCount(5);
+    Http::assertSentCount(10); // tiap percobaan: password lalu PIN
     $this->assertGuest();
 });
 
@@ -194,4 +194,34 @@ it('ends sessions past the absolute lifetime even when active', function () {
 
     $this->get(route('fill.create'))->assertRedirect('/login');
     $this->assertGuest();
+});
+
+it('lets HOD, HR and Administrator sign in with the dashboard password in the same field', function () {
+    $hod = User::factory()->role(Role::Hod)->create();
+    attendanceAcceptsPassword($hod->employee);
+
+    login($hod->employee->username, 'sandi-dashboard')->assertRedirect(route('home'));
+
+    $this->assertAuthenticatedAs($hod);
+    Http::assertSent(fn (HttpRequest $request) => str_ends_with($request->url(), '/auth/verify-password') && $request['password'] === 'sandi-dashboard');
+    Http::assertSentCount(1); // PIN tidak perlu dicoba
+});
+
+it('uses the PIN when the dashboard password is wrong', function () {
+    $hod = User::factory()->role(Role::Hod)->create();
+    fakeAttendance([ATTENDANCE_LOGIN => Http::response(['authenticated' => true, 'employee' => attendanceProfile($hod->employee)])]);
+
+    login($hod->employee->username, '482913')->assertRedirect(route('home'));
+
+    $this->assertAuthenticatedAs($hod);
+    Http::assertSentCount(2);
+});
+
+it('explains a temporary dashboard password that must be changed first', function () {
+    fakeAttendance([ATTENDANCE_LOGIN_PASSWORD => Http::response(['authenticated' => false, 'reason' => 'password_must_change'])]);
+
+    login($this->employee->username, 'sementara')->assertSessionHasErrors(['username' => 'Password sementara Anda harus diganti dulu. Buat password baru di aplikasi absensi (menu Akun saya), lalu kembali ke sini.']);
+
+    $this->assertGuest();
+    Http::assertSentCount(1); // PIN tidak dicoba
 });

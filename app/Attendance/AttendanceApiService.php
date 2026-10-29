@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Klien API Sistem Absensi. PIN hanya diteruskan ke API; tidak pernah dicatat atau disimpan.
+ * Klien API Sistem Absensi. PIN dan password hanya diteruskan ke API; tidak pernah dicatat atau disimpan.
  * Permintaan login tidak diulang otomatis (retry bisa menghabiskan jatah salah PIN pegawai).
  */
 class AttendanceApiService
@@ -20,6 +20,7 @@ class AttendanceApiService
         'pin_not_set' => AuthOutcome::PinNotSet,
         'pin_disabled' => AuthOutcome::PinDisabled,
         'inactive' => AuthOutcome::Inactive,
+        'password_must_change' => AuthOutcome::PasswordMustChange,
     ];
 
     public function configured(): bool
@@ -29,12 +30,24 @@ class AttendanceApiService
 
     public function authenticate(string $username, string $pin): AuthResult
     {
+        return $this->attempt(config('attendance.paths.login'), ['username' => $username, 'pin' => $pin]);
+    }
+
+    /** Password akun dashboard (Administrator, Admin HR, HOD). Akun lain ditolak Absensi dengan invalid_credentials. */
+    public function authenticatePassword(string $username, string $password): AuthResult
+    {
+        return $this->attempt(config('attendance.paths.login_password'), ['username' => $username, 'password' => $password]);
+    }
+
+    /** @param  array<string, string>  $payload */
+    private function attempt(string $path, array $payload): AuthResult
+    {
         if (! $this->configured()) {
             return $this->fail(AuthOutcome::NotConfigured);
         }
 
         try {
-            $response = $this->client()->post(config('attendance.paths.login'), ['username' => $username, 'pin' => $pin]);
+            $response = $this->client()->post($path, $payload);
         } catch (ConnectionException $e) {
             // Pesan exception Guzzle tidak memuat isi permintaan; tetap hanya kelasnya yang dicatat.
             $timedOut = str_contains(strtolower($e->getMessage()), 'timed out');

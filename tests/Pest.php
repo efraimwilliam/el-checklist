@@ -18,18 +18,23 @@ pest()->extend(TestCase::class)
 
 const ATTENDANCE_LOGIN = 'attendance.test/api/v1/tasks/auth/verify-pin';
 
-/** Ganti semua respons palsu API (Http::fake biasa menumpuk; respons pertama yang cocok selalu menang). */
+const ATTENDANCE_LOGIN_PASSWORD = 'attendance.test/api/v1/tasks/auth/verify-password';
+
+/**
+ * Ganti semua respons palsu API (Http::fake biasa menumpuk; respons pertama yang cocok selalu menang).
+ * Login mencoba password dulu: kalau stub tidak menyebutkannya, password dianggap salah (akun biasa).
+ */
 function fakeAttendance(mixed $stubs): void
 {
     Http::swap(new HttpFactory(app('events')));
     Http::preventStrayRequests();
-    Http::fake($stubs);
+    Http::fake([ATTENDANCE_LOGIN_PASSWORD => Http::response(['authenticated' => false, 'reason' => 'invalid_credentials']), ...$stubs]);
 }
 
-/** Respons sukses API absensi untuk pegawai ini. */
-function attendanceAccepts(Employee $employee, array $overrides = []): void
+/** Profil pegawai seperti yang dikembalikan API absensi. */
+function attendanceProfile(Employee $employee, array $overrides = []): array
 {
-    fakeAttendance([ATTENDANCE_LOGIN => Http::response(['authenticated' => true, 'employee' => [
+    return [
         'id' => $employee->external_id,
         'username' => $employee->username,
         'name' => $employee->name,
@@ -37,7 +42,19 @@ function attendanceAccepts(Employee $employee, array $overrides = []): void
         'position' => $employee->position_title,
         'is_active' => true,
         ...$overrides,
-    ]])]);
+    ];
+}
+
+/** Respons sukses API absensi untuk pegawai ini (lewat PIN). */
+function attendanceAccepts(Employee $employee, array $overrides = []): void
+{
+    fakeAttendance([ATTENDANCE_LOGIN => Http::response(['authenticated' => true, 'employee' => attendanceProfile($employee, $overrides)])]);
+}
+
+/** Respons sukses API absensi untuk password dashboard pegawai ini. */
+function attendanceAcceptsPassword(Employee $employee, array $overrides = []): void
+{
+    fakeAttendance([ATTENDANCE_LOGIN_PASSWORD => Http::response(['authenticated' => true, 'employee' => attendanceProfile($employee, $overrides)])]);
 }
 
 function attendanceRefuses(string $reason, array $extra = []): void

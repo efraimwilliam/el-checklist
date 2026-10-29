@@ -7,12 +7,12 @@ Laravel 13 + Blade + Tailwind 4 (Vite), MySQL, Pest. Timezone Asia/Makassar (WIT
   helper `fakeAttendance()` / `attendanceAccepts()` / `attendanceRefuses()` / `loggedIn()` / `nextRequest()` di `tests/Pest.php`).
 
 ## Login (Sistem Absensi)
-- Pegawai login dengan username + PIN absensi. Server ini meneruskan ke API absensi (`config/attendance.php`, `.env` `ATTENDANCE_API_*`;
-  token = `TASKS_API_TOKEN` di Sistem Absensi; endpoint `POST /api/v1/tasks/auth/verify-pin`). Browser tidak pernah memanggil API absensi.
+- Satu kolom login: pegawai memakai username + PIN absensi; HOD / HR / Administrator (akun dashboard absensi) boleh memakai password dashboard absensi di kolom yang sama. Server ini meneruskan ke API absensi (`config/attendance.php`, `.env` `ATTENDANCE_API_*`;
+  token = `TASKS_API_TOKEN` di Sistem Absensi; endpoint `POST /api/v1/tasks/auth/verify-password` dicoba dulu, lalu `POST /api/v1/tasks/auth/verify-pin`). Browser tidak pernah memanggil API absensi.
 - Tidak ada password/PIN di database ini, di sesi, maupun di log. `users` tanpa kolom password; tanpa "ingat saya".
 - `App\Attendance\AttendanceApiService` menormalkan respons ke `AuthOutcome` (alasan dari API + `timeout`/`unavailable`/`malformed`/`not_configured`); login tidak diulang otomatis.
 - `Auth\AttendanceLoginController`: kunci 5 gagal / 15 menit per username+IP (gangguan API tidak dihitung) + throttle `login` 20/menit per IP;
-  pesan umum untuk salah PIN & nonaktif; `pin_not_set` = pesan petunjuk saja (minta HR/HOD membuka izin buat PIN, lalu buat PIN di aplikasi absensi dan kembali ke sini); tidak ada tombol/pengalihan, PIN tidak pernah dibuat di aplikasi ini.
+  pesan umum untuk salah PIN/password & nonaktif; `password_must_change` = minta ganti password sementara di Absensi dulu; `pin_not_set` = pesan petunjuk saja (minta HR/HOD membuka izin buat PIN, lalu buat PIN di aplikasi absensi dan kembali ke sini); tidak ada tombol/pengalihan, PIN tidak pernah dibuat di aplikasi ini.
   Berhasil = pegawai lokal dicocokkan lewat `external_id` (id absensi), harus punya `users` aktif, sesi diregenerasi, `auth.logged_in_at` disimpan.
 - `EnsureActiveSession` (semua route login): keluar otomatis bila akun dicabut, pegawai nonaktif di absensi, atau melewati `session.absolute_lifetime`
   (default 720 menit). Batas diam = `SESSION_LIFETIME` (360 menit = 6 jam, sesuai tutorial). Logout = invalidate + token CSRF baru. Log hasil login: channel `auth` (`storage/logs/auth-*.log`).

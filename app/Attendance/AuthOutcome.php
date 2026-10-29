@@ -11,6 +11,7 @@ enum AuthOutcome: string
     case PinNotSet = 'pin_not_set';
     case PinDisabled = 'pin_disabled';
     case Inactive = 'inactive';
+    case PasswordMustChange = 'password_must_change';
     case Timeout = 'timeout';
     case Unavailable = 'unavailable';
     case Malformed = 'malformed';

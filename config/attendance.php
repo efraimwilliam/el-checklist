@@ -8,6 +8,7 @@ return [
 
     'paths' => [
         'login' => env('ATTENDANCE_API_LOGIN_PATH', '/api/v1/tasks/auth/verify-pin'),
+        'login_password' => env('ATTENDANCE_API_LOGIN_PASSWORD_PATH', '/api/v1/tasks/auth/verify-password'),
         'employees' => env('ATTENDANCE_API_EMPLOYEES_PATH', '/api/v1/tasks/employees'),
         'departments' => env('ATTENDANCE_API_DEPARTMENTS_PATH', '/api/v1/tasks/departments'),
         'schedules' => env('ATTENDANCE_API_SCHEDULES_PATH', '/api/v1/tasks/schedules'),

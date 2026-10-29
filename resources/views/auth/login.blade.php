@@ -33,8 +33,8 @@
                         <input id="username" name="username" value="{{ old('username') }}" required autofocus autocomplete="username" autocapitalize="none" class="input">
                     </div>
                     <div>
-                        <label for="pin" class="label">{{ __('PIN') }}</label>
-                        <input id="pin" name="pin" type="password" inputmode="numeric" required autocomplete="current-password" maxlength="20" class="input">
+                        <label for="pin" class="label">{{ __('PIN atau password') }}</label>
+                        <input id="pin" name="pin" type="password" required autocomplete="current-password" maxlength="255" class="input">
                     </div>
                     @error('username')
                         <p class="rounded-xl bg-rose-50 px-3.5 py-2.5 text-sm text-rose-700">{{ $message }}</p>
@@ -42,7 +42,7 @@
                     <button class="btn-primary w-full">{{ __('Masuk') }}</button>
                 </form>
 
-                <p class="mt-5 text-center text-xs text-slate-500">{{ __('Username dan PIN sama dengan aplikasi absensi.') }}<br>{{ __('Lupa PIN? Buat atau reset di aplikasi absensi.') }}</p>
+                <p class="mt-5 text-center text-xs text-slate-500">{{ __('Username dan PIN sama dengan aplikasi absensi. HOD, HR, dan Administrator bisa memakai password dashboard absensi.') }}<br>{{ __('Lupa PIN? Buat atau reset di aplikasi absensi.') }}</p>
             </div>
         </section>
     </div>
