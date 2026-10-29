@@ -28,15 +28,7 @@ class AttendanceLoginController extends Controller
 
     public function show(): View
     {
-        return view('auth.login', ['pinHelpUrl' => $this->pinSetupUrl()]);
-    }
-
-    /** Tautan ke menu PIN di absensi, dengan halaman login ini sebagai tujuan kembali setelah PIN dibuat. */
-    private function pinSetupUrl(): ?string
-    {
-        $url = config('attendance.pin_help_url');
-
-        return $url ? $url.(str_contains($url, '?') ? '&' : '?').http_build_query(['kembali' => route('login')]) : null;
+        return view('auth.login');
     }
 
     public function store(Request $request, AttendanceApiService $api): RedirectResponse
@@ -63,10 +55,7 @@ class AttendanceLoginController extends Controller
             }
             $this->log($request, $username, $result->outcome->value);
 
-            $response = $this->failed($this->message($result));
-
-            // Pegawai belum punya PIN: halaman login menampilkan tombol ke aplikasi absensi untuk membuatnya.
-            return $result->outcome === AuthOutcome::PinNotSet ? $response->with('pin_not_set', true) : $response;
+            return $this->failed($this->message($result));
         }
 
         $employee = $this->resolveEmployee($result->employee);
@@ -120,7 +109,7 @@ class AttendanceLoginController extends Controller
     {
         return match ($result->outcome) {
             AuthOutcome::Locked => __('Terlalu banyak PIN salah. Coba lagi dalam :n menit, atau reset PIN di aplikasi absensi.', ['n' => max(1, (int) ceil(($result->retryAfter ?? 900) / 60))]),
-            AuthOutcome::PinNotSet => __('Anda belum membuat PIN. Buat PIN dulu di HP absensi (scan QR absen, lalu Akun saya).'),
+            AuthOutcome::PinNotSet => __('Anda belum memiliki PIN. Minta HR/HOD membuka izin buat PIN, lalu buat PIN di aplikasi absensi. Setelah itu kembali ke aplikasi ini.'),
             AuthOutcome::PinDisabled => __('Login dengan PIN sedang tidak tersedia. Hubungi HR.'),
             AuthOutcome::Timeout, AuthOutcome::Unavailable, AuthOutcome::Malformed, AuthOutcome::NotConfigured => __('Sistem absensi sedang tidak dapat dihubungi. Coba lagi beberapa saat.'),
             // Username/PIN salah dan pegawai nonaktif sengaja satu pesan umum.

@@ -21,9 +21,4 @@ return [
 
     // Header tambahan bila API absensi memintanya, mis. versi API.
     'headers' => [],
-
-    // Pintu masuk PIN di aplikasi absensi (staff tidak punya akses dashboard). Bawaan: {ATTENDANCE_API_URL}/absen/pin/mulai, yang langsung membuka
-    // menu PIN memakai QR yang tersimpan di HP (bila belum pernah scan: diminta scan dulu), lalu mengembalikan pegawai ke halaman login ini.
-    // Absensi hanya mau kembali ke alamat yang ada di TASKS_URL (.env Absensi). Isi ATTENDANCE_PIN_HELP_URL bila alamat untuk browser berbeda.
-    'pin_help_url' => env('ATTENDANCE_PIN_HELP_URL') ?: (env('ATTENDANCE_API_URL') ? rtrim((string) env('ATTENDANCE_API_URL'), '/').'/absen/pin/mulai' : null),
 ];

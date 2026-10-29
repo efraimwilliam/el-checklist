@@ -7,7 +7,7 @@ Checklist tugas harian pegawai eL Hotel & Resort Sanur. Login memakai username +
 ```bash
 composer install
 cp .env.example .env && php artisan key:generate
-# isi DB_*, ATTENDANCE_API_URL, ATTENDANCE_API_TOKEN (= TASKS_API_TOKEN di Sistem Absensi), ATTENDANCE_PIN_HELP_URL
+# isi DB_*, ATTENDANCE_API_URL, ATTENDANCE_API_TOKEN (= TASKS_API_TOKEN di Sistem Absensi)
 php artisan migrate
 php artisan attendance:sync
 php artisan checklist:import-workbook "eL Hotel Sanur Checklist.xlsx"

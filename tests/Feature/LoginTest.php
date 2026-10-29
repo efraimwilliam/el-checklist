@@ -93,7 +93,7 @@ it('does not authenticate when the API is not configured', function () {
 
 it('explains a missing PIN, a locked PIN and a disabled PIN feature', function () {
     attendanceRefuses('pin_not_set');
-    login($this->employee->username)->assertSessionHasErrors(['username' => 'Anda belum membuat PIN. Buat PIN dulu di HP absensi (scan QR absen, lalu Akun saya).']);
+    login($this->employee->username)->assertSessionHasErrors(['username' => 'Anda belum memiliki PIN. Minta HR/HOD membuka izin buat PIN, lalu buat PIN di aplikasi absensi. Setelah itu kembali ke aplikasi ini.']);
 
     attendanceRefuses('locked', ['retry_after' => 600]);
     login($this->employee->username)->assertSessionHasErrors(['username' => 'Terlalu banyak PIN salah. Coba lagi dalam 10 menit, atau reset PIN di aplikasi absensi.']);
@@ -101,19 +101,6 @@ it('explains a missing PIN, a locked PIN and a disabled PIN feature', function (
     attendanceRefuses('pin_disabled');
     login($this->employee->username)->assertSessionHasErrors(['username' => 'Login dengan PIN sedang tidak tersedia. Hubungi HR.']);
     $this->assertGuest();
-});
-
-it('shows a button to the attendance app that returns to the checklist only when the employee has no PIN yet', function () {
-    config(['attendance.pin_help_url' => 'https://absensi.test/absen/pin/mulai']);
-
-    attendanceRefuses('pin_not_set');
-    login($this->employee->username)->assertSessionHas('pin_not_set');
-    $this->get('/login')->assertSee('Buat PIN di aplikasi absensi')
-        ->assertSee('href="https://absensi.test/absen/pin/mulai?kembali='.urlencode(route('login')).'"', false);
-
-    attendanceRefuses('invalid_credentials');
-    login($this->employee->username)->assertSessionMissing('pin_not_set');
-    $this->get('/login')->assertDontSee('Buat PIN di aplikasi absensi');
 });
 
 it('regenerates the session ID after a successful login', function () {
