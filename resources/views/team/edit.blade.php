@@ -5,7 +5,7 @@
         $initials = collect(explode(' ', $member->name))->filter()->take(2)->map(fn ($word) => mb_substr($word, 0, 1))->implode('');
     @endphp
 
-    <a href="{{ route('team.index') }}" class="text-sm font-semibold text-sky-700 hover:underline">← Atur tugas</a>
+    <a href="{{ route('team.index') }}" class="text-sm font-semibold text-sky-700 hover:underline">{{ __('← Atur tugas') }}</a>
 
     <div class="card mb-4 mt-2 flex flex-wrap items-center gap-4 p-5">
         <span class="hod-avatar !h-14 !w-14 !text-lg" aria-hidden="true">{{ $initials }}</span>
@@ -15,9 +15,9 @@
         </div>
         <div class="text-right">
             @if ($member->custom_tasks)
-                <span class="pill bg-sky-100 text-sky-800">Disesuaikan</span>
+                <span class="pill bg-sky-100 text-sky-800">{{ __('Disesuaikan') }}</span>
             @else
-                <span class="pill-neutral">Bawaan jabatan</span>
+                <span class="pill-neutral">{{ __('Bawaan jabatan') }}</span>
             @endif
             <p class="mt-1 text-sm text-slate-600"><strong class="tabular-nums text-slate-900">{{ $chosen }}</strong> dari {{ $total }} tugas dipilih</p>
         </div>
@@ -31,8 +31,8 @@
     @error('tasks') <p class="mb-4 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{{ $message }}</p> @enderror
 
     <div class="card mb-4 p-4">
-        <label for="task-search" class="label">Cari tugas</label>
-        <input id="task-search" type="search" placeholder="Ketik nama tugas" class="input" data-task-search>
+        <label for="task-search" class="label">{{ __('Cari tugas') }}</label>
+        <input id="task-search" type="search" placeholder="{{ __('Ketik nama tugas') }}" class="input" data-task-search>
     </div>
 
     <form id="team-tasks" method="POST" action="{{ route('team.tasks.update', $member) }}" class="pb-24">
@@ -46,11 +46,11 @@
                     <span class="text-sm tabular-nums text-slate-500" data-group-count></span>
                 </header>
 
-                @foreach ($group->tasks->groupBy(fn ($task) => $task->section ?: 'Tanpa jenis') as $section => $tasks)
+                @foreach ($group->tasks->groupBy(fn ($task) => $task->section ?: __('Tanpa jenis')) as $section => $tasks)
                     <div class="px-4 pb-2 pt-3" data-section>
                         <div class="flex items-center justify-between gap-3">
                             <p class="eyebrow !text-[11px]">{{ $section }}</p>
-                            <button type="button" class="text-sm font-semibold text-sky-700 hover:underline" data-section-toggle>Pilih semua</button>
+                            <button type="button" class="text-sm font-semibold text-sky-700 hover:underline" data-section-toggle>{{ __('Pilih semua') }}</button>
                         </div>
                         <ul class="mt-1 divide-y divide-slate-100">
                             @foreach ($tasks as $task)
@@ -66,15 +66,15 @@
                 @endforeach
             </section>
         @empty
-            <p class="card p-6 text-sm text-slate-500">Jabatan di departemen ini belum punya tugas aktif.</p>
+            <p class="card p-6 text-sm text-slate-500">{{ __('Jabatan di departemen ini belum punya tugas aktif.') }}</p>
         @endforelse
 
         <div class="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur sm:px-6">
             <div class="mx-auto flex max-w-6xl items-center justify-between gap-3">
                 <p class="text-sm text-slate-600"><strong class="tabular-nums text-slate-900" data-chosen>{{ $chosen }}</strong> dari {{ $total }} tugas dipilih</p>
                 <div class="flex gap-2">
-                    <a href="{{ route('team.index') }}" class="btn-secondary">Batal</a>
-                    <button class="btn-primary">Simpan tugas</button>
+                    <a href="{{ route('team.index') }}" class="btn-secondary">{{ __('Batal') }}</a>
+                    <button class="btn-primary">{{ __('Simpan tugas') }}</button>
                 </div>
             </div>
         </div>
@@ -84,7 +84,7 @@
         <form method="POST" action="{{ route('team.tasks.reset', $member) }}" class="mt-4 text-right">
             @csrf
             @method('DELETE')
-            <button class="text-sm text-slate-600 underline hover:text-rose-700" onclick="return confirm('Kembalikan ke semua tugas jabatan?')">Kembalikan ke bawaan jabatan</button>
+            <button class="text-sm text-slate-600 underline hover:text-rose-700" onclick="return confirm('Kembalikan ke semua tugas jabatan?')">{{ __('Kembalikan ke bawaan jabatan') }}</button>
         </form>
     @endif
 
@@ -104,7 +104,7 @@
                 });
                 form.querySelectorAll('[data-section]').forEach((section) => {
                     const boxes = boxesIn(section);
-                    section.querySelector('[data-section-toggle]').textContent = boxes.every((box) => box.checked) ? 'Kosongkan' : 'Pilih semua';
+                    section.querySelector('[data-section-toggle]').textContent = boxes.every((box) => box.checked) ? window.t('Kosongkan') : 'Pilih semua';
                 });
             };
 

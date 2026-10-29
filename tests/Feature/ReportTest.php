@@ -11,6 +11,13 @@ use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use Carbon\CarbonImmutable;
 
+/** Login untuk Laporan: Absensi dipalsukan (jadwal kosong), tes yang butuh jadwal memalsukannya lagi setelah ini. */
+function reportLogin(User $user): void
+{
+    loggedIn($user);
+    fakeSchedules([]);
+}
+
 beforeEach(function () {
     $this->fo = Department::factory()->create(['name' => 'Front Office']);
     $this->hk = Department::factory()->create(['name' => 'Housekeeping']);
@@ -26,11 +33,11 @@ beforeEach(function () {
 });
 
 it('is closed to staff and shows managers their own departments only', function () {
-    loggedIn(User::factory()->role(Role::Staff)->create());
+    reportLogin(User::factory()->role(Role::Staff)->create());
     $this->get(route('laporan.index'))->assertForbidden();
     $this->post('/logout');
 
-    loggedIn($this->hod);
+    reportLogin($this->hod);
     $this->get(route('laporan.index', $this->range))->assertOk()->assertSee('Front Office')->assertDontSee('Housekeeping');
 });
 
@@ -40,14 +47,15 @@ it('reports pending reasons, the most used pending tasks and staff without a che
         $i === 0 ? ['status' => 'pending', 'note' => 'Barang habis di store'] : ['status' => 'done']
     ));
 
-    loggedIn($this->hod);
+    reportLogin($this->hod);
+    fakeSchedules([[$this->budi, 'work', 'P'], [$this->ani, 'work', 'P']]);
     $this->get(route('laporan.index', $this->range))->assertOk()
         ->assertSee('Barang habis di store')->assertSee('Budi Santoso')
-        ->assertSee('Ani Kosong')->assertSee('1 staff');
+        ->assertSee('Ani Kosong')->assertSee('2 staff');
 });
 
 it('adds and deletes notes for the period, and only the author or HR may delete them', function () {
-    loggedIn($this->hod);
+    reportLogin($this->hod);
     $this->post(route('laporan.notes.store'), $this->range + ['department_id' => $this->fo->id, 'body' => 'Pembelian minibar dijadwalkan Senin'])
         ->assertRedirect();
     $note = ReportNote::sole();
@@ -64,14 +72,14 @@ it('adds and deletes notes for the period, and only the author or HR may delete 
     $other = ReportNote::sole();
     $this->delete(route('laporan.notes.destroy', $other))->assertForbidden();
     $this->post('/logout');
-    loggedIn(userWithRole(Role::Hr));
+    reportLogin(userWithRole(Role::Hr));
     $this->delete(route('laporan.notes.destroy', $other))->assertRedirect();
 });
 
 it('exports an Excel workbook of the range, limited to the departments the user may see', function () {
     makeChecklist($this->budi, $this->gsa, $this->today, 'done');
     makeChecklist($this->sari, Position::factory()->for($this->hk)->create(), $this->today, 'done');
-    loggedIn($this->hod);
+    reportLogin($this->hod);
 
     $response = $this->get(route('laporan.export', $this->range))->assertOk()
         ->assertHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -87,7 +95,7 @@ it('exports an Excel workbook of the range, limited to the departments the user 
 
 it('shows the new report sections and compares with the previous period', function () {
     makeChecklist($this->budi, $this->gsa, $this->today, 'done');
-    loggedIn($this->hod);
+    reportLogin($this->hod);
 
     $this->get(route('laporan.index', $this->range))->assertOk()
         ->assertSee('Skor per jabatan')->assertSee('Skor per staff')->assertSee('Tugas sering dilewati')
@@ -98,8 +106,26 @@ it('writes the weekly summary file', function () {
     Storage::fake('local');
     userWithRole(Role::Admin);
     makeChecklist($this->budi, $this->gsa, CarbonImmutable::yesterday(), 'done');
+    fakeSchedules([]);
 
     $this->artisan('laporan:mingguan')->assertSuccessful();
     Storage::disk('local')->assertExists('laporan/mingguan-'.CarbonImmutable::yesterday()->toDateString().'.txt');
 });
 
+
+it('exports the Riwayat list to Excel with the same filters as the page', function () {
+    makeChecklist($this->budi, $this->gsa, $this->today, 'done');
+    makeChecklist($this->sari, Position::factory()->for($this->hk)->create(), $this->today, 'done');
+    reportLogin($this->hod);
+
+    $response = $this->get(route('checklists.export', $this->range))->assertOk()
+        ->assertHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    $path = tempnam(sys_get_temp_dir(), 'riwayat').'.xlsx';
+    file_put_contents($path, $response->streamedContent());
+
+    $book = IOFactory::load($path);
+    expect($book->getSheetNames())->toBe(['Riwayat']);
+    $text = collect($book->getActiveSheet()->toArray())->flatten()->implode(' ');
+    expect($text)->toContain('Budi Santoso')->not->toContain('Sari Dewi');
+    unlink($path);
+});

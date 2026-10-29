@@ -1,30 +1,30 @@
-<x-app-layout title="Daftar tugas">
+<x-app-layout title="{{ __('Daftar tugas') }}">
     <div class="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
-            <h1 class="text-3xl text-slate-900">Daftar tugas</h1>
-            <p class="text-sm text-slate-500">Semua tugas aktif tiap jabatan. Urutkan dengan mengetuk judul kolom.</p>
+            <h1 class="text-3xl text-slate-900">{{ __('Daftar tugas') }}</h1>
+            <p class="text-sm text-slate-500">{{ __('Semua tugas aktif tiap jabatan. Urutkan dengan mengetuk judul kolom.') }}</p>
         </div>
         <div class="flex flex-wrap gap-2">
             @can('manage-tasks')
-                <a href="{{ route('admin.tasks.index') }}" class="btn-secondary">Ubah atau urutkan tugas</a>
+                <a href="{{ route('admin.tasks.index') }}" class="btn-secondary">{{ __('Ubah atau urutkan tugas') }}</a>
             @endcan
             @if ($catalog->flatMap->positions->isNotEmpty())
-                <button type="button" class="btn-primary" data-open-task-dialog>+ Tambah tugas</button>
+                <button type="button" class="btn-primary" data-open-task-dialog>{{ __('+ Tambah tugas') }}</button>
             @endif
         </div>
     </div>
 
     <div class="card overflow-hidden">
         <div class="border-b border-slate-100 p-4">
-            <label for="catalog-search" class="label">Cari tugas</label>
-            <input id="catalog-search" type="search" placeholder="Nama tugas, jabatan, jenis, atau departemen" class="input" data-catalog-search>
+            <label for="catalog-search" class="label">{{ __('Cari tugas') }}</label>
+            <input id="catalog-search" type="search" placeholder="{{ __('Nama tugas, jabatan, jenis, atau departemen') }}" class="input" data-catalog-search>
         </div>
 
         <div class="overflow-x-auto">
             <table class="min-w-full text-sm">
                 <thead class="bg-[#fbf6ea] text-left text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
                     <tr>
-                        @foreach (['department' => 'Departemen', 'position' => 'Jabatan', 'section' => 'Jenis', 'title' => 'Nama tugas'] as $key => $label)
+                        @foreach (['department' => 'Departemen', 'position' => 'Jabatan', 'section' => 'Jenis', 'title' => __('Nama tugas')] as $key => $label)
                             <th class="px-4 py-3" data-sort-th="{{ $key }}" aria-sort="{{ $key === 'department' ? 'ascending' : 'none' }}">
                                 <button type="button" class="inline-flex items-center gap-1.5 hover:text-slate-900" data-sort="{{ $key }}">
                                     {{ $label }}
@@ -32,8 +32,8 @@
                                 </button>
                             </th>
                         @endforeach
-                        <th class="px-4 py-3">Standar</th>
-                        <th class="px-4 py-3"><span class="sr-only">Aksi</span></th>
+                        <th class="px-4 py-3">{{ __('Standar') }}</th>
+                        <th class="px-4 py-3"><span class="sr-only">{{ __('Aksi') }}</span></th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100" data-catalog-body>
@@ -53,22 +53,22 @@
                                 <button type="button" class="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:bg-[#f6efdf] hover:text-gold-700"
                                     data-edit-task data-id="{{ $task->id }}" data-url="{{ route('team.catalog.tasks.update', $task) }}"
                                     data-title="{{ $task->title }}" data-section="{{ $task->section }}" data-standard="{{ $task->standard }}" data-position="{{ $task->position->name }}"
-                                    aria-label="Ubah tugas" title="Ubah tugas">
+                                    aria-label="{{ __('Ubah tugas') }}" title="{{ __('Ubah tugas') }}">
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
                                 </button>
                                 <button type="button" class="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:bg-rose-50 hover:text-rose-700"
                                     data-delete-task data-url="{{ route('team.catalog.tasks.destroy', $task) }}" data-title="{{ $task->title }}" data-position="{{ $task->position->name }}"
-                                    aria-label="Hapus tugas" title="Hapus tugas">
+                                    aria-label="{{ __('Hapus tugas') }}" title="{{ __('Hapus tugas') }}">
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12"/><path d="M9 7V4h6v3"/></svg>
                                 </button>
                             </td>
                         </tr>
                     @endforeach
-                    <tr class="hidden" data-catalog-empty><td colspan="6" class="px-4 py-10 text-center text-slate-500">Tidak ada tugas yang cocok dengan pencarian.</td></tr>
+                    <tr class="hidden" data-catalog-empty><td colspan="6" class="px-4 py-10 text-center text-slate-500">{{ __('Tidak ada tugas yang cocok dengan pencarian.') }}</td></tr>
                 </tbody>
             </table>
             @if ($tasks->isEmpty())
-                <p class="px-4 py-10 text-center text-slate-500">Belum ada tugas.</p>
+                <p class="px-4 py-10 text-center text-slate-500">{{ __('Belum ada tugas.') }}</p>
             @endif
         </div>
 
@@ -76,17 +76,17 @@
         <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-sm text-slate-600">
             <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
                 <label class="flex items-center gap-2" for="catalog-per-page">
-                    Tampilkan
+                    {{ __('Tampilkan') }}
                     <select id="catalog-per-page" class="input !w-20 !py-1.5" data-per-page>
                         @foreach ([10, 25, 50, 100] as $option)
                             <option value="{{ $option }}" @selected($option === 25)>{{ $option }}</option>
                         @endforeach
                     </select>
-                    baris
+                    {{ __('baris') }}
                 </label>
                 <p data-catalog-info></p>
             </div>
-            <nav class="flex items-center gap-1.5" aria-label="Halaman" data-catalog-pager></nav>
+            <nav class="flex items-center gap-1.5" aria-label="{{ __('Halaman') }}" data-catalog-pager></nav>
         </div>
     </div>
 
@@ -96,16 +96,16 @@
                 @csrf
                 <div class="flex items-start justify-between gap-3">
                     <div>
-                        <h2 id="task-dialog-title" class="font-display text-2xl text-slate-900">Tambah tugas</h2>
-                        <p class="text-sm text-slate-500">Tugas baru masuk ke checklist yang dibuat sesudahnya.</p>
+                        <h2 id="task-dialog-title" class="font-display text-2xl text-slate-900">{{ __('Tambah tugas') }}</h2>
+                        <p class="text-sm text-slate-500">{{ __('Tugas baru masuk ke checklist yang dibuat sesudahnya.') }}</p>
                     </div>
-                    <button type="button" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-2xl leading-none text-slate-500 hover:bg-[#f6efdf] hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-500" aria-label="Tutup" data-close-task-dialog>×</button>
+                    <button type="button" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-2xl leading-none text-slate-500 hover:bg-[#f6efdf] hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-500" aria-label="{{ __('Tutup') }}" data-close-task-dialog>{{ __('×') }}</button>
                 </div>
 
                 <div>
-                    <label for="dialog-position" class="label">Jabatan</label>
+                    <label for="dialog-position" class="label">{{ __('Jabatan') }}</label>
                     <select id="dialog-position" name="position" required class="input">
-                        <option value="">Pilih jabatan</option>
+                        <option value="">{{ __('Pilih jabatan') }}</option>
                         @foreach ($catalog as $department)
                             @if ($department->positions->isNotEmpty())
                                 <optgroup label="{{ $department->name }}">
@@ -119,18 +119,18 @@
                 </div>
 
                 <div>
-                    <label for="dialog-title" class="label">Nama tugas</label>
-                    <input id="dialog-title" name="title" value="{{ old('title') }}" required maxlength="500" class="input" placeholder="Contoh: Cek minibar kamar tamu" autofocus>
+                    <label for="dialog-title" class="label">{{ __('Nama tugas') }}</label>
+                    <input id="dialog-title" name="title" value="{{ old('title') }}" required maxlength="500" class="input" placeholder="{{ __('Contoh: Cek minibar kamar tamu') }}" autofocus>
                 </div>
 
                 <div>
-                    <label for="dialog-section" class="label">Jenis <span class="font-normal text-slate-400">(opsional)</span></label>
-                    <input id="dialog-section" name="section" list="task-sections" value="{{ old('section') }}" maxlength="255" class="input" placeholder="Contoh: Operasional">
+                    <label for="dialog-section" class="label">{{ __('Jenis') }} <span class="font-normal text-slate-400">{{ __('(opsional)') }}</span></label>
+                    <input id="dialog-section" name="section" list="task-sections" value="{{ old('section') }}" maxlength="255" class="input" placeholder="{{ __('Contoh: Operasional') }}">
                 </div>
 
                 <div>
-                    <label for="dialog-standard" class="label">Standar <span class="font-normal text-slate-400">(opsional)</span></label>
-                    <textarea id="dialog-standard" name="standard" rows="6" maxlength="2000" class="input min-h-40 leading-relaxed" placeholder="Cara atau standar yang diharapkan, misalnya langkah dan batas waktu">{{ old('standard') }}</textarea>
+                    <label for="dialog-standard" class="label">{{ __('Standar') }} <span class="font-normal text-slate-400">{{ __('(opsional)') }}</span></label>
+                    <textarea id="dialog-standard" name="standard" rows="6" maxlength="2000" class="input min-h-40 leading-relaxed" placeholder="{{ __('Cara atau standar yang diharapkan, misalnya langkah dan batas waktu') }}">{{ old('standard') }}</textarea>
                 </div>
 
                 @if ($errors->any())
@@ -138,8 +138,8 @@
                 @endif
 
                 <div class="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
-                    <button type="button" class="btn-secondary" data-close-task-dialog>Batal</button>
-                    <button class="btn-primary">Simpan tugas</button>
+                    <button type="button" class="btn-secondary" data-close-task-dialog>{{ __('Batal') }}</button>
+                    <button class="btn-primary">{{ __('Simpan tugas') }}</button>
                 </div>
             </form>
         </dialog>
@@ -157,23 +157,23 @@
                 <input type="hidden" name="editing" id="edit-task-id" value="{{ old('editing') }}">
                 <div class="flex items-start justify-between gap-3">
                     <div>
-                        <h2 id="edit-task-title" class="font-display text-2xl text-slate-900">Ubah tugas</h2>
+                        <h2 id="edit-task-title" class="font-display text-2xl text-slate-900">{{ __('Ubah tugas') }}</h2>
                         <p class="text-sm text-slate-500" id="edit-task-position"></p>
                     </div>
-                    <button type="button" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-2xl leading-none text-slate-500 hover:bg-[#f6efdf] hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-500" aria-label="Tutup" data-close-edit-dialog>×</button>
+                    <button type="button" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-2xl leading-none text-slate-500 hover:bg-[#f6efdf] hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-500" aria-label="{{ __('Tutup') }}" data-close-edit-dialog>{{ __('×') }}</button>
                 </div>
 
                 <div>
-                    <label for="edit-title" class="label">Nama tugas</label>
+                    <label for="edit-title" class="label">{{ __('Nama tugas') }}</label>
                     <input id="edit-title" name="title" value="{{ $errors->editTask->any() ? old('title') : '' }}" required maxlength="500" class="input" autofocus>
                 </div>
                 <div>
-                    <label for="edit-section" class="label">Jenis <span class="font-normal text-slate-400">(opsional)</span></label>
+                    <label for="edit-section" class="label">{{ __('Jenis') }} <span class="font-normal text-slate-400">{{ __('(opsional)') }}</span></label>
                     <input id="edit-section" name="section" list="task-sections" value="{{ $errors->editTask->any() ? old('section') : '' }}" maxlength="255" class="input">
                 </div>
 
                 <div>
-                    <label for="edit-standard" class="label">Standar <span class="font-normal text-slate-400">(opsional)</span></label>
+                    <label for="edit-standard" class="label">{{ __('Standar') }} <span class="font-normal text-slate-400">{{ __('(opsional)') }}</span></label>
                     <textarea id="edit-standard" name="standard" rows="6" maxlength="2000" class="input min-h-40 leading-relaxed">{{ $errors->editTask->any() ? old('standard') : '' }}</textarea>
                 </div>
 
@@ -182,8 +182,8 @@
                 @endif
 
                 <div class="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
-                    <button type="button" class="btn-secondary" data-close-edit-dialog>Batal</button>
-                    <button class="btn-primary">Simpan perubahan</button>
+                    <button type="button" class="btn-secondary" data-close-edit-dialog>{{ __('Batal') }}</button>
+                    <button class="btn-primary">{{ __('Simpan perubahan') }}</button>
                 </div>
             </form>
         </dialog>
@@ -192,11 +192,11 @@
             <form method="POST" id="delete-task-form" action="" class="space-y-4 p-6">
                 @csrf
                 @method('DELETE')
-                <h2 id="delete-task-title" class="font-display text-2xl text-slate-900">Hapus tugas?</h2>
-                <p class="text-sm text-slate-600">"<span id="delete-task-name" class="font-semibold text-slate-900"></span>" di <span id="delete-task-position"></span> akan dihapus dari daftar. Checklist yang sudah dibuat tidak berubah.</p>
+                <h2 id="delete-task-title" class="font-display text-2xl text-slate-900">{{ __('Hapus tugas?') }}</h2>
+                <p class="text-sm text-slate-600">"<span id="delete-task-name" class="font-semibold text-slate-900"></span>{{ __('" di') }} <span id="delete-task-position"></span> {{ __('akan dihapus dari daftar. Checklist yang sudah dibuat tidak berubah.') }}</p>
                 <div class="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
-                    <button type="button" class="btn-secondary" data-close-delete-dialog autofocus>Batal</button>
-                    <button class="btn-danger">Hapus tugas</button>
+                    <button type="button" class="btn-secondary" data-close-delete-dialog autofocus>{{ __('Batal') }}</button>
+                    <button class="btn-danger">{{ __('Hapus tugas') }}</button>
                 </div>
             </form>
         </dialog>
@@ -254,7 +254,7 @@
 
                 const first = matched.length ? from + 1 : 0;
                 const last = Math.min(from + size, matched.length);
-                info.innerHTML = `${first}–${last} dari <strong class="text-slate-900">${matched.length}</strong> tugas · Halaman <strong class="text-slate-900">${page}</strong> dari <strong class="text-slate-900">${pages}</strong>`;
+                info.innerHTML = `${first}–${last} ${window.t('dari')} <strong class="text-slate-900">${matched.length}</strong> ${window.t('tugas')} · ${window.t('Halaman')} <strong class="text-slate-900">${page}</strong> {{ __('dari') }} <strong class="text-slate-900">${pages}</strong>`;
 
                 pager.replaceChildren(pageButton('← Sebelumnya', page - 1, { disabled: page === 1 }));
                 for (let n = Math.max(1, page - 2); n <= Math.min(pages, page + 2); n++) {

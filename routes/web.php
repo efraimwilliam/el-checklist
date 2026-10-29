@@ -12,11 +12,14 @@ use App\Http\Controllers\ChecklistPhotoController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FillController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TeamPositionController;
 use App\Http\Controllers\TeamTaskController;
 use App\Http\Middleware\EnsureActiveSession;
 use Illuminate\Support\Facades\Route;
+
+Route::get('/bahasa/{locale}', [LocaleController::class, 'update'])->where('locale', 'id|en')->name('locale.update');
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AttendanceLoginController::class, 'show'])->name('login');
@@ -38,6 +41,7 @@ Route::middleware(['auth', EnsureActiveSession::class])->group(function () {
     Route::post('/isi/semua', [BulkAssignController::class, 'store'])->name('fill.assign-all');
     Route::put('/isi/otomatis/{department}', [BulkAssignController::class, 'auto'])->name('fill.auto-assign');
     Route::get('/checklists', [ChecklistController::class, 'index'])->name('checklists.index');
+    Route::get('/checklists/ekspor.xlsx', [ChecklistController::class, 'export'])->name('checklists.export');
     Route::get('/checklists/{checklist}', [ChecklistController::class, 'show'])->name('checklists.show');
     Route::get('/checklists/{checklist}/isi', [ChecklistController::class, 'fill'])->name('checklists.fill');
     Route::patch('/checklists/{checklist}', [ChecklistController::class, 'meta'])->name('checklists.meta');

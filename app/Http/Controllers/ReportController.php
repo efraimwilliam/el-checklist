@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Checklist;
+use App\Reports\ExcelReport;
 use App\Models\Department;
 use App\Models\ReportNote;
 use App\Reports\ReportService;
@@ -12,12 +13,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
-use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
-use PhpOffice\PhpSpreadsheet\Shared\Date;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Style\Fill;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /** Laporan per rentang tanggal, dengan catatan tindak lanjut yang ditambahkan pengguna (HOD / HR / GM / Administrator). */
@@ -29,7 +24,7 @@ class ReportController extends Controller
     {
         Gate::authorize('view-checklists');
         $user = $request->user();
-        [$from, $to] = DateRange::fromRequest($request, 14, 92);
+        [$from, $to] = DateRange::fromRequest($request, 1, 92);
         $allowed = $user->accessibleDepartmentIds();
 
         $notes = ReportNote::with(['department', 'author'])
@@ -58,7 +53,7 @@ class ReportController extends Controller
     {
         Gate::authorize('view-checklists');
         $user = $request->user();
-        [$from, $to] = DateRange::fromRequest($request, 14, 92);
+        [$from, $to] = DateRange::fromRequest($request, 1, 92);
         $report = $this->reports->build($user, $from, $to);
         $ids = $this->reports->departmentIds($user);
 
@@ -66,68 +61,14 @@ class ReportController extends Controller
             ->whereIn('department_id', $ids)->whereBetween('date', [$from->toDateString(), $to->toDateString()])
             ->orderBy('date')->orderBy('department_id')->orderBy('position_name')->orderBy('id')->get();
 
-        $book = new Spreadsheet();
-        $summary = $book->getActiveSheet();
-        $summary->setTitle('Ringkasan');
-        $this->writeTable($summary, ['Departemen', 'Checklist', 'Lengkap (%)', 'Pending', 'Belum direview', 'Foto kurang', 'Staff belum punya checklist'],
-            collect($report['rows'])->map(fn (array $row) => [$row['name'], $row['checklists'], $row['completion'] ?? '', $row['pending'], $row['unreviewed'], $row['photos'], count($row['missing'])])->all());
-
-        $detail = $book->createSheet();
-        $detail->setTitle('Checklist');
-        $this->writeTable($detail, ['Tanggal', 'Departemen', 'Staff', 'Jabatan', 'Skor (%)', 'Done', 'Ongoing', 'Pending', 'Belum diisi', 'Status review', 'Dicek oleh', 'Lengkap'],
-            $checklists->map(function (Checklist $checklist) {
-                $counts = $checklist->counts();
-
-                return [
-                    Date::dateTimeToExcel($checklist->date),
-                    $checklist->department->name,
-                    $checklist->employee->name,
-                    $checklist->position_name,
-                    $checklist->score() ?? '',
-                    $counts['done'],
-                    $counts['ongoing'],
-                    $counts['pending'],
-                    $checklist->items->whereNull('status')->count(),
-                    $checklist->status->label(),
-                    $checklist->checked_by ?? 'Diisi sendiri',
-                    $checklist->isComplete() ? 'Ya' : 'Belum',
-                ];
-            })->all(), ['A' => 'dd mmm yyyy']);
-        $book->setActiveSheetIndex(0);
-
-        $file = "laporan-{$from->toDateString()}-sampai-{$to->toDateString()}.xlsx";
-
-        return response()->streamDownload(function () use ($book) {
-            (new Xlsx($book))->save('php://output');
-        }, $file, ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']);
-    }
-
-    /**
-     * Tulis judul + baris ke lembar: judul tebal dengan latar emas, panel beku, filter, lebar kolom menyesuaikan isi.
-     *
-     * @param  list<string>  $headers
-     * @param  list<list<mixed>>  $rows
-     * @param  array<string, string>  $formats  kolom => format angka
-     */
-    private function writeTable(Worksheet $sheet, array $headers, array $rows, array $formats = []): void
-    {
-        $sheet->fromArray([$headers], null, 'A1');
-        if ($rows) {
-            $sheet->fromArray($rows, null, 'A2');
-        }
-        $last = Coordinate::stringFromColumnIndex(count($headers));
-        $sheet->getStyle("A1:{$last}1")->applyFromArray([
-            'font' => ['bold' => true, 'color' => ['rgb' => '2C241E']],
-            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FBF6EA']],
+        return ExcelReport::download("laporan-{$from->toDateString()}-sampai-{$to->toDateString()}.xlsx", [
+            [
+                'title' => 'Ringkasan',
+                'headers' => ['Departemen', 'Checklist', 'Lengkap (%)', __('Pending'), __('Belum direview'), __('Foto kurang'), __('Staff belum punya checklist')],
+                'rows' => collect($report['rows'])->map(fn (array $row) => [$row['name'], $row['checklists'], $row['completion'] ?? '', $row['pending'], $row['unreviewed'], $row['photos'], count($row['missing'])])->values()->all(),
+            ],
+            ExcelReport::checklistSheet($checklists),
         ]);
-        foreach ($formats as $column => $format) {
-            $sheet->getStyle("{$column}2:{$column}".max(2, count($rows) + 1))->getNumberFormat()->setFormatCode($format);
-        }
-        foreach (range(1, count($headers)) as $index) {
-            $sheet->getColumnDimension(Coordinate::stringFromColumnIndex($index))->setAutoSize(true);
-        }
-        $sheet->freezePane('A2');
-        $sheet->setAutoFilter("A1:{$last}".max(1, count($rows) + 1));
     }
 
     public function storeNote(Request $request): RedirectResponse

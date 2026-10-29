@@ -2,6 +2,8 @@
 
 namespace App\Reports;
 
+use App\Attendance\AttendanceApiService;
+use App\Attendance\AttendanceUnavailable;
 use App\Checklists\DashboardService;
 use App\Enums\ChecklistStatus;
 use App\Models\Checklist;
@@ -10,6 +12,7 @@ use App\Models\Department;
 use App\Models\Employee;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -19,7 +22,7 @@ use Illuminate\Support\Facades\DB;
  */
 class ReportService
 {
-    public function __construct(private DashboardService $dashboard) {}
+    public function __construct(private DashboardService $dashboard, private AttendanceApiService $attendance) {}
 
     /** @return array<string, mixed> */
     public function build(User $user, CarbonImmutable $from, CarbonImmutable $to): array
@@ -31,13 +34,13 @@ class ReportService
         $range = [$from->toDateString(), $to->toDateString()];
 
         $checklists = Checklist::with('items.photos')->whereIn('department_id', $ids)->whereBetween('date', $range)->get();
-        $employees = Employee::where('is_active', true)->whereIn('department_id', $ids)->orderBy('name')->get(['id', 'name', 'department_id']);
-        $checkedEmployees = $checklists->pluck('employee_id')->unique()->all();
+        $employees = Employee::where('is_active', true)->whereIn('department_id', $ids)->orderBy('name')->get(['id', 'name', 'department_id', 'external_id']);
+        $missing = $this->missingStaff($employees, $checklists, $from, $to);
 
-        $rows = $departments->map(function (Department $department) use ($checklists, $employees, $checkedEmployees) {
+        $rows = $departments->map(function (Department $department) use ($checklists, $missing) {
             $mine = $checklists->where('department_id', $department->id);
             $complete = $mine->filter(fn (Checklist $c) => $c->isComplete())->count();
-            $missing = $employees->where('department_id', $department->id)->reject(fn (Employee $e) => in_array($e->id, $checkedEmployees, true))->values();
+            $entries = $missing['rows'][$department->id] ?? [];
 
             return [
                 'name' => $department->name,
@@ -47,7 +50,8 @@ class ReportService
                 'pending' => $mine->sum(fn (Checklist $c) => $c->items->where('status', \App\Enums\ItemStatus::Pending)->count()),
                 'unreviewed' => $mine->where('status', ChecklistStatus::Saved)->count(),
                 'photos' => $mine->sum(fn (Checklist $c) => $c->missingPhotos()),
-                'missing' => $missing->pluck('name')->all(),
+                'missing' => collect($entries)->pluck('name')->unique()->values()->all(),
+                'missingCount' => count($entries),
             ];
         })->values()->all();
 
@@ -62,11 +66,12 @@ class ReportService
             'kpi' => array_merge($base['kpi'], [
                 'complete' => $completeTotal,
                 'completion' => $totalChecklists ? (int) round($completeTotal / $totalChecklists * 100) : null,
-                'missing' => collect($rows)->sum(fn (array $row) => count($row['missing'])),
+                'missing' => collect($rows)->sum('missingCount'),
                 'backlog' => $this->backlog($ids),
                 'photos' => collect($rows)->sum('photos'),
             ]),
             'previous' => ['from' => $previousFrom, 'to' => $previousTo, 'kpi' => $this->dashboard->build($user, $previousFrom, $previousTo)['kpi']],
+            'scheduleChecked' => $missing['checked'],
             'reasons' => $this->pendingReasons($ids, $range),
             'positions' => $this->positionScores($ids, $range, $names),
             'staff' => $this->staffScores($ids, $range),
@@ -82,6 +87,41 @@ class ReportService
         $allowed = $user->accessibleDepartmentIds();
 
         return Department::where('is_active', true)->when($allowed !== null, fn ($q) => $q->whereIn('id', $allowed))->pluck('id')->all();
+    }
+
+    /**
+     * Staff yang masuk kerja (jadwal "work" di Absensi) tetapi belum punya checklist pada hari itu.
+     * Libur, cuti, dan yang belum punya jadwal tidak dihitung. Bila Absensi tidak terbaca, semua yang belum punya checklist dihitung.
+     *
+     * @return array{rows: array<int, list<array{name: string, date: string}>>, checked: bool}
+     */
+    private function missingStaff($employees, Collection $checklists, CarbonImmutable $from, CarbonImmutable $to): array
+    {
+        $have = $checklists->mapWithKeys(fn (Checklist $c) => [$c->employee_id.'|'.$c->date->toDateString() => true])->all();
+        $rows = [];
+        $available = true;
+
+        for ($day = $from; $day->lte($to); $day = $day->addDay()) {
+            $schedules = null;
+            if ($available) {
+                try {
+                    $schedules = $this->attendance->schedules($day);
+                } catch (AttendanceUnavailable) {
+                    $available = false;
+                }
+            }
+            foreach ($employees as $employee) {
+                if ($schedules !== null && ($schedules[$employee->external_id]['status'] ?? null) !== 'work') {
+                    continue;
+                }
+                if (isset($have[$employee->id.'|'.$day->toDateString()])) {
+                    continue;
+                }
+                $rows[$employee->department_id][] = ['name' => $employee->name, 'date' => $day->toDateString()];
+            }
+        }
+
+        return ['rows' => $rows, 'checked' => $available];
     }
 
     /** Checklist lengkap yang belum direview lebih dari 2 hari (sebelum rentang juga dihitung). */

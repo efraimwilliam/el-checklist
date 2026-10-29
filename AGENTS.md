@@ -34,7 +34,10 @@ Laravel 13 + Blade + Tailwind 4 (Vite), MySQL, Pest. Timezone Asia/Makassar (WIT
 - Catatan tindak lanjut (`report_notes`): siapa pun yang boleh melihat laporan menambah catatan untuk rentang itu (HOD wajib pilih departemennya; HR/GM/Admin boleh "Semua departemen"); catatan dihapus oleh penulisnya, atau HR/Administrator. Catatan tampil bila rentangnya beririsan dengan laporan.
 - Cetak: tombol Cetak (`window.print`); kontrol disembunyikan saat cetak.
 - Isi tambahan: pembanding periode sebelumnya (`previous`), skor per jabatan dan 10 staff terendah, tugas sering dilewati (Pending/kosong minimal 2×), kebiasaan pengisian (diisi hari yang sama, rata-rata hari sampai direview), foto wajib yang kurang, pola Pending per hari (Senin–Minggu).
+- Bawaan rentang Laporan: hari ini. Staff yang libur/cuti/tanpa jadwal di Absensi tidak dihitung "belum punya checklist" (jadwal per hari dari `AttendanceApiService::schedules`; bila Absensi tidak terbaca, semua yang belum punya checklist dihitung dan halaman menyebutnya).
+- Riwayat juga punya "Unduh Excel" (`/checklists/ekspor.xlsx`, filter sama dengan halaman). Penulis Excel bersama: `App\Reports\ExcelReport`.
 - Ekspor Excel: `/laporan/ekspor.xlsx?from=&to=` (route `laporan.export`; file .xlsx dengan lembar Ringkasan dan Checklist, PhpSpreadsheet).
+- Log aplikasi lebih tua dari `AUDIT_RETENTION_DAYS` (bawaan 180, `config/audit.php`) dihapus tiap malam 03.40 (`audit:prune`).
 - `php artisan laporan:mingguan`: ringkasan 7 hari sampai kemarin ke `storage/app/private/laporan/`, dijadwalkan Senin 07:00 WITA. Belum dikirim email (menunggu alamat GM).
 
 ## Log aplikasi (`/admin/log`, dari Pengaturan; hanya Administrator = gate `manage-access`)

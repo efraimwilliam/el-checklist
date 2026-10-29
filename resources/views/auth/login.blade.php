@@ -1,5 +1,5 @@
 @php($photo = asset('images/pantai-'.(now()->dayOfYear % 2 + 1).'.jpg'))
-<x-guest-layout title="Masuk">
+<x-guest-layout title="{{ __('Masuk') }}">
     <div class="min-h-dvh lg:flex">
         {{-- Foto pantai: kepala halaman di HP, setengah layar di komputer. --}}
         <section class="relative h-80 bg-cover bg-center lg:h-auto lg:w-[52%]" style="background-image: url('{{ $photo }}')">
@@ -10,8 +10,8 @@
                     <p class="mt-2 text-[10px] font-medium uppercase tracking-[0.2em] text-gold-400 lg:text-xs">Hotel &amp; Resort · ★★★★ · Bali - Sanur</p>
                 </div>
                 <div class="text-white">
-                    <p class="eyebrow !text-gold-400"><span class="h-px w-8 bg-gold-500"></span>Daily Department Checklist</p>
-                    <p class="mt-2 max-w-md font-display text-2xl leading-snug lg:text-4xl">Standar terjaga, setiap hari, di setiap departemen.</p>
+                    <p class="eyebrow !text-gold-400"><span class="h-px w-8 bg-gold-500"></span>{{ __('Daily Department Checklist') }}</p>
+                    <p class="mt-2 max-w-md font-display text-2xl leading-snug lg:text-4xl">{{ __('Standar terjaga, setiap hari, di setiap departemen.') }}</p>
                 </div>
             </div>
         </section>
@@ -21,27 +21,28 @@
             <div class="pointer-events-none absolute inset-y-0 right-0 hidden w-1/4 opacity-90 lg:block" style="background-image: url('{{ asset('images/pola-seigaiha.svg') }}'); background-size: 120px 60px; -webkit-mask-image: linear-gradient(to right, transparent, #000 60%); mask-image: linear-gradient(to right, transparent, #000 60%)"></div>
 
             <div class="card relative -mt-8 w-full max-w-sm p-7 lg:mt-0">
-                <p class="eyebrow"><span class="h-px w-6 bg-gold-500"></span>Selamat datang</p>
-                <h1 class="mt-2 text-4xl text-slate-900">Masuk</h1>
+                <p class="eyebrow"><span class="h-px w-6 bg-gold-500"></span>{{ __('Selamat datang') }}</p>
+                <h1 class="mt-2 text-4xl text-slate-900">{{ __('Masuk') }}</h1>
                 <p class="mt-1 text-sm text-slate-500">éL Hotel &amp; Resort Bali Sanur</p>
 
-                <form method="POST" action="{{ url('/login') }}" class="mt-6 space-y-4">
+                <div class="mb-4 flex justify-end"><x-language-switch tone="light" /></div>
+            <form method="POST" action="{{ url('/login') }}" class="mt-6 space-y-4">
                     @csrf
                     <div>
-                        <label for="username" class="label">Username</label>
+                        <label for="username" class="label">{{ __('Username') }}</label>
                         <input id="username" name="username" value="{{ old('username') }}" required autofocus autocomplete="username" autocapitalize="none" class="input">
                     </div>
                     <div>
-                        <label for="pin" class="label">PIN</label>
+                        <label for="pin" class="label">{{ __('PIN') }}</label>
                         <input id="pin" name="pin" type="password" inputmode="numeric" required autocomplete="current-password" maxlength="20" class="input">
                     </div>
                     @error('username')
                         <p class="rounded-xl bg-rose-50 px-3.5 py-2.5 text-sm text-rose-700">{{ $message }}</p>
                     @enderror
-                    <button class="btn-primary w-full">Masuk</button>
+                    <button class="btn-primary w-full">{{ __('Masuk') }}</button>
                 </form>
 
-                <p class="mt-5 text-center text-xs text-slate-500">Username dan PIN sama dengan aplikasi absensi.<br>Lupa PIN? Buat atau reset di aplikasi absensi.</p>
+                <p class="mt-5 text-center text-xs text-slate-500">{{ __('Username dan PIN sama dengan aplikasi absensi.') }}<br>{{ __('Lupa PIN? Buat atau reset di aplikasi absensi.') }}</p>
             </div>
         </section>
     </div>

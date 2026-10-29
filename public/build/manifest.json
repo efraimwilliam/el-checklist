@@ -32,7 +32,7 @@
     "src": "node_modules/@fontsource/inter/files/inter-latin-700-normal.woff2"
   },
   "resources/css/app.css": {
-    "file": "assets/app-23vx9adT.css",
+    "file": "assets/app-7b5995qf.css",
     "name": "app",
     "names": [
       "app.css"
@@ -51,15 +51,21 @@
     ]
   },
   "resources/js/checklist.js": {
-    "file": "assets/checklist-yqr3wc9U.js",
+    "file": "assets/checklist-5hWvdsRd.js",
     "name": "checklist",
     "src": "resources/js/checklist.js",
     "isEntry": true
   },
   "resources/js/date-picker.js": {
-    "file": "assets/date-picker-DFFui1lq.js",
+    "file": "assets/date-picker--ljdxVwv.js",
     "name": "date-picker",
     "src": "resources/js/date-picker.js",
+    "isEntry": true
+  },
+  "resources/js/photo-viewer.js": {
+    "file": "assets/photo-viewer-DP_f5l-2.js",
+    "name": "photo-viewer",
+    "src": "resources/js/photo-viewer.js",
     "isEntry": true
   }
 }

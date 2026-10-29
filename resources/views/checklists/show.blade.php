@@ -16,15 +16,15 @@
         </div>
 
         <dl class="mt-4 grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
-            <div><dt class="label !mb-0.5">Tanggal</dt><dd>{{ $checklist->date->translatedFormat('d M Y') }}</dd></div>
-            <div><dt class="label !mb-0.5">Dicek oleh</dt><dd>{{ $checklist->checked_by ?? 'Diisi sendiri' }}</dd></div>
+            <div><dt class="label !mb-0.5">{{ __('Tanggal') }}</dt><dd>{{ $checklist->date->translatedFormat('d M Y') }}</dd></div>
+            <div><dt class="label !mb-0.5">{{ __('Dicek oleh') }}</dt><dd>{{ $checklist->checked_by ?? 'Diisi sendiri' }}</dd></div>
             <div>
-                <dt class="label !mb-0.5">Skor</dt>
+                <dt class="label !mb-0.5">{{ __('Skor') }}</dt>
                 <dd><span class="font-display text-2xl {{ $scoreClass }}">{{ $score !== null ? $score.'%' : '—' }}</span> <span class="text-slate-500">({{ $counts['done'] }}/{{ $total }} Done)</span></dd>
             </div>
-            <div><dt class="label !mb-0.5">Disimpan</dt><dd>{{ $checklist->updated_at->format('Y-m-d H:i:s') }}@if ($checklist->filler) <span class="text-slate-500">oleh {{ $checklist->filler->name() }}</span>@endif</dd></div>
+            <div><dt class="label !mb-0.5">{{ __('Disimpan') }}</dt><dd>{{ $checklist->updated_at->format('Y-m-d H:i:s') }}@if ($checklist->filler) <span class="text-slate-500">oleh {{ $checklist->filler->name() }}</span>@endif</dd></div>
             <div class="lg:col-span-4">
-                <dt class="label !mb-0.5">Review</dt>
+                <dt class="label !mb-0.5">{{ __('Review') }}</dt>
                 <dd>
                     @if ($checklist->isReviewed() || $checklist->isHodReviewed())
                         {{ $checklist->status->label() }} {{ $checklist->reviewer?->name() ?? '—' }}, {{ $checklist->reviewed_at?->format('d M Y H:i') }}
@@ -66,7 +66,7 @@
                         @if ($item->photos->isNotEmpty())
                             <div class="mt-2 flex flex-wrap gap-2">
                                 @foreach ($item->photos as $photo)
-                                    <a href="{{ $photo->url() }}" target="_blank" rel="noopener" class="cl-photo"><img src="{{ $photo->url() }}" alt="Foto tugas {{ $number }}" loading="lazy"></a>
+                                    <a href="{{ $photo->url() }}" data-photo-open data-alt="Foto tugas {{ $number }}" class="cl-photo"><img src="{{ $photo->url() }}" alt="Foto tugas {{ $number }}" loading="lazy"></a>
                                 @endforeach
                             </div>
                         @endif
@@ -78,7 +78,7 @@
 
     @if ($checklist->extraTasks->isNotEmpty())
         <div class="card mt-4 px-5 py-3">
-            <h2 class="py-2 font-display text-xl">Tugas tambahan</h2>
+            <h2 class="py-2 font-display text-xl">{{ __('Tugas tambahan') }}</h2>
             @foreach ($checklist->extraTasks as $extra)
                 <div class="flex items-start justify-between gap-4 border-t border-slate-100 py-2.5">
                     <div>
@@ -92,22 +92,22 @@
     @endif
 
     @if ($checklist->note)
-        <div class="card mt-4 p-5 text-sm"><span class="font-medium">Catatan umum:</span> {{ $checklist->note }}</div>
+        <div class="card mt-4 p-5 text-sm"><span class="font-medium">{{ __('Catatan umum:') }}</span> {{ $checklist->note }}</div>
     @endif
 
     <div class="mt-4 flex flex-wrap items-center justify-between gap-2 print:hidden">
         <div class="flex flex-wrap gap-2">
             @if ($canEdit)
-                <a href="{{ route('checklists.fill', $checklist) }}" class="btn-secondary">Edit</a>
+                <a href="{{ route('checklists.fill', $checklist) }}" class="btn-secondary">{{ __('Edit') }}</a>
             @endif
             @if (auth()->user()->role !== \App\Enums\Role::Staff)
-                <button type="button" onclick="window.print()" class="btn-secondary">Cetak</button>
+                <button type="button" onclick="window.print()" class="btn-secondary">{{ __('Cetak') }}</button>
             @endif
             @if ($canDelete)
                 <form method="POST" action="{{ route('checklists.destroy', $checklist) }}" onsubmit="return confirm('Hapus checklist ini? Tindakan ini tidak bisa dibatalkan.')">
                     @csrf
                     @method('DELETE')
-                    <button class="btn-secondary !text-rose-700">Hapus</button>
+                    <button class="btn-secondary !text-rose-700">{{ __('Hapus') }}</button>
                 </form>
             @endif
         </div>
@@ -116,13 +116,13 @@
         @elseif ($canReview)
             <form method="POST" action="{{ route('checklists.review', $checklist) }}">
                 @csrf
-                <button class="btn-primary">Tandai sudah direview</button>
+                <button class="btn-primary">{{ __('Tandai sudah direview') }}</button>
             </form>
         @endif
         @if ($canUnreview)
             <form method="POST" action="{{ route('checklists.unreview', $checklist) }}" onsubmit="return confirm('Batalkan review HOD? Checklist bisa diubah lagi dan perlu direview ulang.')">
                 @csrf
-                <button class="btn-secondary">Batalkan review</button>
+                <button class="btn-secondary">{{ __('Batalkan review') }}</button>
             </form>
         @endif
     </div>

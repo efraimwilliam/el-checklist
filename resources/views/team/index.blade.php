@@ -1,10 +1,10 @@
-<x-app-layout title="Atur tugas">
+<x-app-layout title="{{ __('Atur tugas') }}">
     <div class="mb-6">
-        <h1 class="text-3xl text-slate-900">Atur tugas</h1>
+        <h1 class="text-3xl text-slate-900">{{ __('Atur tugas') }}</h1>
         <p class="text-sm text-slate-500">Pilih tugas apa saja yang masuk checklist tiap pegawai. Perubahan berlaku untuk checklist yang dibuat sesudahnya.
             Daftar tugas tiap jabatan ada di menu Daftar tugas.</p>
         <p class="mt-2 text-sm text-slate-500">Data pegawai dari Absensi; tidak perlu punya akun.
-            <a href="{{ route('team.positions.edit') }}" class="font-semibold text-sky-700 hover:underline">Atur jabatan checklist tiap staff</a> dipakai saat checklist dibuatkan sekaligus.</p>
+            <a href="{{ route('team.positions.edit') }}" class="font-semibold text-sky-700 hover:underline">{{ __('Atur jabatan checklist tiap staff') }}</a> {{ __('dipakai saat checklist dibuatkan sekaligus.') }}</p>
     </div>
 
     @forelse ($membersByDepartment as $department => $members)
@@ -28,7 +28,7 @@
                     <h2 id="{{ $dialogId }}-title" class="font-display text-2xl text-slate-900">{{ $department }}</h2>
                     <p class="text-sm text-slate-500">{{ $members->count() }} pegawai · pilih nama untuk mengatur tugasnya</p>
                 </div>
-                <button type="button" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-2xl leading-none text-slate-500 hover:bg-[#f6efdf] hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-500" aria-label="Tutup" data-close-dept>×</button>
+                <button type="button" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-2xl leading-none text-slate-500 hover:bg-[#f6efdf] hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-500" aria-label="{{ __('Tutup') }}" data-close-dept>{{ __('×') }}</button>
             </div>
             <ul class="max-h-[60vh] divide-y divide-slate-100 overflow-y-auto">
                 @foreach ($members as $member)
@@ -42,7 +42,7 @@
                             @if ($member->custom_tasks)
                                 <span class="pill bg-sky-100 text-sky-800">Disesuaikan · {{ $member->assigned_tasks_count }} tugas</span>
                             @else
-                                <span class="pill-neutral">Bawaan jabatan</span>
+                                <span class="pill-neutral">{{ __('Bawaan jabatan') }}</span>
                             @endif
                         </a>
                     </li>

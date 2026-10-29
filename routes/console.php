@@ -16,3 +16,6 @@ Schedule::command('checklist:auto-assign')->everyFiveMinutes()->withoutOverlappi
 
 // Ringkasan mingguan (7 hari sampai kemarin) setiap Senin pagi, WITA. Pengiriman email menunggu alamat GM.
 Schedule::command('laporan:mingguan')->weeklyOn(1, '07:00')->timezone('Asia/Makassar')->withoutOverlapping();
+
+// Log aplikasi yang sudah lewat masa simpan (config/audit.php) dihapus setiap malam.
+Schedule::command('audit:prune')->dailyAt('03:40');

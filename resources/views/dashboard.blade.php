@@ -1,4 +1,4 @@
-<x-app-layout title="Dashboard">
+<x-app-layout title="{{ __('Dashboard') }}">
     @php
         $palette = ['done' => '#2d5a3f', 'ongoing' => '#c9a24f', 'pending' => '#a8341f', 'blank' => '#e3dccf'];
         $scoreTone = fn (?int $score) => $score === null ? 'text-slate-400' : ($score >= 90 ? 'text-emerald-800' : ($score >= 70 ? 'text-amber-800' : 'text-rose-700'));
@@ -9,15 +9,15 @@
     @endphp
 
     <div class="mb-5">
-        <h1 class="text-3xl text-slate-900">Dashboard</h1>
-        <p class="text-sm text-slate-500">Progres checklist per departemen, tren, dan hal yang perlu perhatian.</p>
+        <h1 class="text-3xl text-slate-900">{{ __('Dashboard') }}</h1>
+        <p class="text-sm text-slate-500">{{ __('Progres checklist per departemen, tren, dan hal yang perlu perhatian.') }}</p>
 
         <form method="GET" action="{{ route('dashboard') }}" class="mt-4">
             <div class="relative w-max max-w-full" data-range-field data-max="{{ $today->toDateString() }}">
                 <input type="hidden" name="from" value="{{ $from->toDateString() }}" data-range-from>
                 <input type="hidden" name="to" value="{{ $to->toDateString() }}" data-range-to>
                 <button type="button" class="input flex min-w-64 items-center gap-3 text-left" data-range-trigger aria-haspopup="dialog" aria-expanded="false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8a6a2a" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><span class="font-medium text-slate-800" data-range-label>{{ \App\Support\DateRange::label($from, $to) }}</span></button>
-                <div class="cal-panel hidden" data-range-panel role="dialog" aria-label="Pilih rentang tanggal"></div>
+                <div class="cal-panel hidden" data-range-panel role="dialog" aria-label="{{ __('Pilih rentang tanggal') }}"></div>
             </div>
         </form>
     </div>
@@ -28,56 +28,56 @@
     </p>
     <div class="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <div class="card p-4">
-            <p class="text-sm text-slate-500">Rata-rata skor</p>
+            <p class="text-sm text-slate-500">{{ __('Rata-rata skor') }}</p>
             <p class="mt-1 font-display text-3xl tabular-nums {{ $scoreTone($kpi['score']) }}">{{ $kpi['score'] !== null ? $kpi['score'].'%' : '—' }}</p>
-            <p class="mt-1 text-xs text-slate-500">Persentase tugas Done</p>
+            <p class="mt-1 text-xs text-slate-500">{{ __('Persentase tugas Done') }}</p>
         </div>
         <div class="card p-4">
-            <p class="text-sm text-slate-500">Checklist</p>
+            <p class="text-sm text-slate-500">{{ __('Checklist') }}</p>
             <p class="mt-1 font-display text-3xl tabular-nums text-slate-900">{{ $kpi['checklists'] }}</p>
-            <p class="mt-1 text-xs text-slate-500">Dibuat dalam periode</p>
+            <p class="mt-1 text-xs text-slate-500">{{ __('Dibuat dalam periode') }}</p>
         </div>
         <div class="card p-4">
-            <p class="text-sm text-slate-500">Tugas Pending</p>
+            <p class="text-sm text-slate-500">{{ __('Tugas Pending') }}</p>
             <p class="mt-1 font-display text-3xl tabular-nums text-rose-700">{{ $kpi['pending'] }}</p>
             <p class="mt-1 text-xs text-slate-500">{{ $kpi['ongoing'] }} Ongoing</p>
         </div>
         <div class="card p-4">
-            <p class="text-sm text-slate-500">Belum direview</p>
+            <p class="text-sm text-slate-500">{{ __('Belum direview') }}</p>
             <p class="mt-1 font-display text-3xl tabular-nums text-amber-800">{{ $kpi['unreviewed'] }}</p>
-            <p class="mt-1 text-xs text-slate-500"><a href="{{ route('checklists.index', ['from' => $from->toDateString(), 'to' => $to->toDateString(), 'status' => 'saved']) }}" class="font-semibold text-sky-700 hover:underline">Lihat di Riwayat</a></p>
+            <p class="mt-1 text-xs text-slate-500"><a href="{{ route('checklists.index', ['from' => $from->toDateString(), 'to' => $to->toDateString(), 'status' => 'saved']) }}" class="font-semibold text-sky-700 hover:underline">{{ __('Lihat di Riwayat') }}</a></p>
         </div>
     </div>
 
     {{-- Status departemen --}}
     <section class="card mb-6 p-5">
         <div class="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-            <h2 class="font-display text-2xl text-slate-900">Status departemen</h2>
-            <p class="text-sm text-slate-500">Jabatan dicek &amp; status isi dalam rentang {{ $from->translatedFormat('d M') }} – {{ $to->translatedFormat('d M Y') }}</p>
+            <h2 class="font-display text-2xl text-slate-900">{{ __('Status departemen') }}</h2>
+            <p class="text-sm text-slate-500">{{ __('Jabatan dicek & status isi dalam rentang') }} {{ $from->translatedFormat('d M') }} – {{ $to->translatedFormat('d M Y') }}</p>
         </div>
         <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             @forelse ($departments as $department)
                 @php
                     $pill = match ($department['state']) { 'full' => 'pill-done', 'partial' => 'pill-ongoing', default => 'pill-pending' };
-                    $label = $department['state'] === 'none' ? 'Belum isi' : $department['positions_checked'].'/'.$department['positions_total'].' jabatan';
+                    $label = $department['state'] === 'none' ? __('Belum isi') : $department['positions_checked'].'/'.$department['positions_total'].' jabatan';
                 @endphp
                 <a href="{{ route('checklists.index', ['from' => $from->toDateString(), 'to' => $to->toDateString(), 'department' => $department['id']]) }}" class="block rounded-2xl border border-slate-200 bg-[#fdfaf3] p-4 transition hover:border-gold-500">
                     <div class="flex items-start justify-between gap-2">
                         <h3 class="font-display text-lg leading-snug text-slate-900">{{ $department['name'] }}</h3>
                         <span class="{{ $pill }} shrink-0">{{ $label }}</span>
                     </div>
-                    <p class="text-xs text-slate-500">{{ $department['last_date'] ? 'Terakhir '.$department['last_date']->translatedFormat('d M Y') : 'Belum pernah diisi' }}</p>
+                    <p class="text-xs text-slate-500">{{ $department['last_date'] ? __('Terakhir').' '.$department['last_date']->translatedFormat('d M Y') : __('Belum pernah diisi') }}</p>
                     <div class="mt-3 h-2 overflow-hidden rounded-full bg-slate-100" role="img" aria-label="Skor {{ $department['score'] ?? 0 }} persen">
                         <div class="h-full rounded-full" style="width: {{ $department['score'] ?? 0 }}%; background: {{ $scoreFill($department['score']) }}"></div>
                     </div>
                     <p class="mt-2 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-600">
-                        <span>Skor <strong class="{{ $scoreTone($department['score']) }}">{{ $department['score'] !== null ? $department['score'].'%' : '—' }}</strong></span>
+                        <span>{{ __('Skor') }} <strong class="{{ $scoreTone($department['score']) }}">{{ $department['score'] !== null ? $department['score'].'%' : '—' }}</strong></span>
                         <span>{{ $department['checklists'] }} checklist</span>
                         <span class="text-rose-700">{{ $department['pending'] }} pending</span>
                     </p>
                 </a>
             @empty
-                <p class="text-sm text-slate-500">Belum ada departemen yang bisa Anda lihat.</p>
+                <p class="text-sm text-slate-500">{{ __('Belum ada departemen yang bisa Anda lihat.') }}</p>
             @endforelse
         </div>
     </section>
@@ -85,8 +85,8 @@
     <div class="mb-6 grid gap-6 lg:grid-cols-3">
         {{-- Tren skor harian --}}
         <section class="card p-5 lg:col-span-2">
-            <h2 class="font-display text-xl text-slate-900">Tren skor harian</h2>
-            <p class="mb-3 text-sm text-slate-500">Persentase tugas Done per hari. Hari tanpa checklist dilewati.</p>
+            <h2 class="font-display text-xl text-slate-900">{{ __('Tren skor harian') }}</h2>
+            <p class="mb-3 text-sm text-slate-500">{{ __('Persentase tugas Done per hari. Hari tanpa checklist dilewati.') }}</p>
             @php
                 $w = 640; $h = 220; $padL = 34; $padR = 12; $padT = 12; $padB = 28;
                 $plotW = $w - $padL - $padR; $plotH = $h - $padT - $padB;
@@ -103,7 +103,7 @@
                 $hasData = count($points) > 0;
                 $tickEvery = max(1, (int) ceil($n / 7));
             @endphp
-            <svg viewBox="0 0 {{ $w }} {{ $h }}" class="w-full" role="img" aria-label="Grafik tren skor harian">
+            <svg viewBox="0 0 {{ $w }} {{ $h }}" class="w-full" role="img" aria-label="{{ __('Grafik tren skor harian') }}">
                 @foreach ([0, 50, 100] as $tick)
                     <line x1="{{ $padL }}" x2="{{ $w - $padR }}" y1="{{ $yAt($tick) }}" y2="{{ $yAt($tick) }}" stroke="#eadfce" stroke-dasharray="{{ $tick === 0 ? '0' : '3 4' }}"/>
                     <text x="{{ $padL - 6 }}" y="{{ $yAt($tick) + 4 }}" text-anchor="end" font-size="11" fill="#7b6d61">{{ $tick }}%</text>
@@ -121,19 +121,19 @@
                         </circle>
                     @endforeach
                 @else
-                    <text x="{{ $w / 2 }}" y="{{ $h / 2 }}" text-anchor="middle" font-size="13" fill="#7b6d61">Belum ada checklist dalam periode ini</text>
+                    <text x="{{ $w / 2 }}" y="{{ $h / 2 }}" text-anchor="middle" font-size="13" fill="#7b6d61">{{ __('Belum ada checklist dalam periode ini') }}</text>
                 @endif
             </svg>
         </section>
 
         {{-- Sebaran status tugas --}}
         <section class="card p-5">
-            <h2 class="font-display text-xl text-slate-900">Status tugas</h2>
-            <p class="mb-3 text-sm text-slate-500">Semua tugas dalam periode.</p>
+            <h2 class="font-display text-xl text-slate-900">{{ __('Status tugas') }}</h2>
+            <p class="mb-3 text-sm text-slate-500">{{ __('Semua tugas dalam periode.') }}</p>
             @if ($distTotal > 0)
                 @php $offset = 0; @endphp
                 <div class="flex items-center gap-4">
-                    <svg viewBox="0 0 42 42" class="h-36 w-36 shrink-0 -rotate-90" role="img" aria-label="Diagram sebaran status tugas">
+                    <svg viewBox="0 0 42 42" class="h-36 w-36 shrink-0 -rotate-90" role="img" aria-label="{{ __('Diagram sebaran status tugas') }}">
                         <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#f3ede3" stroke-width="6"/>
                         @foreach (['done', 'ongoing', 'pending', 'blank'] as $key)
                             @php $part = $dist[$key] / $distTotal * 100; @endphp
@@ -144,7 +144,7 @@
                         @endforeach
                     </svg>
                     <ul class="space-y-1.5 text-sm">
-                        @foreach (['done' => 'Done', 'ongoing' => 'Ongoing', 'pending' => 'Pending', 'blank' => 'Belum diisi'] as $key => $label)
+                        @foreach (['done' => __('Done'), 'ongoing' => __('Ongoing'), 'pending' => __('Pending'), 'blank' => __('Belum diisi')] as $key => $label)
                             <li class="flex items-center gap-2">
                                 <span class="h-2.5 w-2.5 rounded-full" style="background: {{ $palette[$key] }}"></span>
                                 <span class="text-slate-600">{{ $label }}</span>
@@ -154,7 +154,7 @@
                     </ul>
                 </div>
             @else
-                <p class="py-8 text-center text-sm text-slate-500">Belum ada data.</p>
+                <p class="py-8 text-center text-sm text-slate-500">{{ __('Belum ada data.') }}</p>
             @endif
         </section>
     </div>
@@ -162,8 +162,8 @@
     <div class="mb-6 grid gap-6 lg:grid-cols-2">
         {{-- Skor per departemen --}}
         <section class="card p-5">
-            <h2 class="font-display text-xl text-slate-900">Skor per departemen</h2>
-            <p class="mb-4 text-sm text-slate-500">Rata-rata dalam periode.</p>
+            <h2 class="font-display text-xl text-slate-900">{{ __('Skor per departemen') }}</h2>
+            <p class="mb-4 text-sm text-slate-500">{{ __('Rata-rata dalam periode.') }}</p>
             <ul class="space-y-3">
                 @forelse ($deptScores as $row)
                     <li>
@@ -176,15 +176,15 @@
                         </div>
                     </li>
                 @empty
-                    <li class="py-6 text-center text-sm text-slate-500">Belum ada data.</li>
+                    <li class="py-6 text-center text-sm text-slate-500">{{ __('Belum ada data.') }}</li>
                 @endforelse
             </ul>
         </section>
 
         {{-- Tugas sering tertunda --}}
         <section class="card p-5">
-            <h2 class="font-display text-xl text-slate-900">Tugas sering tertunda</h2>
-            <p class="mb-4 text-sm text-slate-500">Paling sering berstatus Pending dalam periode.</p>
+            <h2 class="font-display text-xl text-slate-900">{{ __('Tugas sering tertunda') }}</h2>
+            <p class="mb-4 text-sm text-slate-500">{{ __('Paling sering berstatus Pending dalam periode.') }}</p>
             @php $maxPending = max(1, collect($topPending)->max('pending') ?? 1); @endphp
             <ul class="space-y-3">
                 @forelse ($topPending as $row)
@@ -198,7 +198,7 @@
                         </div>
                     </li>
                 @empty
-                    <li class="py-6 text-center text-sm text-slate-500">Tidak ada tugas yang tertunda dalam periode ini.</li>
+                    <li class="py-6 text-center text-sm text-slate-500">{{ __('Tidak ada tugas yang tertunda dalam periode ini.') }}</li>
                 @endforelse
             </ul>
         </section>
@@ -206,18 +206,18 @@
 
     {{-- Status review --}}
     <section class="card p-5">
-        <h2 class="font-display text-xl text-slate-900">Status review</h2>
-        <p class="mb-4 text-sm text-slate-500">Checklist dalam periode berdasarkan tahap review.</p>
+        <h2 class="font-display text-xl text-slate-900">{{ __('Status review') }}</h2>
+        <p class="mb-4 text-sm text-slate-500">{{ __('Checklist dalam periode berdasarkan tahap review.') }}</p>
         @php
             $reviewTotal = array_sum($reviews);
             $reviewRows = [
-                'saved' => ['Belum direview', '#c9bba3'],
-                'hod_reviewed' => ['Direview oleh HOD', '#c9a24f'],
-                'reviewed' => ['Direview oleh GM/HR', '#2d5a3f'],
+                'saved' => [__('Belum direview'), '#c9bba3'],
+                'hod_reviewed' => [__('Direview oleh HOD'), '#c9a24f'],
+                'reviewed' => [__('Direview oleh GM/HR'), '#2d5a3f'],
             ];
         @endphp
         @if ($reviewTotal > 0)
-            <div class="flex h-4 overflow-hidden rounded-full bg-slate-100" role="img" aria-label="Sebaran status review">
+            <div class="flex h-4 overflow-hidden rounded-full bg-slate-100" role="img" aria-label="{{ __('Sebaran status review') }}">
                 @foreach ($reviewRows as $key => [$label, $color])
                     @if ($reviews[$key] > 0)
                         <div title="{{ $label }}: {{ $reviews[$key] }}" style="width: {{ $reviews[$key] / $reviewTotal * 100 }}%; background: {{ $color }}"></div>
@@ -230,7 +230,7 @@
                 @endforeach
             </ul>
         @else
-            <p class="py-4 text-center text-sm text-slate-500">Belum ada checklist dalam periode ini.</p>
+            <p class="py-4 text-center text-sm text-slate-500">{{ __('Belum ada checklist dalam periode ini.') }}</p>
         @endif
     </section>
 </x-app-layout>

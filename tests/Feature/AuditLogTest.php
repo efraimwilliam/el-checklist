@@ -34,3 +34,13 @@ it('shows the log link in Pengaturan to administrators only', function () {
     loggedIn(User::factory()->hodOf(Department::factory()->create())->create());
     $this->get(route('admin.settings.edit'))->assertOk()->assertDontSee('Log aplikasi');
 });
+
+it('prunes application logs older than the retention period only', function () {
+    config(['audit.retention_days' => 30]);
+    AuditLog::create(['occurred_at' => now()->subDays(40), 'user_name' => 'Lama', 'action' => 'x.created']);
+    AuditLog::create(['occurred_at' => now()->subDays(5), 'user_name' => 'Baru', 'action' => 'x.created']);
+
+    $this->artisan('audit:prune')->assertSuccessful();
+
+    expect(AuditLog::pluck('user_name')->all())->toBe(['Baru']);
+});

@@ -1,9 +1,9 @@
-<x-app-layout title="Riwayat checklist">
+<x-app-layout title="{{ __('Riwayat checklist') }}">
     <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
-        <h1 class="text-3xl text-slate-900">Riwayat checklist</h1>
+        <h1 class="text-3xl text-slate-900">{{ __('Riwayat checklist') }}</h1>
         <form method="GET" class="flex flex-wrap items-end gap-2">
             <div>
-                <span class="label" id="range-caption">Tanggal</span>
+                <span class="label" id="range-caption">{{ __('Tanggal') }}</span>
                 <div class="relative" data-range-field data-max="{{ $today->toDateString() }}">
                     <input type="hidden" name="from" value="{{ $from->toDateString() }}" data-range-from>
                     <input type="hidden" name="to" value="{{ $to->toDateString() }}" data-range-to>
@@ -11,41 +11,42 @@
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8a6a2a" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>
                         <span data-range-label>{{ \App\Support\DateRange::label($from, $to) }}</span>
                     </button>
-                    <div class="cal-panel hidden" data-range-panel role="dialog" aria-label="Pilih rentang tanggal"></div>
+                    <div class="cal-panel hidden" data-range-panel role="dialog" aria-label="{{ __('Pilih rentang tanggal') }}"></div>
                 </div>
             </div>
             <div>
-                <label class="label" for="department">Departemen</label>
+                <label class="label" for="department">{{ __('Departemen') }}</label>
                 <select id="department" name="department" class="input" onchange="this.form.submit()">
-                    <option value="">Semua</option>
+                    <option value="">{{ __('Semua') }}</option>
                     @foreach ($departments as $department)
                         <option value="{{ $department->id }}" @selected(($filters['department'] ?? null) == $department->id)>{{ $department->name }}</option>
                     @endforeach
                 </select>
             </div>
             <div>
-                <label class="label" for="status">Review</label>
+                <label class="label" for="status">{{ __('Review') }}</label>
                 <select id="status" name="status" class="input" onchange="this.form.submit()">
-                    <option value="">Semua</option>
+                    <option value="">{{ __('Semua') }}</option>
                     @foreach (\App\Enums\ChecklistStatus::cases() as $status)
                         <option value="{{ $status->value }}" @selected(($filters['status'] ?? null) === $status->value)>{{ $status->label() }}</option>
                     @endforeach
                 </select>
             </div>
         </form>
+        <a href="{{ route('checklists.export', ['from' => $from->toDateString(), 'to' => $to->toDateString(), 'department' => $filters['department'] ?? null, 'status' => $filters['status'] ?? null]) }}" class="btn-secondary self-end">{{ __('Unduh Excel') }}</a>
     </div>
 
     <div class="card overflow-x-auto">
         <table class="min-w-full text-sm">
             <thead class="bg-slate-50 text-left text-xs uppercase tracking-[0.08em] text-slate-500">
                 <tr>
-                    <th class="px-4 py-2.5 font-medium">Staff</th>
-                    <th class="px-4 py-2.5 font-medium">Tanggal</th>
-                    <th class="px-4 py-2.5 font-medium">Jabatan</th>
-                    <th class="px-4 py-2.5 font-medium">Dicek oleh</th>
-                    <th class="px-4 py-2.5 font-medium">Skor</th>
-                    <th class="px-4 py-2.5 font-medium">Status tugas</th>
-                    <th class="px-4 py-2.5 font-medium">Review</th>
+                    <th class="px-4 py-2.5 font-medium">{{ __('Staff') }}</th>
+                    <th class="px-4 py-2.5 font-medium">{{ __('Tanggal') }}</th>
+                    <th class="px-4 py-2.5 font-medium">{{ __('Jabatan') }}</th>
+                    <th class="px-4 py-2.5 font-medium">{{ __('Dicek oleh') }}</th>
+                    <th class="px-4 py-2.5 font-medium">{{ __('Skor') }}</th>
+                    <th class="px-4 py-2.5 font-medium">{{ __('Status tugas') }}</th>
+                    <th class="px-4 py-2.5 font-medium">{{ __('Review') }}</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
@@ -76,14 +77,14 @@
                                 @can('review', $checklist)
                                     <form method="POST" action="{{ route('checklists.review', $checklist) }}">
                                         @csrf
-                                        <button class="btn-secondary !px-3 !py-1 text-xs">Tandai direview</button>
+                                        <button class="btn-secondary !px-3 !py-1 text-xs">{{ __('Tandai direview') }}</button>
                                     </form>
                                 @endcan
                             </div>
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="7" class="px-4 py-6 text-center text-slate-500">Belum ada checklist pada rentang tanggal ini.</td></tr>
+                    <tr><td colspan="7" class="px-4 py-6 text-center text-slate-500">{{ __('Belum ada checklist pada rentang tanggal ini.') }}</td></tr>
                 @endforelse
             </tbody>
         </table>

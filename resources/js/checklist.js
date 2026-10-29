@@ -1,3 +1,4 @@
+const t = (text) => (window.__i18n && window.__i18n[text]) || text;
 // Halaman checklist: setiap pilihan tersimpan otomatis ke server (tanpa tombol simpan), tampilan kartu / daftar,
 // catatan otomatis untuk Ongoing / Pending, progres + skor sementara, dan tugas tambahan.
 // Server tetap menjadi sumber kebenaran: setiap permintaan mengirim keadaan terbaru dari layar, dan gagal simpan ditampilkan jelas.
@@ -68,12 +69,12 @@ if (root) {
                 body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
             });
         } catch {
-            throw new SaveError('Tidak bisa terhubung. Periksa koneksi, lalu coba lagi.');
+            throw new SaveError(t('Tidak bisa terhubung. Periksa koneksi, lalu coba lagi.'));
         }
-        if (response.status === 401 || response.status === 419) throw new SaveError('Sesi berakhir. Muat ulang halaman dan login lagi.', true);
-        if (response.status === 403) throw new SaveError('Checklist ini terkunci atau Anda tidak boleh mengubahnya.', true);
+        if (response.status === 401 || response.status === 419) throw new SaveError(t('Sesi berakhir. Muat ulang halaman dan login lagi.'), true);
+        if (response.status === 403) throw new SaveError(t('Checklist ini terkunci atau Anda tidak boleh mengubahnya.'), true);
         const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new SaveError(data.message ?? 'Gagal menyimpan.');
+        if (!response.ok) throw new SaveError(data.message ?? t('Gagal menyimpan.'));
         return data;
     }
 
@@ -86,11 +87,11 @@ if (root) {
                 if (!dirty.has(key)) return; // sudah terkirim oleh antrean sebelumnya
                 dirty.delete(key);
                 inflight++;
-                setState('saving', 'Menyimpan…');
+                setState('saving', t('Menyimpan…'));
                 try {
                     const data = await send();
                     inflight--;
-                    if (!inflight && !dirty.size && !timers.size) setState('saved', `Tersimpan otomatis · ${data.saved_at}`);
+                    if (!inflight && !dirty.size && !timers.size) setState('saved', `${t('Tersimpan otomatis')} · ${data.saved_at}`);
                 } catch (error) {
                     inflight--;
                     dirty.add(key);
@@ -112,7 +113,7 @@ if (root) {
                 enqueue(key, send);
             }, delay),
         );
-        setState('saving', 'Menyimpan…');
+        setState('saving', t('Menyimpan…'));
     }
 
     function flush(key) {
@@ -170,7 +171,7 @@ if (root) {
             noteToggle?.setAttribute('aria-pressed', String(show));
             noteToggle?.classList.toggle('has-note', input.value.trim() !== '');
             item.querySelector('[data-note-hint]')?.classList.toggle('hidden', !needsReason);
-            input.placeholder = status === 'pending' ? 'Alasan wajib diisi, mis. menunggu barang dari store' : 'Catatan (opsional)';
+            input.placeholder = status === 'pending' ? t('Alasan wajib diisi, mis. menunggu barang dari store') : 'Catatan (opsional)';
         }
         const percent = items.length ? Math.round((done / items.length) * 100) : 0;
         ui.progress.textContent = `${filled} / ${items.length}`;
@@ -273,7 +274,7 @@ if (root) {
         canvas.height = Math.round(height * scale);
         canvas.getContext('2d').drawImage(source, 0, 0, canvas.width, canvas.height);
         const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.8));
-        if (!blob) throw new SaveError('Foto tidak bisa diproses. Coba foto lain.');
+        if (!blob) throw new SaveError(t('Foto tidak bisa diproses. Coba foto lain.'));
 
         return blob;
     }
@@ -284,7 +285,7 @@ if (root) {
         thumb.className = 'cl-photo';
         thumb.dataset.photo = '';
         thumb.dataset.deleteUrl = photo.delete_url;
-        thumb.innerHTML = '<a target="_blank" rel="noopener"><img loading="lazy" alt="Foto tugas"></a><button type="button" data-photo-remove aria-label="Hapus foto">✕</button>';
+        thumb.innerHTML = '<a data-photo-open data-alt="Foto tugas"><img loading="lazy" alt="Foto tugas"></a><button type="button" data-photo-remove aria-label="Hapus foto">✕</button>';
         thumb.querySelector('a').href = photo.url;
         thumb.querySelector('img').src = photo.url;
         list.append(thumb);
@@ -293,18 +294,18 @@ if (root) {
     // Mengirim satu foto (sudah dikecilkan) ke server; mengembalikan true bila berhasil.
     async function postPhoto(item, blob) {
         inflight++;
-        setState('saving', 'Mengunggah foto…');
+        setState('saving', t('Mengunggah foto…'));
         try {
             const form = new FormData();
             form.append('photo', blob, 'foto.jpg');
             const data = await request('POST', root.dataset.photoUrl.replace('__ITEM__', item.dataset.id), form);
             addThumb(item, data.photo);
             refresh();
-            setState('saved', `Foto tersimpan · ${new Date().toTimeString().slice(0, 8)}`);
+            setState('saved', `${t('Foto tersimpan')} · ${new Date().toTimeString().slice(0, 8)}`);
 
             return true;
         } catch (error) {
-            setState('error', error.message || 'Foto gagal diunggah.');
+            setState('error', error.message || t('Foto gagal diunggah.'));
 
             return false;
         } finally {
@@ -315,12 +316,12 @@ if (root) {
     // Foto dari galeri atau kamera bawaan HP: dikecilkan dulu, lalu dikirim satu per satu.
     async function uploadPhotos(item, files) {
         const room = photoMax - item.querySelectorAll('[data-photo]').length;
-        if (files.length > room) setState('error', `Maksimal ${photoMax} foto per tugas.`);
+        if (files.length > room) setState('error', t('Maksimal :n foto per tugas.').replace(':n', photoMax));
         for (const file of files.slice(0, Math.max(room, 0))) {
             try {
                 await postPhoto(item, await compress(file));
             } catch (error) {
-                setState('error', error.message || 'Foto tidak bisa diproses. Coba foto lain.');
+                setState('error', error.message || t('Foto tidak bisa diproses. Coba foto lain.'));
             }
         }
     }
@@ -386,7 +387,7 @@ if (root) {
             camera.close();
         } else {
             shutter.disabled = false;
-            cameraMessage.textContent = taken ? `Tersimpan. Foto ${count} dari ${photoMax}` : 'Foto gagal disimpan. Coba lagi.';
+            cameraMessage.textContent = taken ? `Tersimpan. Foto ${count} dari ${photoMax}` : t('Foto gagal disimpan. Coba lagi.');
         }
     });
 
@@ -396,7 +397,7 @@ if (root) {
             await startCamera();
         } catch {
             facing = facing === 'environment' ? 'user' : 'environment';
-            cameraMessage.textContent = 'Kamera lain tidak tersedia.';
+            cameraMessage.textContent = t('Kamera lain tidak tersedia.');
             await startCamera().catch(() => {});
         }
     });
@@ -420,15 +421,15 @@ if (root) {
 
     root.addEventListener('click', async (event) => {
         const remove = event.target.closest('[data-photo-remove]');
-        if (!remove || !confirm('Hapus foto ini?')) return;
+        if (!remove || !confirm(t('Hapus foto ini?'))) return;
         const thumb = remove.closest('[data-photo]');
         inflight++;
-        setState('saving', 'Menghapus foto…');
+        setState('saving', t('Menghapus foto…'));
         try {
             await request('DELETE', thumb.dataset.deleteUrl);
             thumb.remove();
             refresh();
-            setState('saved', `Foto dihapus · ${new Date().toTimeString().slice(0, 8)}`);
+            setState('saved', `${t('Foto dihapus')} · ${new Date().toTimeString().slice(0, 8)}`);
         } catch (error) {
             setState('error', error.message);
         } finally {

@@ -1,5 +1,5 @@
 <x-app-layout :title="'Tugas '.$position->name">
-    <a href="{{ route('admin.tasks.index') }}" class="text-sm text-sky-700 hover:underline">← Semua jabatan</a>
+    <a href="{{ route('admin.tasks.index') }}" class="text-sm text-sky-700 hover:underline">{{ __('← Semua jabatan') }}</a>
     <h1 class="mt-1 text-3xl text-slate-900">{{ $position->name }}</h1>
     <p class="mb-4 text-sm text-slate-500">{{ $position->department->name }}. Perubahan berlaku untuk checklist yang dibuat sesudahnya.</p>
 
@@ -13,21 +13,21 @@
         @csrf
         @method('PUT')
         <div class="min-w-48 flex-1">
-            <label for="position-name" class="label">Nama jabatan</label>
+            <label for="position-name" class="label">{{ __('Nama jabatan') }}</label>
             <input id="position-name" name="name" value="{{ old('name', $position->name) }}" required maxlength="255" class="input">
         </div>
         <label class="flex items-center gap-2 pb-2 text-sm">
             <input type="hidden" name="is_active" value="0">
-            <input type="checkbox" name="is_active" value="1" @checked($position->is_active)> Jabatan aktif
+            <input type="checkbox" name="is_active" value="1" @checked($position->is_active)> {{ __('Jabatan aktif') }}
         </label>
-        <button class="btn-secondary">Simpan jabatan</button>
+        <button class="btn-secondary">{{ __('Simpan jabatan') }}</button>
     </form>
 
     <div class="mb-2 flex flex-wrap items-center justify-between gap-3">
         <h2 class="font-display text-xl">Daftar tugas ({{ $position->tasks->where('is_active', true)->count() }} aktif)</h2>
         <div class="flex items-center gap-3">
             <span class="text-xs text-slate-500" data-move-status aria-live="polite"></span>
-            <button type="button" class="btn-primary" data-open-add>+ Tambah tugas</button>
+            <button type="button" class="btn-primary" data-open-add>{{ __('+ Tambah tugas') }}</button>
         </div>
     </div>
     <div class="space-y-2" data-task-list>
@@ -35,18 +35,18 @@
             <div class="card p-3 {{ $task->is_active ? '' : 'bg-slate-50' }}" data-task-item>
                 <div class="flex items-start gap-3">
                     <div class="flex flex-col gap-1">
-                        <button type="button" class="btn-secondary !px-2 !py-0.5" data-move="up" data-url="{{ route('admin.tasks.move', $task) }}" @disabled($loop->first) aria-label="Naikkan">↑</button>
-                        <button type="button" class="btn-secondary !px-2 !py-0.5" data-move="down" data-url="{{ route('admin.tasks.move', $task) }}" @disabled($loop->last) aria-label="Turunkan">↓</button>
+                        <button type="button" class="btn-secondary !px-2 !py-0.5" data-move="up" data-url="{{ route('admin.tasks.move', $task) }}" @disabled($loop->first) aria-label="{{ __('Naikkan') }}">↑</button>
+                        <button type="button" class="btn-secondary !px-2 !py-0.5" data-move="down" data-url="{{ route('admin.tasks.move', $task) }}" @disabled($loop->last) aria-label="{{ __('Turunkan') }}">↓</button>
                     </div>
                     <div class="min-w-0 flex-1 {{ $task->is_active ? '' : 'text-slate-400' }}">
                         @if ($task->section) <p class="text-xs uppercase tracking-wide text-slate-500">{{ $task->section }}</p> @endif
-                        <p class="font-medium">{{ $task->title }}@unless ($task->is_active) <span class="text-xs font-normal">(nonaktif)</span>@endunless</p>
+                        <p class="font-medium">{{ $task->title }}@unless ($task->is_active) <span class="text-xs font-normal">{{ __('(nonaktif)') }}</span>@endunless</p>
                         @if ($task->standard) <p class="mt-1 text-sm text-slate-500">{{ $task->standard }}</p> @endif
                     </div>
                 </div>
 
                 <details class="mt-2 border-t border-slate-100 pt-2" @if ($errors->any() && old('_task') == $task->id) open @endif>
-                    <summary class="cursor-pointer text-sm text-sky-700">Ubah</summary>
+                    <summary class="cursor-pointer text-sm text-sky-700">{{ __('Ubah') }}</summary>
                     <form method="POST" action="{{ route('admin.tasks.update', $task) }}" class="mt-3 space-y-3">
                         @csrf
                         @method('PUT')
@@ -54,18 +54,18 @@
                         @include('admin.tasks.fields', ['task' => $task])
                         <label class="flex items-center gap-2 text-sm">
                             <input type="hidden" name="is_active" value="0">
-                            <input type="checkbox" name="is_active" value="1" @checked($task->is_active)> Tugas aktif (muncul di checklist baru)
+                            <input type="checkbox" name="is_active" value="1" @checked($task->is_active)> {{ __('Tugas aktif (muncul di checklist baru)') }}
                         </label>
                         <div class="flex flex-wrap justify-between gap-2">
-                            <button form="delete-{{ $task->id }}" class="btn-danger" onclick="return confirm('Hapus tugas ini? Checklist yang sudah dibuat tidak berubah. Untuk sementara, cukup nonaktifkan.')">Hapus</button>
-                            <button class="btn-primary">Simpan tugas</button>
+                            <button form="delete-{{ $task->id }}" class="btn-danger" onclick="return confirm('Hapus tugas ini? Checklist yang sudah dibuat tidak berubah. Untuk sementara, cukup nonaktifkan.')">{{ __('Hapus') }}</button>
+                            <button class="btn-primary">{{ __('Simpan tugas') }}</button>
                         </div>
                     </form>
                     <form id="delete-{{ $task->id }}" method="POST" action="{{ route('admin.tasks.destroy', $task) }}" class="hidden">@csrf @method('DELETE')</form>
                 </details>
             </div>
         @empty
-            <p class="card p-4 text-sm text-slate-500" data-task-empty>Belum ada tugas untuk jabatan ini.</p>
+            <p class="card p-4 text-sm text-slate-500" data-task-empty>{{ __('Belum ada tugas untuk jabatan ini.') }}</p>
         @endforelse
     </div>
 
@@ -74,15 +74,15 @@
             @csrf
             <div class="flex items-start justify-between gap-3">
                 <div>
-                    <h2 id="add-task-title" class="font-display text-2xl text-slate-900">Tambah tugas</h2>
+                    <h2 id="add-task-title" class="font-display text-2xl text-slate-900">{{ __('Tambah tugas') }}</h2>
                     <p class="text-sm text-slate-500">{{ $position->name }} · tugas baru masuk ke checklist yang dibuat sesudahnya.</p>
                 </div>
-                <button type="button" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-2xl leading-none text-slate-500 hover:bg-[#f6efdf] hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-500" aria-label="Tutup" data-close-add>×</button>
+                <button type="button" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-2xl leading-none text-slate-500 hover:bg-[#f6efdf] hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-500" aria-label="{{ __('Tutup') }}" data-close-add>{{ __('×') }}</button>
             </div>
             @include('admin.tasks.fields', ['task' => null])
             <div class="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
-                <button type="button" class="btn-secondary" data-close-add>Batal</button>
-                <button class="btn-primary">Tambah tugas</button>
+                <button type="button" class="btn-secondary" data-close-add>{{ __('Batal') }}</button>
+                <button class="btn-primary">{{ __('Tambah tugas') }}</button>
             </div>
         </form>
     </dialog>
@@ -115,7 +115,7 @@
                 up ? list.insertBefore(item, neighbour) : list.insertBefore(neighbour, item);
                 refreshArrows();
                 busy = true;
-                status.textContent = 'Menyimpan…';
+                status.textContent = window.t('Menyimpan…');
 
                 try {
                     const response = await fetch(button.dataset.url, {
@@ -124,12 +124,12 @@
                         body: new URLSearchParams({ direction: button.dataset.move }),
                     });
                     if (!response.ok) throw new Error(response.status);
-                    status.textContent = 'Urutan tersimpan otomatis';
+                    status.textContent = __('Urutan tersimpan otomatis');
                 } catch (error) {
                     // Gagal: kembalikan urutan di layar dan beri tahu pengguna (sesi habis bisa jadi sebabnya).
                     up ? list.insertBefore(neighbour, item) : list.insertBefore(item, neighbour);
                     refreshArrows();
-                    status.textContent = error.message === '419' || error.message === '401' ? 'Sesi habis, silakan muat ulang halaman' : 'Gagal menyimpan urutan, coba lagi';
+                    status.textContent = error.message === '419' || error.message === '401' ? window.t('Sesi habis, silakan muat ulang halaman') : window.t('Gagal menyimpan urutan, coba lagi');
                 } finally {
                     busy = false;
                 }

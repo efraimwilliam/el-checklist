@@ -1,4 +1,4 @@
-<x-app-layout title="Isi checklist">
+<x-app-layout title="{{ __('Isi checklist') }}">
     <div class="mb-4">
         <h1 class="text-3xl text-slate-900">{{ $staffMode ? 'Checklist saya' : 'Isi checklist harian' }}</h1>
         @unless ($staffMode)
@@ -20,11 +20,11 @@
                 <input type="hidden" name="position" value="{{ $position->id }}">
                 <input type="hidden" name="employee" value="{{ $employee->id }}">
                 <div>
-                    <label for="date" class="label">Tanggal</label>
+                    <label for="date" class="label">{{ __('Tanggal') }}</label>
                     <div class="relative" data-date-field data-max="{{ $today->toDateString() }}">
                         <input type="hidden" name="date" value="{{ old('date', $date->toDateString()) }}" data-date-value>
                         <button type="button" id="date" class="input flex min-w-56 items-center gap-2 text-left" data-date-trigger aria-haspopup="dialog" aria-expanded="false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8a6a2a" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><span data-date-label>{{ \Carbon\Carbon::parse(old('date', $date->toDateString()))->translatedFormat('l, d M Y') }}</span></button>
-                        <div class="cal-panel hidden" data-date-panel role="dialog" aria-label="Pilih tanggal"></div>
+                        <div class="cal-panel hidden" data-date-panel role="dialog" aria-label="{{ __('Pilih tanggal') }}"></div>
                     </div>
                 </div>
                 <button class="btn-primary">Buka checklist {{ $position->name }}</button>
@@ -35,34 +35,34 @@
             $counts = $board->countBy('state');
             $todo = ($counts['none'] ?? 0);
             $states = [
-                'none' => ['Belum dibuat', 'pill-neutral'],
-                'empty' => ['Belum diisi', 'pill-pending'],
-                'partial' => ['Belum lengkap', 'pill-ongoing'],
-                'complete' => ['Lengkap', 'pill-done'],
-                'reviewed' => ['Direview oleh GM/HR', 'pill-done'],
-                'hod_reviewed' => ['Direview oleh HOD', 'pill-ongoing'],
-                'noschedule' => ['Jadwal belum diisi', 'pill-neutral'],
+                'none' => [__('Belum dibuat'), 'pill-neutral'],
+                'empty' => [__('Belum diisi'), 'pill-pending'],
+                'partial' => [__('Belum lengkap'), 'pill-ongoing'],
+                'complete' => [__('Lengkap'), 'pill-done'],
+                'reviewed' => [__('Direview oleh GM/HR'), 'pill-done'],
+                'hod_reviewed' => [__('Direview oleh HOD'), 'pill-ongoing'],
+                'noschedule' => [__('Jadwal belum diisi'), 'pill-neutral'],
             ];
         @endphp
 
         {{-- Tanggal & departemen: memuat ulang papan tim (form GET terpisah dari form mulai checklist). --}}
         <form id="board-form" method="GET" action="{{ route('fill.create') }}" class="mb-4 flex flex-wrap items-end gap-3">
             <div class="flex items-end gap-1.5">
-                <a href="{{ route('fill.create', ['date' => $date->subDay()->toDateString(), 'department' => $department?->id]) }}" class="hod-step" aria-label="Hari sebelumnya" title="Hari sebelumnya">‹</a>
+                <a href="{{ route('fill.create', ['date' => $date->subDay()->toDateString(), 'department' => $department?->id]) }}" class="hod-step" aria-label="{{ __('Hari sebelumnya') }}" title="{{ __('Hari sebelumnya') }}">‹</a>
                 <div class="relative" data-date-field data-max="{{ $today->toDateString() }}" data-submit>
                     <input type="hidden" name="date" value="{{ $date->toDateString() }}" data-date-value>
                     <button type="button" class="input flex h-11 min-w-56 items-center gap-2 text-left" data-date-trigger aria-haspopup="dialog" aria-expanded="false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8a6a2a" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><span data-date-label>{{ $date->translatedFormat('l, d M Y') }}</span></button>
-                    <div class="cal-panel hidden" data-date-panel role="dialog" aria-label="Pilih tanggal"></div>
+                    <div class="cal-panel hidden" data-date-panel role="dialog" aria-label="{{ __('Pilih tanggal') }}"></div>
                 </div>
                 @if ($date->lt($today))
-                    <a href="{{ route('fill.create', ['date' => $date->addDay()->toDateString(), 'department' => $department?->id]) }}" class="hod-step" aria-label="Hari berikutnya" title="Hari berikutnya">›</a>
+                    <a href="{{ route('fill.create', ['date' => $date->addDay()->toDateString(), 'department' => $department?->id]) }}" class="hod-step" aria-label="{{ __('Hari berikutnya') }}" title="{{ __('Hari berikutnya') }}">›</a>
                 @else
                     <span class="hod-step opacity-30" aria-hidden="true">›</span>
                 @endif
             </div>
             @if ($departments->count() > 1)
                 <div class="min-w-48 flex-1 sm:flex-none">
-                    <label for="department" class="sr-only">Departemen</label>
+                    <label for="department" class="sr-only">{{ __('Departemen') }}</label>
                     <select id="department" name="department" class="input !h-11" onchange="this.form.submit()">
                         @foreach ($departments as $option)
                             <option value="{{ $option->id }}" @selected($department?->id === $option->id)>{{ $option->name }}</option>
@@ -73,9 +73,9 @@
                 <input type="hidden" name="department" value="{{ $department?->id }}">
             @endif
             @unless ($date->isSameDay($today))
-                <a href="{{ route('fill.create', ['department' => $department?->id]) }}" class="btn-secondary h-11">Hari ini</a>
+                <a href="{{ route('fill.create', ['department' => $department?->id]) }}" class="btn-secondary h-11">{{ __('Hari ini') }}</a>
             @endunless
-            <noscript><button class="btn-secondary">Tampilkan</button></noscript>
+            <noscript><button class="btn-secondary">{{ __('Tampilkan') }}</button></noscript>
         </form>
 
         @error('assign') <p class="mb-4 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{{ $message }}</p> @enderror
@@ -89,7 +89,7 @@
                     @if ($summary['unscheduled']) <li>{{ $summary['unscheduled'] }} belum ada jadwal di Absensi, tidak dibuatkan</li> @endif
                     @if ($summary['no_position'])
                         <li class="text-amber-800">{{ count($summary['no_position']) }} belum diatur jabatan checklistnya: {{ collect($summary['no_position'])->pluck('name')->implode(', ') }}.
-                            <a href="{{ route('team.positions.edit') }}" class="font-semibold underline">Atur jabatan staff</a></li>
+                            <a href="{{ route('team.positions.edit') }}" class="font-semibold underline">{{ __('Atur jabatan staff') }}</a></li>
                     @endif
                 </ul>
             </div>
@@ -100,11 +100,11 @@
         @endif
 
         {{-- Ringkasan hari itu: angka sekaligus penyaring daftar staff. --}}
-        <div class="hod-stats mb-4" role="group" aria-label="Saring staff">
-            <button type="button" data-board-filter="all" aria-pressed="true"><strong>{{ $board->count() }}</strong><span>Semua staff</span></button>
-            <button type="button" data-board-filter="todo" aria-pressed="false"><strong>{{ ($counts['none'] ?? 0) + ($counts['empty'] ?? 0) + ($counts['partial'] ?? 0) }}</strong><span>Perlu diisi</span></button>
-            <button type="button" data-board-filter="complete" aria-pressed="false"><strong>{{ $counts['complete'] ?? 0 }}</strong><span>Lengkap</span></button>
-            <button type="button" data-board-filter="reviewed" aria-pressed="false"><strong>{{ ($counts['reviewed'] ?? 0) + ($counts['hod_reviewed'] ?? 0) }}</strong><span>Direview</span></button>
+        <div class="hod-stats mb-4" role="group" aria-label="{{ __('Saring staff') }}">
+            <button type="button" data-board-filter="all" aria-pressed="true"><strong>{{ $board->count() }}</strong><span>{{ __('Semua staff') }}</span></button>
+            <button type="button" data-board-filter="todo" aria-pressed="false"><strong>{{ ($counts['none'] ?? 0) + ($counts['empty'] ?? 0) + ($counts['partial'] ?? 0) }}</strong><span>{{ __('Perlu diisi') }}</span></button>
+            <button type="button" data-board-filter="complete" aria-pressed="false"><strong>{{ $counts['complete'] ?? 0 }}</strong><span>{{ __('Lengkap') }}</span></button>
+            <button type="button" data-board-filter="reviewed" aria-pressed="false"><strong>{{ ($counts['reviewed'] ?? 0) + ($counts['hod_reviewed'] ?? 0) }}</strong><span>{{ __('Direview') }}</span></button>
         </div>
 
         {{-- Satu tombol untuk semua staff yang masuk kerja (jadwal Absensi). --}}
@@ -118,7 +118,7 @@
                             Semua staff sudah punya checklist {{ $date->isSameDay($today) ? 'hari ini' : $date->translatedFormat('d M') }}
                         @endif
                     </p>
-                    <p class="text-sm text-slate-600">Sesuai jadwal Absensi: yang libur, cuti, izin, atau jadwalnya kosong dilewati.</p>
+                    <p class="text-sm text-slate-600">{{ __('Sesuai jadwal Absensi: yang libur, cuti, izin, atau jadwalnya kosong dilewati.') }}</p>
                 </div>
                 <form method="POST" action="{{ route('fill.assign-all') }}" class="flex shrink-0 flex-wrap gap-2 [&>button]:flex-1 sm:[&>button]:flex-none">
                     @csrf
@@ -126,7 +126,7 @@
                     <input type="hidden" name="department" value="{{ $department->id }}">
                     <button class="btn-primary">Buat checklist {{ $date->isSameDay($today) ? 'hari ini' : 'tanggal ini' }}</button>
                     @if ($departments->count() > 1)
-                        <button name="department" value="all" class="btn-secondary">Semua departemen</button>
+                        <button name="department" value="all" class="btn-secondary">{{ __('Semua departemen') }}</button>
                     @endif
                 </form>
             </div>
@@ -137,7 +137,7 @@
             <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
                 <h2 class="font-display text-xl text-slate-900">Tim {{ $department?->name }}</h2>
                 @if ($board->count() > 6)
-                    <input type="search" data-board-search placeholder="Cari nama staff" aria-label="Cari nama staff" class="input !w-full !py-2 sm:!w-60">
+                    <input type="search" data-board-search placeholder="{{ __('Cari nama staff') }}" aria-label="{{ __('Cari nama staff') }}" class="input !w-full !py-2 sm:!w-60">
                 @endif
             </div>
             <ul class="divide-y divide-slate-100" data-board>
@@ -182,53 +182,53 @@
                                     {{ match ($row['state']) { 'empty' => 'Isi', 'partial' => 'Lanjutkan', default => 'Lihat' } }}
                                 </a>
                             @elseif ($row['state'] === 'noschedule')
-                                <button type="button" disabled class="btn-secondary !px-4 !py-1.5" title="Jadwal belum diisi di Absensi">Mulai</button>
+                                <button type="button" disabled class="btn-secondary !px-4 !py-1.5" title="{{ __('Jadwal belum diisi di Absensi') }}">{{ __('Mulai') }}</button>
                             @elseif ($row['canStart'])
                                 <form method="POST" action="{{ route('fill.start') }}">
                                     @csrf
                                     <input type="hidden" name="position" value="{{ $e->checklist_position_id }}">
                                     <input type="hidden" name="employee" value="{{ $e->id }}">
                                     <input type="hidden" name="date" value="{{ $date->toDateString() }}">
-                                    <button class="btn-primary !px-4 !py-1.5">Mulai</button>
+                                    <button class="btn-primary !px-4 !py-1.5">{{ __('Mulai') }}</button>
                                 </form>
                             @else
-                                <a href="{{ route('team.positions.edit') }}" class="btn-secondary !px-4 !py-1.5">Atur jabatan</a>
+                                <a href="{{ route('team.positions.edit') }}" class="btn-secondary !px-4 !py-1.5">{{ __('Atur jabatan') }}</a>
                             @endif
                         </div>
                     </li>
                 @empty
-                    <li class="px-4 py-6 text-center text-sm text-slate-500">Belum ada staff aktif di departemen ini.</li>
+                    <li class="px-4 py-6 text-center text-sm text-slate-500">{{ __('Belum ada staff aktif di departemen ini.') }}</li>
                 @endforelse
-                <li class="hidden px-4 py-6 text-center text-sm text-slate-500" data-board-empty>Tidak ada staff yang cocok.</li>
+                <li class="hidden px-4 py-6 text-center text-sm text-slate-500" data-board-empty>{{ __('Tidak ada staff yang cocok.') }}</li>
             </ul>
         </div>
 
         {{-- Jarang dipakai: jabatan lain untuk seorang staff. --}}
         <details class="card mb-4 p-4" @if ($errors->hasAny(['position', 'employee', 'date'])) open @endif>
-            <summary class="cursor-pointer font-semibold text-slate-800">Checklist dengan jabatan lain</summary>
-            <p class="mb-3 mt-1 text-sm text-slate-500">Untuk staff yang hari ini mengerjakan tugas jabatan lain (misalnya menggantikan rekan).</p>
+            <summary class="cursor-pointer font-semibold text-slate-800">{{ __('Checklist dengan jabatan lain') }}</summary>
+            <p class="mb-3 mt-1 text-sm text-slate-500">{{ __('Untuk staff yang hari ini mengerjakan tugas jabatan lain (misalnya menggantikan rekan).') }}</p>
             <form method="POST" action="{{ route('fill.start') }}" class="grid gap-3 sm:grid-cols-3 sm:items-end">
                 @csrf
                 <input type="hidden" name="date" value="{{ $date->toDateString() }}">
                 <div>
-                    <label for="employee" class="label">Nama staff</label>
+                    <label for="employee" class="label">{{ __('Nama staff') }}</label>
                     <select id="employee" name="employee" class="input" required>
-                        <option value="">Pilih staff</option>
+                        <option value="">{{ __('Pilih staff') }}</option>
                         @foreach ($employees as $option)
                             <option value="{{ $option->id }}" @selected((int) old('employee', $employee?->id) === $option->id)>{{ $option->name }}</option>
                         @endforeach
                     </select>
                 </div>
                 <div>
-                    <label for="position" class="label">Jabatan</label>
+                    <label for="position" class="label">{{ __('Jabatan') }}</label>
                     <select id="position" name="position" class="input" required>
-                        <option value="">Pilih jabatan</option>
+                        <option value="">{{ __('Pilih jabatan') }}</option>
                         @foreach ($positions as $option)
                             <option value="{{ $option->id }}" @selected((int) old('position', $position?->id) === $option->id)>{{ $option->name }} ({{ $option->active_tasks_count }} tugas)</option>
                         @endforeach
                     </select>
                 </div>
-                <button class="btn-primary">Mulai checklist</button>
+                <button class="btn-primary">{{ __('Mulai checklist') }}</button>
             </form>
         </details>
 
@@ -261,7 +261,7 @@
 
     @if ($resume->isNotEmpty())
         <div class="card mb-4 p-4">
-            <h2 class="mb-2 font-display text-xl">Lanjutkan checklist</h2>
+            <h2 class="mb-2 font-display text-xl">{{ __('Lanjutkan checklist') }}</h2>
             <p class="mb-2 text-sm text-slate-500">{{ $staffMode ? 'Checklist yang belum lengkap, 7 hari terakhir.' : 'Checklist yang belum lengkap di hari atau departemen lain, 7 hari terakhir.' }}</p>
             <ul class="divide-y divide-slate-100 text-sm">
                 @foreach ($resume as $draft)

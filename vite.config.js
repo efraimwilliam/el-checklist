@@ -5,7 +5,7 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig({
     plugins: [
         laravel({
-            input: ['resources/css/app.css', 'resources/js/checklist.js', 'resources/js/date-picker.js'],
+            input: ['resources/css/app.css', 'resources/js/checklist.js', 'resources/js/date-picker.js', 'resources/js/photo-viewer.js'],
             refresh: true,
         }),
         tailwindcss(),

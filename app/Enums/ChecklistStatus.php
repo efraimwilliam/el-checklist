@@ -14,9 +14,9 @@ enum ChecklistStatus: string
     public function label(): string
     {
         return match ($this) {
-            self::Saved => 'Belum direview',
-            self::HodReviewed => 'Direview oleh HOD',
-            self::Reviewed => 'Direview oleh GM/HR',
+            self::Saved => __('Belum direview'),
+            self::HodReviewed => __('Direview oleh HOD'),
+            self::Reviewed => __('Direview oleh GM/HR'),
         };
     }
 }

@@ -14,11 +14,11 @@ enum Role: string
     public function label(): string
     {
         return match ($this) {
-            self::Admin => 'Administrator',
+            self::Admin => __('Administrator'),
             self::Hr => 'HR',
-            self::Gm => 'General Manager',
-            self::Hod => 'HOD',
-            self::Staff => 'Staff',
+            self::Gm => __('General Manager'),
+            self::Hod => __('HOD'),
+            self::Staff => __('Staff'),
         };
     }
 

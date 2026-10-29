@@ -1,9 +1,10 @@
+const t = (text) => (window.__i18n && window.__i18n[text]) || text;
 // Kalender tanggal bergaya emas untuk semua kolom tanggal di aplikasi: satu tanggal (data-date-field) atau rentang (data-range-field).
 // Tombol menampilkan tanggal terpilih; ketuk untuk membuka kalender. Ketuk nama bulan untuk memilih bulan dan tahun.
 // Hanya sampai hari ini yang bisa dipilih. Form yang bertanda data-submit dikirim otomatis begitu pilihan lengkap.
-const MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-const WEEKDAYS = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
-const WEEKDAYS_LONG = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+const MONTHS = [t('Januari'), t('Februari'), t('Maret'), t('April'), t('Mei'), t('Juni'), t('Juli'), t('Agustus'), t('September'), t('Oktober'), t('November'), t('Desember')];
+const WEEKDAYS = [t('Sen'), t('Sel'), t('Rab'), t('Kam'), t('Jum'), t('Sab'), t('Min')];
+const WEEKDAYS_LONG = [t('Minggu'), t('Senin'), t('Selasa'), t('Rabu'), t('Kamis'), t('Jumat'), t('Sabtu')];
 
 const toIso = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 const fromIso = (value) => {
@@ -126,7 +127,7 @@ document.querySelectorAll('[data-date-field]').forEach((field) => {
     const calendar = mountCalendar(panel, {
         max,
         initialView: fromIso(valueInput.value),
-        hint: () => 'Pilih tanggal',
+        hint: () => t('Pilih tanggal'),
         bounds: () => {
             const selected = fromIso(valueInput.value);
             return [selected, selected];
@@ -156,7 +157,8 @@ document.querySelectorAll('[data-date-field]').forEach((field) => {
     });
 });
 
-// Rentang: klik tanggal mulai lalu tanggal selesai (sorotan mengikuti kursor). Setelah lengkap, form dikirim.
+// Rentang: klik tanggal mulai lalu tanggal selesai, atau tekan dan seret dari tanggal mulai ke tanggal selesai.
+// Sorotan mengikuti kursor. Setelah rentang lengkap, form dikirim.
 document.querySelectorAll('[data-range-field]').forEach((field) => {
     const form = field.closest('form');
     const fromInput = field.querySelector('[data-range-from]');
@@ -170,6 +172,8 @@ document.querySelectorAll('[data-range-field]').forEach((field) => {
     let end = fromIso(toInput.value);
     let picking = false; // tanggal mulai sudah dipilih, menunggu tanggal selesai
     let hover = null;
+    let dragStart = null; // tombol kursor ditekan di tanggal ini
+    let dragged = false; // kursor sudah pindah ke tanggal lain sambil ditekan
 
     const bounds = () => {
         const other = picking ? (hover ?? start) : end;
@@ -179,7 +183,7 @@ document.querySelectorAll('[data-range-field]').forEach((field) => {
     const calendar = mountCalendar(panel, {
         max,
         initialView: start,
-        hint: () => (picking ? 'Pilih tanggal selesai' : 'Klik tanggal mulai, lalu tanggal selesai'),
+        hint: () => (picking ? t('Pilih tanggal selesai') : t('Klik atau seret: tanggal mulai lalu tanggal selesai')),
         bounds,
         onDay: (date) => {
             if (!picking) {
@@ -190,29 +194,60 @@ document.querySelectorAll('[data-range-field]').forEach((field) => {
                 calendar.render();
                 return;
             }
-            const [lo, hi] = date < start ? [date, start] : [start, date];
-            start = lo;
-            end = hi;
-            picking = false;
-            hover = null;
-            fromInput.value = toIso(start);
-            toInput.value = toIso(end);
-            label.textContent = start.getTime() === end.getTime() ? shortDate(start) : `${shortDate(start)} – ${shortDate(end)}`;
-            close();
-            form.requestSubmit();
+            finish(date);
         },
         onHover: (date) => {
+            if (dragStart) {
+                if (!dragged && toIso(date) === toIso(dragStart)) return;
+                dragged = true;
+                picking = true;
+                start = dragStart;
+                hover = date;
+                calendar.render();
+                return;
+            }
             if (!picking || (hover && toIso(hover) === toIso(date))) return;
             hover = date;
             calendar.render();
         },
     });
 
+    // Tekan di tanggal (belum memilih apa pun): mulai seret. Lepas di tanggal yang sama = klik biasa.
+    panel.addEventListener('pointerdown', (event) => {
+        const day = event.target.closest('[data-day]');
+        if (!day || picking || day.disabled) return;
+        dragStart = fromIso(day.dataset.day);
+        dragged = false;
+    });
+
+    document.addEventListener('pointerup', () => {
+        if (!dragStart) return;
+        const moved = dragged;
+        dragStart = null;
+        if (moved && hover) finish(hover);
+    });
+
+    // Pilihan selesai: rentang dari tanggal awal ke tanggal ini, lalu form dikirim.
+    const finish = (date) => {
+        const [lo, hi] = date < start ? [date, start] : [start, date];
+        start = lo;
+        end = hi;
+        picking = false;
+        hover = null;
+        dragged = false;
+        fromInput.value = toIso(start);
+        toInput.value = toIso(end);
+        label.textContent = start.getTime() === end.getTime() ? shortDate(start) : `${shortDate(start)} – ${shortDate(end)}`;
+        close();
+        form.requestSubmit();
+    };
+
     const open = () => {
         start = fromIso(fromInput.value);
         end = fromIso(toInput.value);
         picking = false;
         hover = null;
+        dragStart = null;
         calendar.reset(start);
         panel.classList.remove('hidden');
         trigger.setAttribute('aria-expanded', 'true');
@@ -222,6 +257,7 @@ document.querySelectorAll('[data-range-field]').forEach((field) => {
         trigger.setAttribute('aria-expanded', 'false');
         picking = false;
         hover = null;
+        dragStart = null;
     };
 
     trigger.addEventListener('click', () => (panel.classList.contains('hidden') ? open() : close()));

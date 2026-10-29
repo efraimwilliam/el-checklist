@@ -1,7 +1,7 @@
-<x-app-layout title="Akses pengguna">
+<x-app-layout title="{{ __('Akses pengguna') }}">
     <div class="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
-            <h1 class="text-3xl text-slate-900">Akses pengguna</h1>
+            <h1 class="text-3xl text-slate-900">{{ __('Akses pengguna') }}</h1>
             <p class="text-sm text-slate-500">
                 Data pegawai dari Sistem Absensi.
                 @if ($lastSync)
@@ -11,7 +11,7 @@
         </div>
         <form method="POST" action="{{ route('admin.sync') }}">
             @csrf
-            <button class="btn-secondary">Sinkron dari absensi</button>
+            <button class="btn-secondary">{{ __('Sinkron dari absensi') }}</button>
         </form>
     </div>
     @error('sync') <p class="mb-4 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-700">{{ $message }}</p> @enderror
@@ -19,33 +19,33 @@
     <div class="card overflow-hidden">
         <div class="flex flex-wrap items-end gap-4 border-b border-slate-100 p-4">
             <div class="min-w-64 flex-1">
-                <label for="access-search" class="label">Cari pegawai</label>
-                <input id="access-search" type="search" placeholder="Nama, username, departemen, peran, atau jabatan" class="input" data-access-search>
+                <label for="access-search" class="label">{{ __('Cari pegawai') }}</label>
+                <input id="access-search" type="search" placeholder="{{ __('Nama, username, departemen, peran, atau jabatan') }}" class="input" data-access-search>
             </div>
             <div class="min-w-44">
-                <label for="access-department" class="label">Departemen</label>
+                <label for="access-department" class="label">{{ __('Departemen') }}</label>
                 <select id="access-department" class="input" data-filter="department">
-                    <option value="">Semua departemen</option>
+                    <option value="">{{ __('Semua departemen') }}</option>
                     @foreach ($employees->map(fn ($e) => $e->department?->name)->filter()->unique()->sort() as $name)
                         <option value="{{ $name }}">{{ $name }}</option>
                     @endforeach
                 </select>
             </div>
             <div class="min-w-44">
-                <label for="access-role" class="label">Peran</label>
+                <label for="access-role" class="label">{{ __('Peran') }}</label>
                 <select id="access-role" class="input" data-filter="role">
-                    <option value="">Semua peran</option>
+                    <option value="">{{ __('Semua peran') }}</option>
                     @foreach (\App\Enums\Role::cases() as $role)
                         <option value="{{ $role->label() }}">{{ $role->label() }}</option>
                     @endforeach
                 </select>
             </div>
             <div class="min-w-44">
-                <label for="access-status" class="label">Akses</label>
+                <label for="access-status" class="label">{{ __('Akses') }}</label>
                 <select id="access-status" class="input" data-filter="access">
-                    <option value="">Semua</option>
-                    <option value="1">Punya akses</option>
-                    <option value="0">Tanpa akses</option>
+                    <option value="">{{ __('Semua') }}</option>
+                    <option value="1">{{ __('Punya akses') }}</option>
+                    <option value="0">{{ __('Tanpa akses') }}</option>
                 </select>
             </div>
         </div>
@@ -54,7 +54,7 @@
             <table class="min-w-full text-sm">
                 <thead class="bg-[#fbf6ea] text-left text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
                     <tr>
-                        @foreach (['name' => 'Pegawai', 'department' => 'Departemen', 'role' => 'Peran', 'position' => 'Jabatan checklist'] as $key => $label)
+                        @foreach (['name' => 'Pegawai', 'department' => 'Departemen', 'role' => 'Peran', 'position' => __('Jabatan checklist')] as $key => $label)
                             <th class="px-4 py-3" data-sort-th="{{ $key }}" aria-sort="none">
                                 <button type="button" class="inline-flex items-center gap-1.5 hover:text-slate-900" data-sort="{{ $key }}">
                                     {{ $label }}
@@ -92,34 +92,34 @@
                                         <span class="block text-xs text-slate-500">{{ $employee->user->departments->pluck('code')->implode(', ') }}</span>
                                     @endif
                                 @else
-                                    <span class="text-slate-400">Tanpa akses</span>
+                                    <span class="text-slate-400">{{ __('Tanpa akses') }}</span>
                                 @endif
                             </td>
                             <td class="px-4 py-2.5">{{ $position ?: '—' }}</td>
                         </tr>
                     @endforeach
-                    <tr class="hidden" data-access-empty><td colspan="4" class="px-4 py-10 text-center text-slate-500">Tidak ada pegawai yang cocok.</td></tr>
+                    <tr class="hidden" data-access-empty><td colspan="4" class="px-4 py-10 text-center text-slate-500">{{ __('Tidak ada pegawai yang cocok.') }}</td></tr>
                 </tbody>
             </table>
             @if ($employees->isEmpty())
-                <p class="px-4 py-10 text-center text-slate-500">Belum ada data pegawai. Tekan "Sinkron dari absensi".</p>
+                <p class="px-4 py-10 text-center text-slate-500">{{ __('Belum ada data pegawai. Tekan "Sinkron dari absensi".') }}</p>
             @endif
         </div>
 
         <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-sm text-slate-600">
             <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
                 <label class="flex items-center gap-2" for="access-per-page">
-                    Tampilkan
+                    {{ __('Tampilkan') }}
                     <select id="access-per-page" class="input !w-20 !py-1.5" data-per-page>
                         @foreach ([10, 25, 50, 100] as $option)
                             <option value="{{ $option }}" @selected($option === 25)>{{ $option }}</option>
                         @endforeach
                     </select>
-                    baris
+                    {{ __('baris') }}
                 </label>
                 <p data-access-info></p>
             </div>
-            <nav class="flex items-center gap-1.5" aria-label="Halaman" data-access-pager></nav>
+            <nav class="flex items-center gap-1.5" aria-label="{{ __('Halaman') }}" data-access-pager></nav>
         </div>
     </div>
 
@@ -178,7 +178,7 @@
 
                 const first = matched.length ? from + 1 : 0;
                 const last = Math.min(from + size, matched.length);
-                info.innerHTML = `${first}–${last} dari <strong class="text-slate-900">${matched.length}</strong> pegawai · Halaman <strong class="text-slate-900">${page}</strong> dari <strong class="text-slate-900">${pages}</strong>`;
+                info.innerHTML = `${first}–${last} ${window.t('dari')} <strong class="text-slate-900">${matched.length}</strong> ${window.t('pegawai')} · ${window.t('Halaman')} <strong class="text-slate-900">${page}</strong> {{ __('dari') }} <strong class="text-slate-900">${pages}</strong>`;
 
                 pager.replaceChildren(pageButton('← Sebelumnya', page - 1, { disabled: page === 1 }));
                 for (let n = Math.max(1, page - 2); n <= Math.min(pages, page + 2); n++) {

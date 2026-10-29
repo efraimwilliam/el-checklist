@@ -9,6 +9,7 @@ use App\Enums\ChecklistStatus;
 use App\Enums\ItemStatus;
 use App\Enums\Role;
 use App\Models\Checklist;
+use App\Reports\ExcelReport;
 use App\Support\DateRange;
 use App\Models\Department;
 use Carbon\CarbonImmutable;
@@ -18,10 +19,36 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ChecklistController extends Controller
 {
     /** Daftar checklist per tanggal, dibatasi departemen yang boleh diakses. */
+    /** Ekspor Excel Riwayat: filter yang sama dengan halaman Riwayat (rentang, departemen, status). */
+    public function export(Request $request): StreamedResponse
+    {
+        Gate::authorize('view-checklists');
+        $user = $request->user();
+        $allowed = $user->accessibleDepartmentIds();
+        $filters = $request->validate([
+            'department' => ['nullable', 'integer'],
+            'status' => ['nullable', Rule::enum(ChecklistStatus::class)],
+        ]);
+        [$from, $to] = DateRange::fromRequest($request, 1, 92);
+        $departmentId = isset($filters['department']) ? (int) $filters['department'] : null;
+        abort_if($departmentId && ! $user->canAccessDepartment($departmentId), 403);
+
+        $checklists = Checklist::with(['employee', 'department', 'items'])
+            ->whereBetween('date', [$from->toDateString(), $to->toDateString()])
+            ->when($allowed !== null, fn ($q) => $q->whereIn('department_id', $allowed))
+            ->when($departmentId, fn ($q) => $q->where('department_id', $departmentId))
+            ->when($filters['status'] ?? null, fn ($q, $status) => $q->where('status', $status))
+            ->orderByDesc('date')->orderBy('department_id')->orderBy('position_name')->orderBy('id')
+            ->get();
+
+        return ExcelReport::download("riwayat-{$from->toDateString()}-sampai-{$to->toDateString()}.xlsx", [ExcelReport::checklistSheet($checklists, 'Riwayat')]);
+    }
+
     public function index(Request $request): View
     {
         Gate::authorize('view-checklists');
