@@ -31,6 +31,11 @@ Laravel 13 + Blade + Tailwind 4 (Vite), MySQL, Pest. Timezone Asia/Makassar (WIT
 - `ChecklistPolicy`: lihat = pemilik / HOD departemen checklist / HR-GM-Admin; ubah = pemilik selama draft/dikembalikan; review = status submitted, bukan milik sendiri.
   Gate `review-checklists`, `manage-access`.
 
+## Kelola tugas
+- `/admin/tugas` (`Admin\TaskController`, gate `manage-tasks` = Administrator & HR): tambah jabatan per departemen (nama unik per departemen), ubah nama / nonaktifkan jabatan,
+  tambah / ubah / nonaktifkan / hapus / geser tugas. Urutan `sort` dirapikan 1..n setiap geser (data impor bisa bernomor ganda). Perubahan hanya berlaku untuk checklist yang dibuat sesudahnya
+  (checklist menyalin isi tugas), jadi riwayat tetap utuh walau tugas dihapus.
+
 ## Checklist
 - `users.position_id` = jabatan checklist pegawai. `ChecklistFactory::forDate()` membuat checklist sekali per pegawai per tanggal dari tugas aktif jabatannya.
 - Checklist menyalin departemen, nama jabatan, judul & standar tugas supaya riwayat utuh saat pegawai pindah/keluar atau templat diubah.

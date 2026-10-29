@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Enums\Role;
 use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -24,6 +25,7 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('login', fn (Request $request) => Limit::perMinute(20)->by($request->ip()));
 
         Gate::define('review-checklists', fn (User $user) => $user->canUseApp() && $user->role->reviews());
+        Gate::define('manage-tasks', fn (User $user) => $user->canUseApp() && in_array($user->role, [Role::Admin, Role::Hr], true));
         Gate::define('manage-access', fn (User $user) => $user->canUseApp() && $user->isAdmin());
     }
 }

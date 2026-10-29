@@ -17,8 +17,11 @@
                 @can('review-checklists')
                     <a href="{{ route('checklists.index') }}" class="hover:text-sky-700 {{ request()->routeIs('checklists.index') ? 'font-semibold text-sky-700' : '' }}">Review</a>
                 @endcan
+                @can('manage-tasks')
+                    <a href="{{ route('admin.tasks.index') }}" class="hover:text-sky-700 {{ request()->routeIs('admin.tasks.*', 'admin.positions.*') ? 'font-semibold text-sky-700' : '' }}">Kelola tugas</a>
+                @endcan
                 @can('manage-access')
-                    <a href="{{ route('admin.access.index') }}" class="hover:text-sky-700 {{ request()->routeIs('admin.*') ? 'font-semibold text-sky-700' : '' }}">Akses pengguna</a>
+                    <a href="{{ route('admin.access.index') }}" class="hover:text-sky-700 {{ request()->routeIs('admin.access.*', 'admin.sync') ? 'font-semibold text-sky-700' : '' }}">Akses pengguna</a>
                 @endcan
             </nav>
             <div class="flex items-center gap-3 text-sm">
