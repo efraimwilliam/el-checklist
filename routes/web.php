@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\TaskController;
 use App\Http\Controllers\Auth\AttendanceLoginController;
 use App\Http\Controllers\ChecklistController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\TeamTaskController;
 use App\Http\Middleware\EnsureActiveSession;
 use Illuminate\Support\Facades\Route;
 
@@ -22,6 +23,11 @@ Route::middleware(['auth', EnsureActiveSession::class])->group(function () {
     Route::get('/checklists/{checklist}', [ChecklistController::class, 'show'])->name('checklists.show');
     Route::put('/checklists/{checklist}', [ChecklistController::class, 'update'])->name('checklists.update');
     Route::post('/checklists/{checklist}/review', [ChecklistController::class, 'review'])->name('checklists.review');
+
+    Route::get('/tim', [TeamTaskController::class, 'index'])->name('team.index');
+    Route::get('/tim/{user}/tugas', [TeamTaskController::class, 'edit'])->name('team.tasks.edit');
+    Route::put('/tim/{user}/tugas', [TeamTaskController::class, 'update'])->name('team.tasks.update');
+    Route::delete('/tim/{user}/tugas', [TeamTaskController::class, 'reset'])->name('team.tasks.reset');
 
     Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/akses', [AccessController::class, 'index'])->name('access.index');

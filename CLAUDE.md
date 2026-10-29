@@ -36,6 +36,13 @@ Laravel 13 + Blade + Tailwind 4 (Vite), MySQL, Pest. Timezone Asia/Makassar (WIT
   tambah / ubah / nonaktifkan / hapus / geser tugas. Urutan `sort` dirapikan 1..n setiap geser (data impor bisa bernomor ganda). Perubahan hanya berlaku untuk checklist yang dibuat sesudahnya
   (checklist menyalin isi tugas), jadi riwayat tetap utuh walau tugas dihapus.
 
+## Atur tugas tim
+- `/tim` (`TeamTaskController`, gate `manage-team-tasks` = Administrator, HR, HOD; `assign-tasks` per pegawai): memilih tugas apa saja yang masuk checklist harian seorang pegawai.
+  HOD hanya untuk pegawai di departemen yang ditugaskan dan tidak untuk dirinya sendiri (Administrator boleh); HR/Admin semua departemen.
+- Bawaan (`users.custom_tasks = false`): semua tugas aktif jabatan. Setelah HOD menyimpan: `custom_tasks = true` dan hanya tugas di `task_user` yang dipakai, boleh dari jabatan lain di departemen
+  pegawai yang sama (divalidasi di server: aktif + departemen sama + minimal satu). "Kembalikan ke bawaan" mengosongkan `task_user`. `User::checklistDepartmentId()` = departemen checklist.
+- `ChecklistFactory::tasksFor()`: tugas jabatan pegawai lebih dulu, lalu jabatan lain; item dinomori ulang 1..n. Tugas nonaktif / terhapus dilewati. Hanya berlaku untuk checklist yang dibuat sesudahnya.
+
 ## Checklist
 - `users.position_id` = jabatan checklist pegawai. `ChecklistFactory::forDate()` membuat checklist sekali per pegawai per tanggal dari tugas aktif jabatannya.
 - Checklist menyalin departemen, nama jabatan, judul & standar tugas supaya riwayat utuh saat pegawai pindah/keluar atau templat diubah.

@@ -17,6 +17,9 @@
                 @can('review-checklists')
                     <a href="{{ route('checklists.index') }}" class="hover:text-sky-700 {{ request()->routeIs('checklists.index') ? 'font-semibold text-sky-700' : '' }}">Review</a>
                 @endcan
+                @can('manage-team-tasks')
+                    <a href="{{ route('team.index') }}" class="hover:text-sky-700 {{ request()->routeIs('team.*') ? 'font-semibold text-sky-700' : '' }}">Atur tugas tim</a>
+                @endcan
                 @can('manage-tasks')
                     <a href="{{ route('admin.tasks.index') }}" class="hover:text-sky-700 {{ request()->routeIs('admin.tasks.*', 'admin.positions.*') ? 'font-semibold text-sky-700' : '' }}">Kelola tugas</a>
                 @endcan

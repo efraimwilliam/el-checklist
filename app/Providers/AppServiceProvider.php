@@ -25,6 +25,13 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('login', fn (Request $request) => Limit::perMinute(20)->by($request->ip()));
 
         Gate::define('review-checklists', fn (User $user) => $user->canUseApp() && $user->role->reviews());
+        // Menugaskan tugas ke pegawai: Administrator & HR (semua departemen) dan HOD (departemen yang ditugaskan). Tidak untuk diri sendiri, kecuali Administrator.
+        Gate::define('manage-team-tasks', fn (User $user) => $user->canUseApp() && in_array($user->role, [Role::Admin, Role::Hr, Role::Hod], true));
+        Gate::define('assign-tasks', fn (User $actor, User $target) => Gate::forUser($actor)->allows('manage-team-tasks')
+            && $target->canUseApp()
+            && $target->checklistDepartmentId() !== null
+            && ($target->id !== $actor->id || $actor->isAdmin())
+            && $actor->canAccessDepartment($target->checklistDepartmentId()));
         Gate::define('manage-tasks', fn (User $user) => $user->canUseApp() && in_array($user->role, [Role::Admin, Role::Hr], true));
         Gate::define('manage-access', fn (User $user) => $user->canUseApp() && $user->isAdmin());
     }
