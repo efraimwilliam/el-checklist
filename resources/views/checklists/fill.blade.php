@@ -29,7 +29,7 @@
     @else
         {{-- Ganti departemen memuat ulang daftar jabatan dan staff (form terpisah agar tidak bersarang). --}}
         <form id="department-form" method="GET" action="{{ route('fill.create') }}"></form>
-        <form method="POST" action="{{ route('fill.start') }}" class="card mb-4 grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-5 lg:items-end">
+        <form method="POST" action="{{ route('fill.start') }}" class="card mb-4 grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4 lg:items-end">
             @csrf
             @if ($departments->count() > 1)
                 <div>
@@ -63,11 +63,7 @@
                     @endforeach
                 </select>
             </div>
-            <div>
-                <label for="checker" class="label">Dicek oleh (HOD / atasan)</label>
-                <input id="checker" name="checker" value="{{ old('checker', $checker) }}" maxlength="255" class="input">
-            </div>
-            <div class="sm:col-span-2 lg:col-span-5 lg:text-right">
+            <div class="sm:col-span-2 lg:col-span-4 lg:text-right">
                 <button class="btn-primary w-full sm:w-auto">Mulai checklist</button>
             </div>
         </form>

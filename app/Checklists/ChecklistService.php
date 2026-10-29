@@ -48,7 +48,7 @@ class ChecklistService
         return Checklist::where('employee_id', $employee->id)->where('position_id', $position->id)->whereDate('date', $date)->first();
     }
 
-    /** Membuka checklist staff + jabatan + tanggal itu, atau membuatnya (semua tugas belum diisi) bila belum ada. */
+    /** Membuka checklist staff + jabatan + tanggal itu, atau membuatnya (semua tugas belum diisi) bila belum ada. $checkedBy = nama pemeriksa (akun HOD / HR / Admin yang memulai); null untuk staff yang mengisi sendiri. */
     public function start(Employee $employee, Position $position, CarbonImmutable $date, User $by, ?string $checkedBy): Checklist
     {
         try {
@@ -105,17 +105,15 @@ class ChecklistService
     }
 
     /**
-     * Catatan umum, "Dicek oleh" dan tugas tambahan; hanya kunci yang dikirim yang diubah.
+     * Catatan umum dan tugas tambahan; hanya kunci yang dikirim yang diubah.
      *
-     * @param  array{note?: ?string, checked_by?: ?string, extras?: list<array{title?: ?string, status?: ?string, note?: ?string}>}  $meta
+     * @param  array{note?: ?string, extras?: list<array{title?: ?string, status?: ?string, note?: ?string}>}  $meta
      */
     public function saveMeta(Checklist $checklist, User $by, array $meta): void
     {
         DB::transaction(function () use ($checklist, $by, $meta) {
-            foreach (['note', 'checked_by'] as $key) {
-                if (array_key_exists($key, $meta)) {
-                    $checklist->{$key} = $this->clean($meta[$key]);
-                }
+            if (array_key_exists('note', $meta)) {
+                $checklist->note = $this->clean($meta['note']);
             }
             if (array_key_exists('extras', $meta)) {
                 $checklist->extraTasks()->delete();

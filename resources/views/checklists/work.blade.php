@@ -117,17 +117,9 @@
             </template>
         </div>
 
-        <div class="card mt-4 grid gap-4 p-5 {{ $staffMode ? '' : 'sm:grid-cols-3' }}">
-            @unless ($staffMode)
-                <div>
-                    <label for="checked_by" class="label">Dicek oleh</label>
-                    <input id="checked_by" data-meta="checked_by" value="{{ $checklist->checked_by }}" maxlength="255" class="input">
-                </div>
-            @endunless
-            <div class="{{ $staffMode ? '' : 'sm:col-span-2' }}">
-                <label for="note" class="label">Catatan umum</label>
-                <textarea id="note" data-meta="note" rows="2" maxlength="2000" class="input" placeholder="Temuan lain yang perlu dicatat">{{ $checklist->note }}</textarea>
-            </div>
+        <div class="card mt-4 p-5">
+            <label for="note" class="label">Catatan umum</label>
+            <textarea id="note" data-meta="note" rows="2" maxlength="2000" class="input" placeholder="Temuan lain yang perlu dicatat">{{ $checklist->note }}</textarea>
         </div>
 
         {{-- Bilah progres menempel di bawah layar --}}

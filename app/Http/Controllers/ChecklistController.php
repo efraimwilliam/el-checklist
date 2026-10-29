@@ -86,13 +86,12 @@ class ChecklistController extends Controller
         ]);
     }
 
-    /** Penyimpanan otomatis catatan umum, "Dicek oleh" dan tugas tambahan (hanya yang dikirim). */
+    /** Penyimpanan otomatis catatan umum dan tugas tambahan (hanya yang dikirim). */
     public function meta(Request $request, Checklist $checklist, ChecklistService $service): JsonResponse
     {
         Gate::authorize('update', $checklist);
         $data = $request->validate([
             'note' => ['nullable', 'string', 'max:2000'],
-            'checked_by' => ['nullable', 'string', 'max:255'],
             'extras' => ['array', 'max:20'],
             'extras.*.title' => ['nullable', 'string', 'max:500'],
             'extras.*.status' => ['nullable', Rule::enum(ItemStatus::class)],

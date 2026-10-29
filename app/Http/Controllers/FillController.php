@@ -44,7 +44,6 @@ class FillController extends Controller
             $department = $employee->department;
             $positions = collect();
             $employees = collect();
-            $checker = null;
         } else {
             $allowed = $user->accessibleDepartmentIds();
             $departments = Department::where('is_active', true)->when($allowed !== null, fn ($q) => $q->whereIn('id', $allowed))->orderBy('sort')->orderBy('name')->get();
@@ -59,8 +58,6 @@ class FillController extends Controller
             $employees = $department ? Employee::where('department_id', $department->id)->where('is_active', true)->orderBy('name')->get() : collect();
             $position = $positions->firstWhere('id', (int) $request->query('position'));
             $employee = $employees->firstWhere('id', (int) $request->query('employee'));
-            // "Dicek oleh" diingat dari checklist terakhir yang diisi akun ini.
-            $checker = $request->query('checker') ?? Checklist::where('filled_by', $user->id)->latest('id')->value('checked_by') ?? $user->name();
         }
 
         $problem = $staffMode && ! Gate::allows('fill', [Checklist::class, $employee, $position ?? new Position])
@@ -82,7 +79,6 @@ class FillController extends Controller
             'position' => $position,
             'date' => $date,
             'today' => $today,
-            'checker' => $checker,
             'problem' => $problem,
             'resume' => $resume,
             'history' => $staffMode ? Checklist::where('employee_id', $user->employee_id)->latest('date')->limit(14)->get() : collect(),
@@ -96,7 +92,6 @@ class FillController extends Controller
             'position' => ['required', 'integer', 'exists:positions,id'],
             'employee' => ['required', 'integer', 'exists:employees,id'],
             'date' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
-            'checker' => ['nullable', 'string', 'max:255'],
         ], ['date.before_or_equal' => __('Tanggal tidak boleh di masa depan.')]);
         $employee = Employee::findOrFail($data['employee']);
         $position = Position::findOrFail($data['position']);
@@ -108,7 +103,7 @@ class FillController extends Controller
             return redirect()->route('checklists.show', $existing)->with('status', __('Checklist ini sudah direview dan terkunci. Perubahan hanya lewat HR.'));
         }
 
-        $checklist = $existing ?? $this->service->start($employee, $position, $date, $request->user(), $request->user()->role === Role::Staff ? null : ($data['checker'] ?? null));
+        $checklist = $existing ?? $this->service->start($employee, $position, $date, $request->user(), $request->user()->role === Role::Staff ? null : $request->user()->name());
 
         return redirect()->route('checklists.fill', $checklist);
     }

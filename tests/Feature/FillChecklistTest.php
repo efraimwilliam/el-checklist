@@ -32,7 +32,7 @@ beforeEach(function () {
 /** Data "Mulai checklist" untuk GSA Budi hari ini. */
 function startData(array $override = []): array
 {
-    return ['position' => test()->gsa->id, 'employee' => test()->budi->id, 'date' => test()->today->toDateString(), 'checker' => 'Bu Ayu', ...$override];
+    return ['position' => test()->gsa->id, 'employee' => test()->budi->id, 'date' => test()->today->toDateString(), ...$override];
 }
 
 function startedChecklist(): Checklist
@@ -50,7 +50,7 @@ it('shows the HOD only their own department in the selector', function () {
         ->assertSee('GSA (3 tugas)')->assertSee('Duty Manager (1 tugas)')
         ->assertDontSee('Tanpa Tugas')->assertDontSee('Room Attendant')
         ->assertSee('Budi Santoso')->assertDontSee('Sari Dewi')->assertDontSee('Sudah Keluar')
-        ->assertSee('value="'.e($this->hod->name()).'"', false); // "Dicek oleh" bawaan = nama HOD
+        ->assertDontSee('Dicek oleh'); // pemeriksa = akun yang login, bukan isian
 });
 
 it('creates an empty checklist when started, and opens the same one when started again', function () {
@@ -61,7 +61,7 @@ it('creates an empty checklist when started, and opens the same one when started
 
     expect(Checklist::count())->toBe(1)
         ->and($checklist)->employee_id->toBe($this->budi->id)->department_id->toBe($this->fo->id)->position_name->toBe('GSA')
-        ->checked_by->toBe('Bu Ayu')->filled_by->toBe($this->hod->id)
+        ->checked_by->toBe($this->hod->name())->filled_by->toBe($this->hod->id)
         ->and($checklist->status)->toBe(ChecklistStatus::Saved)
         ->and($checklist->items->pluck('title')->all())->toBe(['Check-in tamu', 'Check-out tamu', 'Handover shift'])
         ->and($checklist->items->pluck('status')->filter()->count())->toBe(0)
@@ -133,12 +133,12 @@ it('saves the general note, who checked and the extra tasks, changing only what 
         ['title' => 'Antar tamu VIP', 'status' => 'ongoing'],
     ]])->assertOk();
     $checklist->refresh();
-    expect($checklist)->note->toBe('Lobby ramai')->checked_by->toBe('Bu Ayu') // tidak dikirim = tidak berubah
+    expect($checklist)->note->toBe('Lobby ramai')->checked_by->toBe($this->hod->name()) // tidak dikirim = tidak berubah
         ->and($checklist->extraTasks->pluck('title')->all())->toBe(['Membantu banquet', 'Antar tamu VIP'])
         ->and($checklist->extraTasks[0]->note)->toBe('Sampai malam');
 
-    $this->patchJson(route('checklists.meta', $checklist), ['checked_by' => 'Pak Wayan'])->assertOk();
-    expect($checklist->fresh())->checked_by->toBe('Pak Wayan')->note->toBe('Lobby ramai')->and($checklist->extraTasks()->count())->toBe(2);
+    $this->patchJson(route('checklists.meta', $checklist), ['note' => 'Diubah', 'checked_by' => 'Dipalsukan'])->assertOk(); // pemeriksa tidak bisa diubah lewat simpan otomatis
+    expect($checklist->fresh())->note->toBe('Diubah')->checked_by->toBe($this->hod->name())->and($checklist->extraTasks()->count())->toBe(2);
 
     $this->patchJson(route('checklists.meta', $checklist), ['extras' => []])->assertOk();
     expect($checklist->extraTasks()->count())->toBe(0);
@@ -157,11 +157,12 @@ it('allows past dates but never future ones when starting', function () {
     expect(Checklist::sole()->date->toDateString())->toBe($this->today->subDay()->toDateString());
 });
 
-it('remembers who checked from the last checklist', function () {
+it('records the logged-in account as the checker and ignores a forged value', function () {
     loggedIn($this->hod);
-    $this->post(route('fill.start'), startData(['checker' => 'Ni Made Ayu (Exec. HK)']));
 
-    $this->get(route('fill.create'))->assertSee('value="Ni Made Ayu (Exec. HK)"', false);
+    $this->post(route('fill.start'), startData(['checker' => 'Dipalsukan']))->assertRedirect();
+
+    expect(Checklist::sole()->checked_by)->toBe($this->hod->name());
 });
 
 it('keeps one checklist per position for the same staff and date', function () {
@@ -200,7 +201,7 @@ it('lets staff with an account work only on their own checklist', function () {
     $this->get(route('checklists.today'))->assertRedirect(route('fill.create'));
     $this->get(route('fill.create'))->assertOk()->assertSee('Checklist saya')->assertSee('Buka checklist GSA')->assertDontSee('Dicek oleh');
 
-    $this->post(route('fill.start'), startData(['checker' => 'Dipalsukan']))->assertRedirect();
+    $this->post(route('fill.start'), startData())->assertRedirect();
     $checklist = Checklist::sole();
     expect($checklist->checked_by)->toBeNull()->and($checklist->filled_by)->toBe($staff->id);
     $this->patchJson(route('checklists.items.update', [$checklist, $checklist->items[0]]), ['status' => 'done'])->assertOk();
