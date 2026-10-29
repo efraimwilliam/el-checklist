@@ -1,10 +1,12 @@
 <?php
 
 use App\Http\Controllers\Admin\AccessController;
+use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\TaskController;
 use App\Http\Controllers\Auth\AttendanceLoginController;
 use App\Http\Controllers\ChecklistController;
 use App\Http\Controllers\ChecklistItemController;
+use App\Http\Controllers\ChecklistPhotoController;
 use App\Http\Controllers\FillController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\TeamTaskController;
@@ -28,6 +30,9 @@ Route::middleware(['auth', EnsureActiveSession::class])->group(function () {
     Route::get('/checklists/{checklist}/isi', [ChecklistController::class, 'fill'])->name('checklists.fill');
     Route::patch('/checklists/{checklist}', [ChecklistController::class, 'meta'])->name('checklists.meta');
     Route::patch('/checklists/{checklist}/items/{item}', [ChecklistItemController::class, 'update'])->scopeBindings()->name('checklists.items.update');
+    Route::post('/checklists/{checklist}/items/{item}/photos', [ChecklistPhotoController::class, 'store'])->scopeBindings()->middleware('throttle:60,1')->name('checklists.photos.store');
+    Route::get('/checklists/{checklist}/photos/{photo}', [ChecklistPhotoController::class, 'show'])->name('checklists.photos.show');
+    Route::delete('/checklists/{checklist}/photos/{photo}', [ChecklistPhotoController::class, 'destroy'])->name('checklists.photos.destroy');
     Route::post('/checklists/{checklist}/rest-done', [ChecklistItemController::class, 'restDone'])->name('checklists.rest-done');
     Route::post('/checklists/{checklist}/clear', [ChecklistItemController::class, 'clear'])->name('checklists.clear');
     Route::post('/checklists/{checklist}/review', [ChecklistController::class, 'review'])->name('checklists.review');
@@ -43,6 +48,8 @@ Route::middleware(['auth', EnsureActiveSession::class])->group(function () {
         Route::get('/akses/{employee}', [AccessController::class, 'edit'])->name('access.edit');
         Route::put('/akses/{employee}', [AccessController::class, 'update'])->name('access.update');
         Route::post('/sinkron', [AccessController::class, 'sync'])->name('sync');
+        Route::get('/pengaturan', [SettingsController::class, 'edit'])->name('settings.edit');
+        Route::put('/pengaturan', [SettingsController::class, 'update'])->name('settings.update');
 
         Route::get('/tugas', [TaskController::class, 'index'])->name('tasks.index');
         Route::post('/tugas/jabatan', [TaskController::class, 'storePosition'])->name('positions.store');

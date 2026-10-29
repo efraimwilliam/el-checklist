@@ -64,10 +64,11 @@ if (root) {
     async function request(method, url, body) {
         let response;
         try {
+            const isForm = body instanceof FormData;
             response = await fetch(url, {
                 method,
-                headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
-                body: body === undefined ? undefined : JSON.stringify(body),
+                headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrf, ...(isForm ? {} : { 'Content-Type': 'application/json' }) },
+                body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
             });
         } catch {
             throw new SaveError('Tidak bisa terhubung. Periksa koneksi, lalu coba lagi.');
@@ -140,10 +141,14 @@ if (root) {
     // ---- Tampilan tugas, progres dan skor ----
     const scoreColor = (percent) => (percent >= 90 ? '#8fd3a7' : percent >= 70 ? '#e2c47c' : '#f0a090');
 
+    const photoRequirement = root.dataset.photoRequirement;
+    const photoMax = Number(root.dataset.photoMax) || 3;
+
     function refresh() {
         let filled = 0;
         let done = 0;
         let missingReasons = 0;
+        let missingPhotos = 0;
         for (const item of items) {
             const status = statusOf(item);
             const input = noteInput(item);
@@ -153,6 +158,13 @@ if (root) {
             if (status === 'done') done++;
             const needsReason = pendingNeedsNote && status === 'pending' && input.value.trim() === '';
             if (needsReason) missingReasons++;
+
+            // Foto wajib menurut Pengaturan: semua tugas, atau hanya yang Pending.
+            const photoCount = item.querySelectorAll('[data-photo]').length;
+            const needsPhoto = photoCount === 0 && (photoRequirement === 'all' || (photoRequirement === 'pending' && status === 'pending'));
+            if (needsPhoto) missingPhotos++;
+            item.querySelector('[data-photo-hint]')?.classList.toggle('hidden', !needsPhoto);
+            item.querySelector('[data-photo-add]')?.classList.toggle('hidden', photoCount >= photoMax);
 
             // Catatan muncul otomatis untuk Ongoing dan Pending; untuk Done hanya bila diminta atau sudah ada isinya.
             const show = status === 'ongoing' || status === 'pending' || input.value.trim() !== '' || note.dataset.open === '1';
@@ -165,7 +177,7 @@ if (root) {
         ui.progress.textContent = `${filled} / ${items.length}`;
         ui.score.textContent = `${percent}%`;
         ui.score.style.color = scoreColor(percent);
-        ui.complete.classList.toggle('hidden', !(items.length && filled === items.length && missingReasons === 0));
+        ui.complete.classList.toggle('hidden', !(items.length && filled === items.length && missingReasons === 0 && missingPhotos === 0));
     }
 
     // Keadaan dari server (setelah "Sisa tugas = Done" / "Kosongkan") dipasang ke layar.
@@ -239,6 +251,92 @@ if (root) {
     root.querySelector('[data-rest-done]')?.addEventListener('click', () => bulk(root.dataset.restDoneUrl));
     root.querySelector('[data-clear]')?.addEventListener('click', () => {
         if (confirm('Kosongkan semua status dan catatan tugas di checklist ini?')) bulk(root.dataset.clearUrl);
+    });
+
+    // ---- Foto bukti per tugas ----
+    // Dikecilkan di HP dulu (sisi terpanjang 1280 px, JPEG): upload cepat di Wi-Fi hotel, dan orientasi kamera ikut benar.
+    async function compress(file) {
+        let source;
+        try {
+            source = await createImageBitmap(file, { imageOrientation: 'from-image' });
+        } catch {
+            source = await new Promise((resolve, reject) => {
+                const image = new Image();
+                image.onload = () => resolve(image);
+                image.onerror = reject;
+                image.src = URL.createObjectURL(file);
+            });
+        }
+        const width = source.width || source.naturalWidth;
+        const height = source.height || source.naturalHeight;
+        const scale = Math.min(1, 1280 / Math.max(width, height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(width * scale);
+        canvas.height = Math.round(height * scale);
+        canvas.getContext('2d').drawImage(source, 0, 0, canvas.width, canvas.height);
+        const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.8));
+        if (!blob) throw new SaveError('Foto tidak bisa diproses. Coba foto lain.');
+
+        return blob;
+    }
+
+    function addThumb(item, photo) {
+        const list = item.querySelector('[data-photo-list]');
+        const thumb = document.createElement('div');
+        thumb.className = 'cl-photo';
+        thumb.dataset.photo = '';
+        thumb.dataset.deleteUrl = photo.delete_url;
+        thumb.innerHTML = '<a target="_blank" rel="noopener"><img loading="lazy" alt="Foto tugas"></a><button type="button" data-photo-remove aria-label="Hapus foto">✕</button>';
+        thumb.querySelector('a').href = photo.url;
+        thumb.querySelector('img').src = photo.url;
+        list.insertBefore(thumb, item.querySelector('[data-photo-add]'));
+    }
+
+    async function uploadPhotos(item, files) {
+        const room = photoMax - item.querySelectorAll('[data-photo]').length;
+        if (files.length > room) setState('error', `Maksimal ${photoMax} foto per tugas.`);
+        for (const file of files.slice(0, Math.max(room, 0))) {
+            inflight++;
+            setState('saving', 'Mengunggah foto…');
+            try {
+                const form = new FormData();
+                form.append('photo', await compress(file), 'foto.jpg');
+                const data = await request('POST', root.dataset.photoUrl.replace('__ITEM__', item.dataset.id), form);
+                addThumb(item, data.photo);
+                refresh();
+                setState('saved', `Foto tersimpan · ${new Date().toTimeString().slice(0, 8)}`);
+            } catch (error) {
+                setState('error', error.message || 'Foto gagal diunggah.');
+            } finally {
+                inflight--;
+            }
+        }
+    }
+
+    root.addEventListener('change', (event) => {
+        const input = event.target.closest('[data-photo-input]');
+        if (!input) return;
+        const files = [...input.files];
+        input.value = '';
+        uploadPhotos(input.closest('[data-item]'), files);
+    });
+
+    root.addEventListener('click', async (event) => {
+        const remove = event.target.closest('[data-photo-remove]');
+        if (!remove || !confirm('Hapus foto ini?')) return;
+        const thumb = remove.closest('[data-photo]');
+        inflight++;
+        setState('saving', 'Menghapus foto…');
+        try {
+            await request('DELETE', thumb.dataset.deleteUrl);
+            thumb.remove();
+            refresh();
+            setState('saved', `Foto dihapus · ${new Date().toTimeString().slice(0, 8)}`);
+        } catch (error) {
+            setState('error', error.message);
+        } finally {
+            inflight--;
+        }
     });
 
     // ---- Catatan umum, dicek oleh dan tugas tambahan ----

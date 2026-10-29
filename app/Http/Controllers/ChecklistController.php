@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Checklists\ChecklistPhotoService;
 use App\Checklists\ChecklistService;
+use App\Checklists\ChecklistSettings;
 use App\Enums\ChecklistStatus;
 use App\Enums\ItemStatus;
 use App\Enums\Role;
@@ -33,7 +35,7 @@ class ChecklistController extends Controller
         $departmentId = isset($filters['department']) ? (int) $filters['department'] : null;
         abort_if($departmentId && ! $user->canAccessDepartment($departmentId), 403);
 
-        $checklists = Checklist::with(['employee', 'department', 'items'])
+        $checklists = Checklist::with(['employee', 'department', 'items.photos'])
             ->whereDate('date', $date)
             ->when($allowed !== null, fn ($q) => $q->whereIn('department_id', $allowed))
             ->when($departmentId, fn ($q) => $q->where('department_id', $departmentId))
@@ -52,7 +54,7 @@ class ChecklistController extends Controller
     public function show(Request $request, Checklist $checklist): View
     {
         Gate::authorize('view', $checklist);
-        $checklist->load(['items', 'extraTasks', 'employee', 'department', 'filler.employee', 'reviewer.employee']);
+        $checklist->load(['items.photos', 'extraTasks', 'employee', 'department', 'filler.employee', 'reviewer.employee']);
         $user = $request->user();
 
         return view('checklists.show', [
@@ -72,9 +74,11 @@ class ChecklistController extends Controller
                 ? __('Checklist ini sudah direview dan terkunci. Perubahan hanya lewat HR.')
                 : __('Anda tidak bisa mengubah checklist ini.'));
         }
-        $checklist->load(['items', 'extraTasks', 'employee', 'department']);
+        $checklist->load(['items.photos', 'extraTasks', 'employee', 'department']);
 
         return view('checklists.work', [
+            'photoRequirement' => app(ChecklistSettings::class)->photoRequirement(),
+            'photoMax' => app(ChecklistSettings::class)->photosPerTask(),
             'checklist' => $checklist,
             'staffMode' => $request->user()->role === Role::Staff,
             'statuses' => ItemStatus::cases(),
@@ -109,9 +113,11 @@ class ChecklistController extends Controller
         return redirect()->route('checklists.show', $checklist)->with('status', __('Checklist ditandai sudah direview.'));
     }
 
-    public function destroy(Checklist $checklist): RedirectResponse
+    public function destroy(Checklist $checklist, ChecklistPhotoService $photos): RedirectResponse
     {
         Gate::authorize('delete', $checklist);
+        // Berkas foto ada di disk, bukan di database: dihapus lebih dulu supaya tidak tertinggal.
+        $checklist->items()->with('photos')->get()->flatMap->photos->each(fn ($photo) => $photos->delete($photo));
         $checklist->delete();
 
         return redirect()->route('checklists.index', ['date' => $checklist->date->toDateString()])->with('status', __('Checklist dihapus.'));

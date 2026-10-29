@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\ItemStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ChecklistItem extends Model
 {
@@ -13,6 +14,11 @@ class ChecklistItem extends Model
     protected function casts(): array
     {
         return ['status' => ItemStatus::class];
+    }
+
+    public function photos(): HasMany
+    {
+        return $this->hasMany(ChecklistItemPhoto::class)->orderBy('id');
     }
 
     public function checklist(): BelongsTo

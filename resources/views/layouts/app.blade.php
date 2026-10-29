@@ -47,6 +47,7 @@
                 @endcan
                 @can('manage-access')
                     <a href="{{ route('admin.access.index') }}" class="{{ $navLink(request()->routeIs('admin.access.*', 'admin.sync')) }}">Akses pengguna</a>
+                    <a href="{{ route('admin.settings.edit') }}" class="{{ $navLink(request()->routeIs('admin.settings.*')) }}">Pengaturan</a>
                 @endcan
             </nav>
         </div>

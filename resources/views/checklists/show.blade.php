@@ -62,6 +62,13 @@
                         @if ($item->note)
                             <p class="mt-1 text-sm text-slate-500">Catatan: {{ $item->note }}</p>
                         @endif
+                        @if ($item->photos->isNotEmpty())
+                            <div class="mt-2 flex flex-wrap gap-2">
+                                @foreach ($item->photos as $photo)
+                                    <a href="{{ $photo->url() }}" target="_blank" rel="noopener" class="cl-photo"><img src="{{ $photo->url() }}" alt="Foto tugas {{ $number }}" loading="lazy"></a>
+                                @endforeach
+                            </div>
+                        @endif
                     </div>
                 @endforeach
             </div>

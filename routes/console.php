@@ -7,3 +7,6 @@ Schedule::command('attendance:sync')->hourly()->withoutOverlapping();
 
 // Checklist kosong yang ditinggalkan (tanpa satu pun isian) dibersihkan tiap hari.
 Schedule::command('checklist:prune-empty')->dailyAt('03:00');
+
+// Foto bukti yang melewati masa simpan (Pengaturan) dihapus tiap hari.
+Schedule::command('checklist:prune-photos')->dailyAt('03:30')->withoutOverlapping();

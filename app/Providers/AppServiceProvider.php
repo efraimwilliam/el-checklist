@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Checklists\ChecklistSettings;
 use App\Enums\Role;
 use App\Models\Employee;
 use App\Models\User;
@@ -14,7 +15,10 @@ use RuntimeException;
 
 class AppServiceProvider extends ServiceProvider
 {
-    public function register(): void {}
+    public function register(): void
+    {
+        $this->app->scoped(ChecklistSettings::class);
+    }
 
     public function boot(): void
     {

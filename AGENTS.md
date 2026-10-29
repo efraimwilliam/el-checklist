@@ -58,6 +58,13 @@ Laravel 13 + Blade + Tailwind 4 (Vite), MySQL, Pest. Timezone Asia/Makassar (WIT
   extras; hanya kunci yang dikirim). `resources/js/checklist.js`: antrean per kunci, ketikan ditunda 700 ms dan dikirim saat berpindah isian, keadaan terbaru dibaca dari layar. Sesi habis -> 401 JSON (`EnsureActiveSession`).
 - Lengkap (`Checklist::isComplete`, turunan, bukan kolom): semua tugas berstatus dan setiap Pending beralasan (`CHECKLIST_PENDING_NOTE_REQUIRED`). Checklist boleh tersimpan setengah jadi ("Belum lengkap n/m" di daftar & detail),
   tetapi hanya yang lengkap yang bisa direview. `checklist:prune-empty` (harian 03:00) menghapus checklist tanpa satu pun isian yang lebih tua dari 2 hari.
+- Foto bukti per tugas (`checklist_item_photos`, `ChecklistPhotoService`, `ChecklistPhotoController`): tombol "+ Foto" di tiap tugas (kamera atau galeri, `<input type=file accept=image/* multiple>` tanpa `capture`), maksimal 3 foto per tugas
+  (`config/checklist.php` -> `photos.per_task`). Dikecilkan di HP dulu (`compress()` di `checklist.js`: sisi terpanjang 1280 px, JPEG 0.8), lalu server mengolah ulang dengan GD (putar sesuai EXIF, maks 1600 px, JPEG baru tanpa metadata;
+  file yang bukan gambar ditolak). Disimpan di disk privat `local` (`storage/app/private/checklist-photos/{checklist}/{uuid}.jpg`), TIDAK di folder publik: hanya dilayani `GET /checklists/{c}/photos/{photo}` setelah `Gate view`.
+  Tambah / hapus lewat `Gate update` (terkunci setelah direview, kecuali HR/Admin). Menghapus checklist ikut menghapus berkasnya. Foto ikut tampil di detail dan hasil cetak.
+- Pengaturan Administrator (`/admin/pengaturan`, `Admin\SettingsController`, tabel `settings`, `ChecklistSettings` scoped): `photo_requirement` = optional / pending (wajib untuk tugas Pending) / all (wajib untuk semua tugas) dan
+  `photo_retention_days` (bawaan 90, 0 = tidak pernah). Foto wajib yang belum ada membuat checklist "belum lengkap" (`Checklist::missingPhotos`, ikut `isComplete`), jadi belum bisa direview. `checklist:prune-photos` (harian 03:30)
+  menghapus foto yang lewat masa simpan; isian checklist tetap ada. Server produksi: `upload_max_filesize` >= 8M dan `post_max_size` >= 10M (HP sudah mengecilkan foto, tapi server menerima sampai 8 MB).
 - Status: `saved` (Belum direview) / `reviewed` (Sudah direview). GM/HR/Admin menekan "Tandai sudah direview" (tercatat siapa & kapan, bukan checklist sendiri); sesudahnya HOD/staff tidak bisa mengubah,
   HR/Admin masih bisa edit dan hapus. Detail `/checklists/{id}` (ringkasan, skor n/N Done, pil, tugas tambahan, Edit, Cetak, Hapus). Daftar `/checklists` (menu Riwayat) per tanggal.
 - Skor = persentase tugas Done; warna: >= 90 hijau, 70-89 emas, < 70 merah.

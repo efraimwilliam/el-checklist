@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Checklists\ChecklistSettings;
 use App\Enums\ChecklistStatus;
 use App\Enums\ItemStatus;
 use Illuminate\Database\Eloquent\Model;
@@ -76,10 +77,25 @@ class Checklist extends Model
             : 0;
     }
 
-    /** Lengkap: semua tugas berstatus dan setiap Pending beralasan. Hanya yang lengkap yang bisa direview. */
+    /** Tugas yang masih kurang fotonya menurut pengaturan Administrator (opsional / wajib untuk Pending / wajib untuk semua). */
+    public function missingPhotos(): int
+    {
+        $requirement = app(ChecklistSettings::class)->photoRequirement();
+        if ($requirement === 'optional') {
+            return 0;
+        }
+
+        return $this->items->loadMissing('photos')
+            ->filter(fn ($item) => $requirement === 'all' || $item->status === ItemStatus::Pending)
+            ->filter(fn ($item) => $item->photos->isEmpty())
+            ->count();
+    }
+
+    /** Lengkap: semua tugas berstatus, setiap Pending beralasan, dan foto sesuai pengaturan. Hanya yang lengkap yang bisa direview. */
     public function isComplete(): bool
     {
-        return $this->items->isNotEmpty() && $this->answeredCount() === $this->items->count() && $this->missingReasons() === 0;
+        return $this->items->isNotEmpty() && $this->answeredCount() === $this->items->count()
+            && $this->missingReasons() === 0 && $this->missingPhotos() === 0;
     }
 
     /** Persentase tugas Done (0-100), atau null bila tanpa tugas. Tugas tambahan tidak dihitung. */

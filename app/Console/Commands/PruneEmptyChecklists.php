@@ -18,7 +18,7 @@ class PruneEmptyChecklists extends Command
             ->where('updated_at', '<', now()->subDays((int) $this->option('days')))
             ->whereNull('note')
             ->whereDoesntHave('extraTasks')
-            ->whereDoesntHave('items', fn ($q) => $q->whereNotNull('status'))
+            ->whereDoesntHave('items', fn ($q) => $q->whereNotNull('status')->orWhereHas('photos'))
             ->delete();
 
         $this->info("Checklist kosong dihapus: {$deleted}.");

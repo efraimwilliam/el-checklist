@@ -133,11 +133,11 @@ class ChecklistService
     /**
      * Ringkasan untuk bilah progres.
      *
-     * @return array{filled: int, total: int, done: int, ongoing: int, pending: int, score: ?int, complete: bool, missing_reasons: int}
+     * @return array{filled: int, total: int, done: int, ongoing: int, pending: int, score: ?int, complete: bool, missing_reasons: int, missing_photos: int}
      */
     public function progress(Checklist $checklist): array
     {
-        $checklist->unsetRelation('items')->load('items');
+        $checklist->unsetRelation('items')->load('items.photos');
         $counts = $checklist->counts();
 
         return [
@@ -149,6 +149,7 @@ class ChecklistService
             'score' => $checklist->score(),
             'complete' => $checklist->isComplete(),
             'missing_reasons' => $checklist->missingReasons(),
+            'missing_photos' => $checklist->missingPhotos(),
         ];
     }
 

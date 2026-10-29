@@ -12,6 +12,9 @@
          data-meta-url="{{ route('checklists.meta', $checklist) }}"
          data-rest-done-url="{{ route('checklists.rest-done', $checklist) }}"
          data-clear-url="{{ route('checklists.clear', $checklist) }}"
+         data-photo-url="{{ route('checklists.photos.store', [$checklist, '__ITEM__']) }}"
+         data-photo-requirement="{{ $photoRequirement }}"
+         data-photo-max="{{ $photoMax }}"
          data-pending-note="{{ config('checklist.pending_note_required') ? '1' : '0' }}">
 
         <div class="card mb-4 flex flex-wrap items-start justify-between gap-3 p-5">
@@ -70,6 +73,21 @@
                                         </label>
                                     @endforeach
                                 </div>
+                            </div>
+                            <div class="mt-2" data-photos>
+                                <div class="flex flex-wrap items-center gap-2" data-photo-list>
+                                    @foreach ($item->photos as $photo)
+                                        <div class="cl-photo" data-photo data-delete-url="{{ route('checklists.photos.destroy', [$checklist, $photo]) }}">
+                                            <a href="{{ $photo->url() }}" target="_blank" rel="noopener"><img src="{{ $photo->url() }}" alt="Foto tugas {{ $number }}" loading="lazy"></a>
+                                            <button type="button" data-photo-remove aria-label="Hapus foto">✕</button>
+                                        </div>
+                                    @endforeach
+                                    <label class="cl-photo-add {{ $item->photos->count() >= $photoMax ? 'hidden' : '' }}" data-photo-add>
+                                        <input type="file" accept="image/*" multiple class="sr-only" data-photo-input aria-label="Tambah foto tugas {{ $number }}">
+                                        <span>+ Foto</span>
+                                    </label>
+                                </div>
+                                <p data-photo-hint class="mt-1 hidden text-sm text-rose-700">Foto wajib untuk tugas ini.</p>
                             </div>
                             <button type="button" data-note-toggle class="cl-note-toggle {{ $showNote ? 'hidden' : '' }}">+ Catatan</button>
                             <div data-note class="mt-2 {{ $showNote ? '' : 'hidden' }}">
