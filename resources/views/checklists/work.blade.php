@@ -95,10 +95,19 @@
                                             <button type="button" data-photo-remove aria-label="Hapus foto">✕</button>
                                         </div>
                                     @endforeach
-                                    <label class="cl-photo-add {{ $item->photos->count() >= $photoMax ? 'hidden' : '' }}" data-photo-add>
-                                        <input type="file" accept="image/*" multiple class="sr-only" data-photo-input aria-label="Tambah foto tugas {{ $number }}">
-                                        <span>+ Foto</span>
-                                    </label>
+                                    {{-- Dua pilihan: Kamera (dialog kamera di halaman) atau Galeri (pilih foto yang sudah ada). Input "capture" = cadangan bila kamera di halaman tidak bisa dipakai. --}}
+                                    <div class="flex flex-wrap items-center gap-2 {{ $item->photos->count() >= $photoMax ? 'hidden' : '' }}" data-photo-add>
+                                        <button type="button" class="cl-photo-add" data-photo-camera aria-label="Ambil foto dengan kamera untuk tugas {{ $number }}">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="3.5"/></svg>
+                                            <span>Kamera</span>
+                                        </button>
+                                        <label class="cl-photo-add">
+                                            <input type="file" accept="image/*" multiple class="sr-only" data-photo-input aria-label="Pilih foto dari galeri untuk tugas {{ $number }}">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="m21 16-5-5-8 8"/></svg>
+                                            <span>Galeri</span>
+                                        </label>
+                                        <input type="file" accept="image/*" capture="environment" class="sr-only" data-photo-native tabindex="-1" aria-hidden="true">
+                                    </div>
                                 </div>
                                 <p data-photo-hint class="mt-1 hidden text-sm text-rose-700">Foto wajib untuk tugas ini.</p>
                             </div>
@@ -152,6 +161,17 @@
         </div>
         </div>
 
+        {{-- Kamera di halaman: pratinjau langsung, potret, balik kamera depan / belakang --}}
+        <dialog class="cl-camera" data-camera aria-label="Kamera">
+            <video data-camera-video autoplay playsinline muted></video>
+            <p class="px-4 pt-3 text-center text-sm text-white/80" data-camera-message>Menyalakan kamera…</p>
+            <div class="flex items-center justify-between gap-3 p-4">
+                <button type="button" class="btn !bg-white/10 !text-white hover:!bg-white/20" data-camera-close>Tutup</button>
+                <button type="button" class="cl-shutter" data-camera-shoot aria-label="Ambil foto"></button>
+                <button type="button" class="btn !bg-white/10 !text-white hover:!bg-white/20" data-camera-flip>Balik kamera</button>
+            </div>
+        </dialog>
+
         {{-- Bilah progres menempel di bawah layar --}}
         <div class="sticky bottom-3 z-10 mt-4 rounded-2xl bg-ink px-5 py-3 text-white shadow-lg">
             <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
@@ -163,7 +183,11 @@
                     </p>
                     <p class="text-xs text-white/60"><button type="button" data-retry class="hidden underline">Coba simpan lagi</button><span data-save-state data-state="saved">Tersimpan otomatis</span></p>
                 </div>
-                <a href="{{ route('checklists.show', $checklist) }}" class="btn-primary">Selesai · lihat hasil</a>
+                @php($finishReady = ($progress['score'] ?? 0) === 100)
+                <div class="text-right">
+                    <a href="{{ route('checklists.show', $checklist) }}" data-finish class="btn-primary {{ $finishReady ? '' : 'pointer-events-none opacity-50' }}" aria-disabled="{{ $finishReady ? 'false' : 'true' }}" @if (! $finishReady) tabindex="-1" @endif>Selesai · lihat hasil</a>
+                    <p data-finish-hint class="mt-1 text-xs text-white/60 {{ $finishReady ? 'hidden' : '' }}">Aktif saat skor 100%</p>
+                </div>
             </div>
         </div>
     </div>

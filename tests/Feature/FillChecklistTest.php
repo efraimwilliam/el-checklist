@@ -291,3 +291,17 @@ it('prunes abandoned empty checklists but keeps the ones with any entry or recen
     expect(Checklist::find($empty->id))->toBeNull()
         ->and(Checklist::find($answered->id))->not->toBeNull()->and(Checklist::find($withNote->id))->not->toBeNull()->and(Checklist::find($recent->id))->not->toBeNull();
 });
+
+it('only enables the finish button once the provisional score is 100%', function () {
+    loggedIn($this->hod);
+    $checklist = startedChecklist();
+
+    $this->get(route('checklists.fill', $checklist))->assertSee('aria-disabled="true"', false)->assertSee('Aktif saat skor 100%');
+
+    $this->postJson(route('checklists.rest-done', $checklist));
+    $this->get(route('checklists.fill', $checklist))->assertSee('aria-disabled="false"', false)->assertDontSee('pointer-events-none opacity-50');
+
+    // Satu tugas Ongoing: skor di bawah 100%, tombol nonaktif lagi. "Lihat hasil" di atas tetap bisa dipakai.
+    $checklist->items[0]->update(['status' => 'ongoing']);
+    $this->get(route('checklists.fill', $checklist))->assertSee('aria-disabled="true"', false)->assertSee(route('checklists.show', $checklist));
+});

@@ -178,7 +178,7 @@ it('shows photo controls on the work page and thumbnails on the detail page', fu
     uploadPhoto($this->item);
     $stored = ChecklistItemPhoto::sole();
 
-    $this->get(route('checklists.fill', $this->checklist))->assertOk()->assertSee('+ Foto')->assertSee('data-photo-requirement="optional"', false)->assertSee('data-photo-max="3"', false)->assertSee(route('checklists.photos.show', [$this->checklist, $stored]));
+    $this->get(route('checklists.fill', $this->checklist))->assertOk()->assertSee('Kamera')->assertSee('Galeri')->assertSee('data-camera', false)->assertSee('data-photo-native', false)->assertSee('data-photo-requirement="optional"', false)->assertSee('data-photo-max="3"', false)->assertSee(route('checklists.photos.show', [$this->checklist, $stored]));
     $this->get(route('checklists.show', $this->checklist))->assertOk()->assertSee(route('checklists.photos.show', [$this->checklist, $stored]));
 });
 

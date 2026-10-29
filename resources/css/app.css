@@ -178,4 +178,13 @@
     .cl-photo-add:hover { border-color: var(--color-gold-500); background: var(--color-slate-100); }
     .cl-photo-add:has(input:focus-visible) { outline: 2px solid var(--color-gold-500); }
     @media print { .cl-photo { width: 5rem; height: 5rem; } }
+
+    /* Kamera di halaman */
+    .cl-camera { margin: auto; width: min(32rem, calc(100% - 1.5rem)); overflow: hidden; border: 0; border-radius: 1.25rem; padding: 0; background: var(--color-ink); color: #fff; }
+    .cl-camera::backdrop { background: rgb(0 0 0 / 0.72); }
+    .cl-camera video { display: block; width: 100%; max-height: 68vh; background: #000; object-fit: cover; }
+    .cl-camera[data-facing='user'] video { transform: scaleX(-1); }
+    .cl-shutter { width: 4.25rem; height: 4.25rem; flex-shrink: 0; border-radius: 9999px; border: 4px solid #fff; background: #fff; box-shadow: inset 0 0 0 4px var(--color-ink); }
+    .cl-shutter:active { transform: scale(0.94); }
+    .cl-shutter:disabled { opacity: 0.5; }
 }

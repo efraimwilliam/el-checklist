@@ -20,6 +20,8 @@ if (root) {
         complete: root.querySelector('[data-complete]'),
         state: root.querySelector('[data-save-state]'),
         retry: root.querySelector('[data-retry]'),
+        finish: root.querySelector('[data-finish]'),
+        finishHint: root.querySelector('[data-finish-hint]'),
     };
 
     const statusOf = (item) => item.querySelector('input[type=radio]:checked')?.value ?? null;
@@ -174,6 +176,13 @@ if (root) {
         ui.score.textContent = `${percent}%`;
         ui.score.style.color = scoreColor(percent);
         ui.complete.classList.toggle('hidden', !(items.length && filled === items.length && missingReasons === 0 && missingPhotos === 0));
+        // "Selesai" baru bisa diklik saat skor sementara 100% (semua tugas Done).
+        const ready = items.length > 0 && percent === 100;
+        ui.finish.classList.toggle('pointer-events-none', !ready);
+        ui.finish.classList.toggle('opacity-50', !ready);
+        ui.finish.setAttribute('aria-disabled', String(!ready));
+        ui.finish.tabIndex = ready ? 0 : -1;
+        ui.finishHint.classList.toggle('hidden', ready);
         paintDeck();
     }
 
@@ -293,29 +302,128 @@ if (root) {
         list.insertBefore(thumb, item.querySelector('[data-photo-add]'));
     }
 
+    // Mengirim satu foto (sudah dikecilkan) ke server; mengembalikan true bila berhasil.
+    async function postPhoto(item, blob) {
+        inflight++;
+        setState('saving', 'Mengunggah foto…');
+        try {
+            const form = new FormData();
+            form.append('photo', blob, 'foto.jpg');
+            const data = await request('POST', root.dataset.photoUrl.replace('__ITEM__', item.dataset.id), form);
+            addThumb(item, data.photo);
+            refresh();
+            setState('saved', `Foto tersimpan · ${new Date().toTimeString().slice(0, 8)}`);
+
+            return true;
+        } catch (error) {
+            setState('error', error.message || 'Foto gagal diunggah.');
+
+            return false;
+        } finally {
+            inflight--;
+        }
+    }
+
+    // Foto dari galeri atau kamera bawaan HP: dikecilkan dulu, lalu dikirim satu per satu.
     async function uploadPhotos(item, files) {
         const room = photoMax - item.querySelectorAll('[data-photo]').length;
         if (files.length > room) setState('error', `Maksimal ${photoMax} foto per tugas.`);
         for (const file of files.slice(0, Math.max(room, 0))) {
-            inflight++;
-            setState('saving', 'Mengunggah foto…');
             try {
-                const form = new FormData();
-                form.append('photo', await compress(file), 'foto.jpg');
-                const data = await request('POST', root.dataset.photoUrl.replace('__ITEM__', item.dataset.id), form);
-                addThumb(item, data.photo);
-                refresh();
-                setState('saved', `Foto tersimpan · ${new Date().toTimeString().slice(0, 8)}`);
+                await postPhoto(item, await compress(file));
             } catch (error) {
-                setState('error', error.message || 'Foto gagal diunggah.');
-            } finally {
-                inflight--;
+                setState('error', error.message || 'Foto tidak bisa diproses. Coba foto lain.');
             }
         }
     }
 
+    // ---- Kamera di halaman ----
+    // Pratinjau langsung lewat getUserMedia (butuh HTTPS, atau localhost). Bila tidak tersedia atau izin ditolak,
+    // dipakai kamera bawaan HP lewat <input capture>, sehingga tombol Kamera selalu menghasilkan sesuatu.
+    const camera = root.querySelector('[data-camera]');
+    const video = camera.querySelector('[data-camera-video]');
+    const cameraMessage = camera.querySelector('[data-camera-message]');
+    const shutter = camera.querySelector('[data-camera-shoot]');
+    let cameraItem = null;
+    let cameraStream = null;
+    let facing = 'environment';
+
+    function stopCamera() {
+        cameraStream?.getTracks().forEach((track) => track.stop());
+        cameraStream = null;
+        video.srcObject = null;
+    }
+
+    async function startCamera() {
+        stopCamera();
+        shutter.disabled = true;
+        cameraMessage.textContent = 'Menyalakan kamera…';
+        camera.dataset.facing = facing;
+        cameraStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: facing }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+            audio: false,
+        });
+        video.srcObject = cameraStream;
+        await video.play().catch(() => {});
+        shutter.disabled = false;
+        cameraMessage.textContent = `Foto ${cameraItem.querySelectorAll('[data-photo]').length} dari ${photoMax}`;
+    }
+
+    async function openCamera(item) {
+        cameraItem = item;
+        if (!navigator.mediaDevices?.getUserMedia || !window.isSecureContext) return item.querySelector('[data-photo-native]').click();
+        try {
+            camera.showModal();
+            await startCamera();
+        } catch {
+            camera.close();
+            stopCamera();
+            setState('error', 'Kamera di halaman tidak bisa dipakai (izin ditolak atau butuh HTTPS). Memakai kamera bawaan HP.');
+            item.querySelector('[data-photo-native]').click();
+        }
+    }
+
+    shutter.addEventListener('click', async () => {
+        if (!cameraStream || !video.videoWidth) return;
+        shutter.disabled = true;
+        const scale = Math.min(1, 1280 / Math.max(video.videoWidth, video.videoHeight));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(video.videoWidth * scale);
+        canvas.height = Math.round(video.videoHeight * scale);
+        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+        const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+        const taken = blob && (await postPhoto(cameraItem, blob));
+        const count = cameraItem.querySelectorAll('[data-photo]').length;
+        if (count >= photoMax) {
+            camera.close();
+        } else {
+            shutter.disabled = false;
+            cameraMessage.textContent = taken ? `Tersimpan. Foto ${count} dari ${photoMax}` : 'Foto gagal disimpan. Coba lagi.';
+        }
+    });
+
+    camera.querySelector('[data-camera-flip]').addEventListener('click', async () => {
+        facing = facing === 'environment' ? 'user' : 'environment';
+        try {
+            await startCamera();
+        } catch {
+            facing = facing === 'environment' ? 'user' : 'environment';
+            cameraMessage.textContent = 'Kamera lain tidak tersedia.';
+            await startCamera().catch(() => {});
+        }
+    });
+    camera.querySelector('[data-camera-close]').addEventListener('click', () => camera.close());
+    camera.addEventListener('close', stopCamera);
+    // Ketuk di luar kotak kamera = tutup.
+    camera.addEventListener('click', (event) => event.target === camera && camera.close());
+
+    root.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-photo-camera]');
+        if (button) openCamera(button.closest('[data-item]'));
+    });
+
     root.addEventListener('change', (event) => {
-        const input = event.target.closest('[data-photo-input]');
+        const input = event.target.closest('[data-photo-input], [data-photo-native]');
         if (!input) return;
         const files = [...input.files];
         input.value = '';
