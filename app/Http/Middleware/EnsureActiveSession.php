@@ -25,9 +25,12 @@ class EnsureActiveSession
                 $request->session()->invalidate();
                 $request->session()->regenerateToken();
 
-                return redirect()->route('login')->withErrors(['username' => $expired
-                    ? __('Sesi Anda sudah berakhir. Silakan login lagi.')
-                    : __('Akses Anda ke aplikasi ini sudah tidak aktif.')]);
+                $message = $expired ? __('Sesi Anda sudah berakhir. Silakan login lagi.') : __('Akses Anda ke aplikasi ini sudah tidak aktif.');
+
+                // Penyimpanan otomatis (JSON) harus tahu sesinya habis, bukan menerima halaman login.
+                return $request->expectsJson()
+                    ? response()->json(['message' => $message], 401)
+                    : redirect()->route('login')->withErrors(['username' => $message]);
             }
         }
 

@@ -46,15 +46,19 @@ Laravel 13 + Blade + Tailwind 4 (Vite), MySQL, Pest. Timezone Asia/Makassar (WIT
   aktif + departemen sama + minimal satu). Halaman edit punya "Mulai dari tugas jabatan" untuk mencentang semua tugas satu jabatan lebih dulu. "Kembalikan ke bawaan" mengosongkan pilihan.
 - `ChecklistService::tasksFor(Employee, Position)`: tugas jabatan yang dipilih lebih dulu, lalu jabatan lain; tugas nonaktif / terhapus dilewati. Hanya berlaku untuk checklist yang dibuat sesudahnya.
 
-## Checklist (alur pengisian)
+## Checklist (alur pengisian, simpan otomatis)
 - Satu checklist = satu staff + satu jabatan + satu tanggal (unik `employee_id, position_id, date`). Disalin saat dibuat (departemen, nama jabatan, judul & standar tugas) sehingga riwayat utuh saat pegawai pindah /
-  keluar atau tugas diubah. Hanya dibuat saat disimpan dan selalu lengkap: semua tugas berstatus Done / Ongoing / Pending, Pending wajib beralasan bila `CHECKLIST_PENDING_NOTE_REQUIRED`
-  (`ChecklistInput`; skrip `resources/js/checklist.js` menunjukkan tugas bermasalah sebelum dikirim). Draft sebagian tidak ada di server.
-- Halaman isi `/isi` (`FillController`): HOD / HR / Admin memilih Departemen (bila lebih dari satu), Jabatan (dengan jumlah tugas), Tanggal (boleh mundur, tidak ke depan), Nama staff (dari data Absensi, aktif) dan
-  "Dicek oleh" (bawaan: yang terakhir dipakai akun itu, lalu nama sendiri), lalu "Mulai checklist" menampilkan form. Staff berakun langsung melihat form miliknya (`/checklist` mengalihkan ke sini).
-  Isi ulang kombinasi yang sama = memperbarui (`PUT /checklists/{id}` lewat `/isi?...&mulai=1`, ada pemberitahuan); simpan ganda bersamaan -> `DuplicateChecklist`.
-- Form: "Cara / standar", catatan otomatis untuk Ongoing/Pending, "Sisa tugas = Done", "Kosongkan", progres + skor sementara, "Tugas tambahan" (`checklist_extra_tasks`, tidak dihitung skor), catatan umum.
+  keluar atau tugas diubah. Dibuat saat "Mulai checklist" (`FillController::start`, `ChecklistService::start`: semua tugas belum diisi; memulai kombinasi yang sama membuka yang lama).
+- Halaman pemilih `/isi` (`FillController::create`): HOD / HR / Admin memilih Departemen (bila lebih dari satu), Jabatan (dengan jumlah tugas), Tanggal (boleh mundur, tidak ke depan), Nama staff (dari data Absensi, aktif)
+  dan "Dicek oleh" (bawaan: yang terakhir dipakai akun itu, lalu nama sendiri). Staff berakun hanya "Buka checklist" miliknya (`/checklist` mengalihkan ke sini). Panel "Lanjutkan checklist" = yang belum lengkap (7 hari).
+- Halaman kerja `/checklists/{id}/isi` (`ChecklistController::fill`, view `checklists/work`): TIAP PILIHAN TERSIMPAN OTOMATIS, tidak ada tombol simpan. Tampilan Kartu (satu kartu per tugas, 2 kolom di layar lebar,
+  tombol status besar) atau Daftar (baris rapat), diingat di perangkat (localStorage); satu markup, gaya dipilih `data-view` di `resources/css/app.css` (`.cl-*`). Catatan otomatis untuk Ongoing/Pending, "Cara / standar",
+  "Sisa tugas = Done", "Kosongkan", progres + skor sementara + "Lengkap ✓", tugas tambahan (tidak dihitung skor), catatan umum, "Dicek oleh". Indikator simpan + "Coba simpan lagi" + peringatan saat menutup halaman.
+- API simpan otomatis (JSON, semua lewat `Gate update`): `PATCH checklists/{c}/items/{item}` (status boleh null; Pending tanpa alasan tetap tersimpan), `POST rest-done`, `POST clear`, `PATCH checklists/{c}` (note, checked_by,
+  extras; hanya kunci yang dikirim). `resources/js/checklist.js`: antrean per kunci, ketikan ditunda 700 ms dan dikirim saat berpindah isian, keadaan terbaru dibaca dari layar. Sesi habis -> 401 JSON (`EnsureActiveSession`).
+- Lengkap (`Checklist::isComplete`, turunan, bukan kolom): semua tugas berstatus dan setiap Pending beralasan (`CHECKLIST_PENDING_NOTE_REQUIRED`). Checklist boleh tersimpan setengah jadi ("Belum lengkap n/m" di daftar & detail),
+  tetapi hanya yang lengkap yang bisa direview. `checklist:prune-empty` (harian 03:00) menghapus checklist tanpa satu pun isian yang lebih tua dari 2 hari.
 - Status: `saved` (Belum direview) / `reviewed` (Sudah direview). GM/HR/Admin menekan "Tandai sudah direview" (tercatat siapa & kapan, bukan checklist sendiri); sesudahnya HOD/staff tidak bisa mengubah,
   HR/Admin masih bisa edit dan hapus. Detail `/checklists/{id}` (ringkasan, skor n/N Done, pil, tugas tambahan, Edit, Cetak, Hapus). Daftar `/checklists` (menu Riwayat) per tanggal.
 - Skor = persentase tugas Done; warna: >= 90 hijau, 70-89 emas, < 70 merah.
-- Belum ada (rencana dari tutorial): dashboard, riwayat dengan filter lengkap + unduh CSV, draft di HP, email ringkasan harian.
+- Belum ada (rencana dari tutorial): dashboard, riwayat dengan filter lengkap + unduh CSV, email ringkasan harian.

@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AccessController;
 use App\Http\Controllers\Admin\TaskController;
 use App\Http\Controllers\Auth\AttendanceLoginController;
 use App\Http\Controllers\ChecklistController;
+use App\Http\Controllers\ChecklistItemController;
 use App\Http\Controllers\FillController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\TeamTaskController;
@@ -21,10 +22,14 @@ Route::middleware(['auth', EnsureActiveSession::class])->group(function () {
 
     Route::get('/checklist', [FillController::class, 'today'])->name('checklists.today');
     Route::get('/isi', [FillController::class, 'create'])->name('fill.create');
-    Route::post('/isi', [FillController::class, 'store'])->name('fill.store');
+    Route::post('/isi/mulai', [FillController::class, 'start'])->name('fill.start');
     Route::get('/checklists', [ChecklistController::class, 'index'])->name('checklists.index');
     Route::get('/checklists/{checklist}', [ChecklistController::class, 'show'])->name('checklists.show');
-    Route::put('/checklists/{checklist}', [ChecklistController::class, 'update'])->name('checklists.update');
+    Route::get('/checklists/{checklist}/isi', [ChecklistController::class, 'fill'])->name('checklists.fill');
+    Route::patch('/checklists/{checklist}', [ChecklistController::class, 'meta'])->name('checklists.meta');
+    Route::patch('/checklists/{checklist}/items/{item}', [ChecklistItemController::class, 'update'])->scopeBindings()->name('checklists.items.update');
+    Route::post('/checklists/{checklist}/rest-done', [ChecklistItemController::class, 'restDone'])->name('checklists.rest-done');
+    Route::post('/checklists/{checklist}/clear', [ChecklistItemController::class, 'clear'])->name('checklists.clear');
     Route::post('/checklists/{checklist}/review', [ChecklistController::class, 'review'])->name('checklists.review');
     Route::delete('/checklists/{checklist}', [ChecklistController::class, 'destroy'])->name('checklists.destroy');
 

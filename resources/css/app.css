@@ -90,3 +90,54 @@
 
 /* Garis emas tipis di atas header dan halaman */
 @utility gold-rule { background-image: linear-gradient(90deg, #8a5a2b, #c9a24f 55%, #e2c47c); }
+
+/*
+ * Halaman checklist: satu markup untuk dua tampilan, dipilih lewat data-view pada [data-checklist-root].
+ * Kartu = tiap tugas satu kartu (2 kolom di layar lebar), daftar = baris rapat dalam satu kartu per bagian.
+ */
+@layer components {
+    .cl-item { position: relative; }
+    .cl-row { display: flex; flex-direction: column; gap: 0.625rem; }
+    .cl-title { @apply text-base font-medium leading-snug text-slate-800; }
+    .cl-num { @apply mr-1 font-semibold tabular-nums text-slate-400; }
+    .cl-item[data-status=''] .cl-num { color: var(--color-rose-600); }
+    .cl-std { @apply mt-1 text-sm; }
+    .cl-std summary { @apply cursor-pointer select-none font-semibold text-sky-700; }
+    .cl-std p { @apply mt-1.5 rounded-lg bg-slate-50 px-3 py-2 text-slate-600; }
+    .cl-note-toggle { @apply mt-2 text-sm font-semibold text-sky-700; }
+
+    .cl-seg { display: flex; width: 100%; overflow: hidden; border-radius: 9999px; border: 1px solid var(--color-slate-200); background: #fff; font-size: 0.8125rem; font-weight: 600; flex-shrink: 0; }
+    .cl-seg label { flex: 1; cursor: pointer; }
+    .cl-seg span { display: block; padding: 0.7rem 1rem; text-align: center; color: var(--color-slate-500); transition: background-color .15s, color .15s; }
+    .cl-seg input:focus-visible + span { outline: 2px solid var(--color-gold-500); outline-offset: -2px; }
+    .cl-seg input[value='done']:checked + span { background: #2a5c43; color: #fff; }
+    .cl-seg input[value='ongoing']:checked + span { background: #9a7410; color: #fff; }
+    .cl-seg input[value='pending']:checked + span { background: #b23a24; color: #fff; }
+
+    /* Tampilan kartu */
+    [data-view='card'] .cl-body { display: grid; gap: 0.75rem; }
+    [data-view='card'] .cl-item { @apply card p-4; border-left: 4px solid var(--color-slate-200); }
+    [data-view='card'] .cl-item[data-status='done'] { border-left-color: #2a5c43; }
+    [data-view='card'] .cl-item[data-status='ongoing'] { border-left-color: #9a7410; }
+    [data-view='card'] .cl-item[data-status='pending'] { border-left-color: #b23a24; }
+    [data-view='card'] .cl-seg span { padding-block: 0.85rem; }
+
+    /* Tampilan daftar */
+    [data-view='list'] .cl-body { @apply card px-5 py-1; }
+    [data-view='list'] .cl-item { border-top: 1px solid var(--color-slate-100); padding-block: 0.875rem; }
+    [data-view='list'] .cl-item:first-child { border-top: 0; }
+
+    @media (min-width: 640px) {
+        [data-view='card'] .cl-body { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        [data-view='list'] .cl-row { flex-direction: row; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+        [data-view='list'] .cl-seg { width: auto; }
+        [data-view='list'] .cl-seg span { padding-block: 0.5rem; }
+    }
+
+    .cl-item.is-problem { box-shadow: 0 0 0 2px var(--color-rose-300); }
+    [data-save-state][data-state='saving'] { color: var(--color-gold-400); }
+    [data-save-state][data-state='error'] { color: #f0a090; }
+    .cl-toggle { display: inline-flex; overflow: hidden; border-radius: 9999px; border: 1px solid var(--color-slate-300); background: #fff; }
+    .cl-toggle button { padding: 0.45rem 1rem; font-size: 0.875rem; font-weight: 600; color: var(--color-slate-500); }
+    .cl-toggle button[aria-pressed='true'] { background: var(--color-ink); color: #fff; }
+}

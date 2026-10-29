@@ -2,10 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Checklists\ChecklistInput;
 use App\Checklists\ChecklistService;
-use App\Checklists\DuplicateChecklist;
-use App\Enums\ItemStatus;
 use App\Enums\Role;
 use App\Models\Checklist;
 use App\Models\Department;
@@ -19,9 +16,9 @@ use Illuminate\View\View;
 use Throwable;
 
 /**
- * Mengisi checklist harian: pilih jabatan, tanggal (boleh mundur, tidak ke depan) dan staff dari data Absensi, lalu tandai setiap tugas.
- * HOD mengisi untuk staff di departemennya; HR / Administrator untuk semua departemen; staff berakun hanya untuk dirinya sendiri.
- * Mengisi ulang staff + jabatan + tanggal yang sama memperbarui checklist lama, tidak membuat ganda.
+ * Memulai checklist harian: pilih jabatan, tanggal (boleh mundur, tidak ke depan) dan staff dari data Absensi, lalu "Mulai checklist" membuka
+ * halaman kartu / daftar tempat tiap tugas tersimpan otomatis. HOD mengisi untuk staff di departemennya; HR / Administrator untuk semua
+ * departemen; staff berakun hanya untuk dirinya sendiri. Memulai staff + jabatan + tanggal yang sudah ada membuka yang lama (tidak ganda).
  */
 class FillController extends Controller
 {
@@ -48,7 +45,6 @@ class FillController extends Controller
             $positions = collect();
             $employees = collect();
             $checker = null;
-            $started = true;
         } else {
             $allowed = $user->accessibleDepartmentIds();
             $departments = Department::where('is_active', true)->when($allowed !== null, fn ($q) => $q->whereIn('id', $allowed))->orderBy('sort')->orderBy('name')->get();
@@ -65,31 +61,16 @@ class FillController extends Controller
             $employee = $employees->firstWhere('id', (int) $request->query('employee'));
             // "Dicek oleh" diingat dari checklist terakhir yang diisi akun ini.
             $checker = $request->query('checker') ?? Checklist::where('filled_by', $user->id)->latest('id')->value('checked_by') ?? $user->name();
-            $started = $request->boolean('mulai');
         }
 
-        $mode = null;
-        $problem = null;
-        $rows = [];
-        $checklist = null;
-        if ($started && $employee && $position) {
-            if ($date->gt($today)) {
-                $problem = __('Tanggal tidak boleh di masa depan.');
-            } elseif (! Gate::allows('fill', [Checklist::class, $employee, $position])) {
-                $problem = $staffMode
-                    ? __('Jabatan checklist Anda belum diatur atau tidak sesuai departemen Anda. Hubungi HR.')
-                    : __('Anda tidak boleh mengisi checklist ini.');
-            } elseif ($checklist = $this->service->find($employee, $position, $date)) {
-                $checklist->load(['items', 'extraTasks']);
-                $mode = Gate::allows('update', $checklist) ? 'edit' : 'locked';
-                $rows = $this->service->rowsForExisting($checklist);
-            } else {
-                $rows = $this->service->rowsForNew($employee, $position);
-                $mode = $rows ? 'new' : 'empty';
-            }
-        } elseif ($staffMode && ! $position) {
-            $problem = __('Jabatan checklist Anda belum diatur, jadi daftar tugas belum bisa dibuat. Hubungi HR atau Administrator.');
-        }
+        $problem = $staffMode && ! Gate::allows('fill', [Checklist::class, $employee, $position ?? new Position])
+            ? __('Jabatan checklist Anda belum diatur atau tidak sesuai departemen Anda, jadi daftar tugas belum bisa dibuat. Hubungi HR atau Administrator.')
+            : null;
+
+        // Checklist yang belum lengkap (tersimpan otomatis tapi belum selesai) supaya mudah dilanjutkan.
+        $resume = Checklist::with(['items', 'employee'])->where('status', 'saved')->whereDate('date', '>=', $today->subDays(7))
+            ->where(fn ($q) => $q->where('filled_by', $user->id)->orWhere('employee_id', $user->employee_id))
+            ->latest('date')->latest('id')->limit(30)->get()->reject(fn (Checklist $c) => $c->isComplete())->take(10);
 
         return view('checklists.fill', [
             'staffMode' => $staffMode,
@@ -102,36 +83,34 @@ class FillController extends Controller
             'date' => $date,
             'today' => $today,
             'checker' => $checker,
-            'mode' => $mode,
             'problem' => $problem,
-            'rows' => $rows,
-            'checklist' => $checklist,
-            'statuses' => ItemStatus::cases(),
+            'resume' => $resume,
             'history' => $staffMode ? Checklist::where('employee_id', $user->employee_id)->latest('date')->limit(14)->get() : collect(),
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function start(Request $request): RedirectResponse
     {
         Gate::authorize('fill-checklists');
         $data = $request->validate([
             'position' => ['required', 'integer', 'exists:positions,id'],
             'employee' => ['required', 'integer', 'exists:employees,id'],
             'date' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
+            'checker' => ['nullable', 'string', 'max:255'],
         ], ['date.before_or_equal' => __('Tanggal tidak boleh di masa depan.')]);
         $employee = Employee::findOrFail($data['employee']);
         $position = Position::findOrFail($data['position']);
         Gate::authorize('fill', [Checklist::class, $employee, $position]);
 
-        $input = ChecklistInput::validate($request, $this->service->tasksFor($employee, $position)->pluck('id')->all());
-        try {
-            $checklist = $this->service->create($employee, $position, CarbonImmutable::parse($data['date']), $request->user(), $input);
-        } catch (DuplicateChecklist $duplicate) {
-            return redirect()->route('fill.create', $duplicate->existing->fillParams())
-                ->withErrors(['duplicate' => __('Checklist ini baru saja disimpan dari tempat lain. Data terbaru dimuat; periksa lalu simpan lagi.')]);
+        $date = CarbonImmutable::parse($data['date']);
+        $existing = $this->service->find($employee, $position, $date);
+        if ($existing && ! Gate::allows('update', $existing)) {
+            return redirect()->route('checklists.show', $existing)->with('status', __('Checklist ini sudah direview dan terkunci. Perubahan hanya lewat HR.'));
         }
 
-        return redirect()->route('checklists.show', $checklist)->with('status', __('Checklist disimpan.'));
+        $checklist = $existing ?? $this->service->start($employee, $position, $date, $request->user(), $request->user()->role === Role::Staff ? null : ($data['checker'] ?? null));
+
+        return redirect()->route('checklists.fill', $checklist);
     }
 
     private function date(mixed $value): ?CarbonImmutable

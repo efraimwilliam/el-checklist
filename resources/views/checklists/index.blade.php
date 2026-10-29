@@ -53,6 +53,9 @@
                         <td class="px-4 py-2.5 font-semibold {{ ($checklist->score() ?? 0) >= 90 ? 'text-emerald-700' : (($checklist->score() ?? 0) >= 70 ? 'text-amber-800' : 'text-rose-700') }}">{{ $checklist->score() !== null ? $checklist->score().'%' : '—' }}</td>
                         <td class="px-4 py-2.5">
                             <div class="flex flex-wrap gap-1">
+                                @unless ($checklist->isComplete() || $checklist->isReviewed())
+                                    <span class="pill-neutral">Belum lengkap {{ $checklist->answeredCount() }}/{{ $checklist->items->count() }}</span>
+                                @endunless
                                 <span class="pill-done">{{ $counts['done'] }} Done</span>
                                 @if ($counts['ongoing']) <span class="pill-ongoing">{{ $counts['ongoing'] }} Ongoing</span> @endif
                                 @if ($counts['pending']) <span class="pill-pending">{{ $counts['pending'] }} Pending</span> @endif

@@ -2,81 +2,94 @@
     <div class="mb-4">
         <h1 class="text-3xl text-slate-900">{{ $staffMode ? 'Checklist saya' : 'Isi checklist harian' }}</h1>
         <p class="text-sm text-slate-500">
-            {{ $staffMode ? 'Tandai setiap tugas, lalu simpan.' : 'Pilih jabatan dan staff yang dicek, lalu tandai setiap tugas. Satu checklist = satu staff, satu jabatan, satu tanggal.' }}
+            {{ $staffMode ? 'Buka checklist hari ini lalu pilih status tiap tugas. Setiap pilihan tersimpan otomatis.' : 'Pilih jabatan dan staff yang dicek. Setiap pilihan tersimpan otomatis, jadi bisa dilanjutkan kapan saja.' }}
         </p>
     </div>
 
-    @error('duplicate') <p class="mb-4 rounded-xl bg-amber-100 px-4 py-3 text-sm text-amber-800">{{ $message }}</p> @enderror
+    @if ($errors->any())
+        <div class="mb-4 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">@foreach ($errors->all() as $message) <p>{{ $message }}</p> @endforeach</div>
+    @endif
+    @if ($problem)
+        <p class="mb-4 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{{ $problem }}</p>
+    @endif
 
     @if ($staffMode)
-        <form method="GET" action="{{ route('fill.create') }}" class="card mb-4 flex flex-wrap items-end gap-3 p-4">
-            <div>
-                <label for="date" class="label">Tanggal</label>
-                <input id="date" type="date" name="date" value="{{ $date->toDateString() }}" max="{{ $today->toDateString() }}" class="input">
-            </div>
-            <button class="btn-secondary">Buka</button>
-        </form>
+        @unless ($problem)
+            <form method="POST" action="{{ route('fill.start') }}" class="card mb-4 flex flex-wrap items-end gap-3 p-4">
+                @csrf
+                <input type="hidden" name="position" value="{{ $position->id }}">
+                <input type="hidden" name="employee" value="{{ $employee->id }}">
+                <div>
+                    <label for="date" class="label">Tanggal</label>
+                    <input id="date" type="date" name="date" value="{{ old('date', $date->toDateString()) }}" max="{{ $today->toDateString() }}" required class="input">
+                </div>
+                <button class="btn-primary">Buka checklist {{ $position->name }}</button>
+            </form>
+        @endunless
     @else
-        <form method="GET" action="{{ route('fill.create') }}" class="card mb-4 grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-5 lg:items-end">
+        {{-- Ganti departemen memuat ulang daftar jabatan dan staff (form terpisah agar tidak bersarang). --}}
+        <form id="department-form" method="GET" action="{{ route('fill.create') }}"></form>
+        <form method="POST" action="{{ route('fill.start') }}" class="card mb-4 grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-5 lg:items-end">
+            @csrf
             @if ($departments->count() > 1)
                 <div>
                     <label for="department" class="label">Departemen</label>
-                    <select id="department" name="department" class="input" onchange="this.form.submit()">
+                    <select id="department" name="department" form="department-form" class="input" onchange="this.form.submit()">
                         @foreach ($departments as $option)
                             <option value="{{ $option->id }}" @selected($department?->id === $option->id)>{{ $option->name }}</option>
                         @endforeach
                     </select>
                 </div>
-            @else
-                <input type="hidden" name="department" value="{{ $department?->id }}">
             @endif
             <div>
                 <label for="position" class="label">Jabatan</label>
                 <select id="position" name="position" class="input" required>
                     <option value="">Pilih jabatan</option>
                     @foreach ($positions as $option)
-                        <option value="{{ $option->id }}" @selected($position?->id === $option->id)>{{ $option->name }} ({{ $option->active_tasks_count }} tugas)</option>
+                        <option value="{{ $option->id }}" @selected((int) old('position', $position?->id) === $option->id)>{{ $option->name }} ({{ $option->active_tasks_count }} tugas)</option>
                     @endforeach
                 </select>
             </div>
             <div>
                 <label for="date" class="label">Tanggal</label>
-                <input id="date" type="date" name="date" value="{{ $date->toDateString() }}" max="{{ $today->toDateString() }}" required class="input">
+                <input id="date" type="date" name="date" value="{{ old('date', $date->toDateString()) }}" max="{{ $today->toDateString() }}" required class="input">
             </div>
             <div>
                 <label for="employee" class="label">Nama staff yang dicek</label>
                 <select id="employee" name="employee" class="input" required>
                     <option value="">Pilih staff</option>
                     @foreach ($employees as $option)
-                        <option value="{{ $option->id }}" @selected($employee?->id === $option->id)>{{ $option->name }}</option>
+                        <option value="{{ $option->id }}" @selected((int) old('employee', $employee?->id) === $option->id)>{{ $option->name }}</option>
                     @endforeach
                 </select>
             </div>
             <div>
                 <label for="checker" class="label">Dicek oleh (HOD / atasan)</label>
-                <input id="checker" name="checker" value="{{ $checker }}" maxlength="255" class="input">
+                <input id="checker" name="checker" value="{{ old('checker', $checker) }}" maxlength="255" class="input">
             </div>
             <div class="sm:col-span-2 lg:col-span-5 lg:text-right">
-                <button name="mulai" value="1" class="btn-primary w-full sm:w-auto">Mulai checklist</button>
+                <button class="btn-primary w-full sm:w-auto">Mulai checklist</button>
             </div>
         </form>
     @endif
 
-    @if ($problem)
-        <p class="mb-4 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{{ $problem }}</p>
-    @elseif ($mode === 'locked')
-        <div class="mb-4 rounded-xl border border-amber-200 bg-amber-100 px-4 py-3 text-sm text-amber-800">
-            Checklist ini sudah direview oleh {{ $checklist->reviewer?->name() ?? 'GM / HR' }} dan terkunci. Perubahan hanya lewat HR.
-            <a href="{{ route('checklists.show', $checklist) }}" class="font-semibold underline">Lihat checklist</a>
+    @if ($resume->isNotEmpty())
+        <div class="card mb-4 p-4">
+            <h2 class="mb-2 font-display text-xl">Lanjutkan checklist</h2>
+            <p class="mb-2 text-sm text-slate-500">Checklist yang sudah mulai diisi tetapi belum lengkap (7 hari terakhir).</p>
+            <ul class="divide-y divide-slate-100 text-sm">
+                @foreach ($resume as $draft)
+                    <li class="flex flex-wrap items-center justify-between gap-2 py-2.5">
+                        <a href="{{ route('checklists.fill', $draft) }}" class="font-medium text-sky-700 hover:underline">{{ $draft->employee->name }} · {{ $draft->position_name }} · {{ $draft->date->translatedFormat('d M Y') }}</a>
+                        <span class="pill-neutral">{{ $draft->answeredCount() }} / {{ $draft->items->count() }} terisi</span>
+                    </li>
+                @endforeach
+            </ul>
         </div>
-    @elseif ($mode === 'empty')
-        <p class="mb-4 rounded-xl bg-slate-100 px-4 py-3 text-sm text-slate-600">Jabatan ini belum punya tugas aktif. Minta HR menambahkannya di menu Kelola tugas.</p>
-    @elseif ($mode)
-        @include('checklists.partials.form')
     @endif
 
     @if ($staffMode && $history->isNotEmpty())
-        <div class="card mt-6 p-4">
+        <div class="card p-4">
             <h2 class="mb-2 text-xs font-semibold uppercase tracking-[0.1em] text-slate-500">Riwayat 14 terakhir</h2>
             <ul class="divide-y divide-slate-100 text-sm">
                 @foreach ($history as $past)

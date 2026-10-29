@@ -57,18 +57,29 @@ class Checklist extends Model
         return $this->hasMany(ChecklistExtraTask::class)->orderBy('sort')->orderBy('id');
     }
 
-    /** Parameter halaman isi (/isi) untuk membuka checklist ini lagi. */
-    public function fillParams(): array
-    {
-        return [
-            'department' => $this->department_id, 'position' => $this->position_id, 'employee' => $this->employee_id,
-            'date' => $this->date->toDateString(), 'checker' => $this->checked_by, 'mulai' => 1,
-        ];
-    }
-
     public function isReviewed(): bool
     {
         return $this->status === ChecklistStatus::Reviewed;
+    }
+
+    /** Jumlah tugas yang sudah diberi status. */
+    public function answeredCount(): int
+    {
+        return $this->items->whereNotNull('status')->count();
+    }
+
+    /** Tugas Pending yang belum diberi alasan (bila alasan wajib). */
+    public function missingReasons(): int
+    {
+        return config('checklist.pending_note_required')
+            ? $this->items->where('status', ItemStatus::Pending)->filter(fn ($item) => blank($item->note))->count()
+            : 0;
+    }
+
+    /** Lengkap: semua tugas berstatus dan setiap Pending beralasan. Hanya yang lengkap yang bisa direview. */
+    public function isComplete(): bool
+    {
+        return $this->items->isNotEmpty() && $this->answeredCount() === $this->items->count() && $this->missingReasons() === 0;
     }
 
     /** Persentase tugas Done (0-100), atau null bila tanpa tugas. Tugas tambahan tidak dihitung. */

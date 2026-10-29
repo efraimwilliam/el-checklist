@@ -3,7 +3,9 @@
 namespace App\Checklists;
 
 use App\Enums\ChecklistStatus;
+use App\Enums\ItemStatus;
 use App\Models\Checklist;
+use App\Models\ChecklistItem;
 use App\Models\Employee;
 use App\Models\Position;
 use App\Models\Task;
@@ -14,8 +16,9 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Membuat dan memperbarui checklist. Checklist menyalin departemen, jabatan dan isi tugas saat dibuat, jadi riwayat tetap utuh
- * walau pegawai pindah departemen atau daftar tugas diubah / dihapus sesudahnya.
+ * Membuat checklist dan menyimpan isiannya satu per satu (penyimpanan otomatis). Checklist menyalin departemen, jabatan dan isi tugas
+ * saat dibuat, jadi riwayat tetap utuh walau pegawai pindah departemen atau daftar tugas diubah / dihapus sesudahnya.
+ * Checklist boleh tersimpan setengah jadi; "lengkap" adalah turunan (lihat Checklist::isComplete) dan menentukan bisa tidaknya direview.
  */
 class ChecklistService
 {
@@ -45,42 +48,13 @@ class ChecklistService
         return Checklist::where('employee_id', $employee->id)->where('position_id', $position->id)->whereDate('date', $date)->first();
     }
 
-    /**
-     * Baris form untuk checklist baru (kunci = id tugas).
-     *
-     * @return list<array{key: int, section: ?string, title: string, standard: ?string, status: ?string, note: ?string}>
-     */
-    public function rowsForNew(Employee $employee, Position $position): array
-    {
-        return $this->tasksFor($employee, $position)->map(fn (Task $task) => [
-            'key' => $task->id, 'section' => $task->section, 'title' => $task->title, 'standard' => $task->standard, 'status' => null, 'note' => null,
-        ])->values()->all();
-    }
-
-    /**
-     * Baris form untuk checklist yang sudah ada (kunci = id item).
-     *
-     * @return list<array{key: int, section: ?string, title: string, standard: ?string, status: ?string, note: ?string}>
-     */
-    public function rowsForExisting(Checklist $checklist): array
-    {
-        return $checklist->items->map(fn ($item) => [
-            'key' => $item->id, 'section' => $item->section, 'title' => $item->title, 'standard' => $item->standard,
-            'status' => $item->status?->value, 'note' => $item->note,
-        ])->values()->all();
-    }
-
-    /**
-     * @param  array{items: array<int, array{status: ?string, note: ?string}>, note: ?string, checked_by: ?string, extras: list<array<string, mixed>>}  $input
-     *
-     * @throws DuplicateChecklist
-     */
-    public function create(Employee $employee, Position $position, CarbonImmutable $date, User $by, array $input): Checklist
+    /** Membuka checklist staff + jabatan + tanggal itu, atau membuatnya (semua tugas belum diisi) bila belum ada. */
+    public function start(Employee $employee, Position $position, CarbonImmutable $date, User $by, ?string $checkedBy): Checklist
     {
         try {
-            return DB::transaction(function () use ($employee, $position, $date, $by, $input) {
+            return DB::transaction(function () use ($employee, $position, $date, $by, $checkedBy) {
                 if ($existing = $this->find($employee, $position, $date)) {
-                    throw new DuplicateChecklist($existing);
+                    return $existing;
                 }
 
                 $checklist = Checklist::create([
@@ -90,8 +64,7 @@ class ChecklistService
                     'position_name' => $position->name,
                     'date' => $date->toDateString(),
                     'status' => ChecklistStatus::Saved,
-                    'note' => $input['note'],
-                    'checked_by' => $input['checked_by'],
+                    'checked_by' => $checkedBy,
                     'filled_by' => $by->id,
                 ]);
                 $checklist->items()->createMany($this->tasksFor($employee, $position)->values()->map(fn (Task $task, int $i) => [
@@ -100,39 +73,94 @@ class ChecklistService
                     'title' => $task->title,
                     'standard' => $task->standard,
                     'sort' => $i + 1,
-                    'status' => $input['items'][$task->id]['status'] ?? null,
-                    'note' => $input['items'][$task->id]['note'] ?? null,
                 ])->all());
-                $this->replaceExtras($checklist, $input['extras']);
 
                 return $checklist;
             });
         } catch (UniqueConstraintViolationException) {
-            // Dua simpanan bersamaan untuk staff + jabatan + tanggal yang sama: yang kedua dianggap sudah ada.
-            throw new DuplicateChecklist($this->find($employee, $position, $date));
+            // Dua perangkat memulai bersamaan: yang kedua membuka yang sudah dibuat.
+            return $this->find($employee, $position, $date);
         }
     }
 
-    /**
-     * @param  array{items: array<int, array{status: ?string, note: ?string}>, note: ?string, checked_by: ?string, extras: list<array<string, mixed>>}  $input
-     */
-    public function update(Checklist $checklist, User $by, array $input): Checklist
+    /** Menyimpan satu tugas. Status kosong (null) berarti belum diisi. */
+    public function saveItem(ChecklistItem $item, ?string $status, ?string $note, User $by): void
     {
-        return DB::transaction(function () use ($checklist, $by, $input) {
-            foreach ($checklist->items as $item) {
-                $item->update(['status' => $input['items'][$item->id]['status'] ?? $item->status, 'note' => $input['items'][$item->id]['note'] ?? null]);
-            }
-            $checklist->update(['note' => $input['note'], 'checked_by' => $input['checked_by'], 'filled_by' => $by->id]);
-            $this->replaceExtras($checklist, $input['extras']);
+        $item->update(['status' => $status, 'note' => $this->clean($note)]);
+        $this->touch($item->checklist, $by);
+    }
 
-            return $checklist;
+    /** "Sisa tugas = Done": semua tugas yang belum diisi menjadi Done. */
+    public function markRestDone(Checklist $checklist, User $by): void
+    {
+        $checklist->items()->whereNull('status')->update(['status' => ItemStatus::Done->value]);
+        $this->touch($checklist, $by);
+    }
+
+    /** "Kosongkan": semua status dan catatan tugas dikosongkan. */
+    public function clear(Checklist $checklist, User $by): void
+    {
+        $checklist->items()->update(['status' => null, 'note' => null]);
+        $this->touch($checklist, $by);
+    }
+
+    /**
+     * Catatan umum, "Dicek oleh" dan tugas tambahan; hanya kunci yang dikirim yang diubah.
+     *
+     * @param  array{note?: ?string, checked_by?: ?string, extras?: list<array{title?: ?string, status?: ?string, note?: ?string}>}  $meta
+     */
+    public function saveMeta(Checklist $checklist, User $by, array $meta): void
+    {
+        DB::transaction(function () use ($checklist, $by, $meta) {
+            foreach (['note', 'checked_by'] as $key) {
+                if (array_key_exists($key, $meta)) {
+                    $checklist->{$key} = $this->clean($meta[$key]);
+                }
+            }
+            if (array_key_exists('extras', $meta)) {
+                $checklist->extraTasks()->delete();
+                $checklist->extraTasks()->createMany(collect($meta['extras'])->filter(fn ($extra) => filled($extra['title'] ?? null))->values()->map(fn ($extra, $i) => [
+                    'title' => trim($extra['title']),
+                    'status' => $extra['status'] ?? ItemStatus::Done->value,
+                    'note' => $this->clean($extra['note'] ?? null),
+                    'sort' => $i + 1,
+                ])->all());
+            }
+            $this->touch($checklist, $by);
         });
     }
 
-    /** @param  list<array<string, mixed>>  $extras */
-    private function replaceExtras(Checklist $checklist, array $extras): void
+    /**
+     * Ringkasan untuk bilah progres.
+     *
+     * @return array{filled: int, total: int, done: int, ongoing: int, pending: int, score: ?int, complete: bool, missing_reasons: int}
+     */
+    public function progress(Checklist $checklist): array
     {
-        $checklist->extraTasks()->delete();
-        $checklist->extraTasks()->createMany(array_map(fn ($extra, $i) => $extra + ['sort' => $i + 1], $extras, array_keys($extras)));
+        $checklist->unsetRelation('items')->load('items');
+        $counts = $checklist->counts();
+
+        return [
+            'filled' => $checklist->answeredCount(),
+            'total' => $checklist->items->count(),
+            'done' => $counts['done'],
+            'ongoing' => $counts['ongoing'],
+            'pending' => $counts['pending'],
+            'score' => $checklist->score(),
+            'complete' => $checklist->isComplete(),
+            'missing_reasons' => $checklist->missingReasons(),
+        ];
+    }
+
+    /** Waktu simpan terakhir dan akun yang menyimpan. */
+    private function touch(Checklist $checklist, User $by): void
+    {
+        $checklist->forceFill(['filled_by' => $by->id])->save();
+        $checklist->touch();
+    }
+
+    private function clean(?string $value): ?string
+    {
+        return blank($value) ? null : trim($value);
     }
 }

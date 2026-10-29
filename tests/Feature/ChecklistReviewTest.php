@@ -51,12 +51,12 @@ it('does not let HODs or staff review, nor anyone review their own checklist', f
 
 it('locks a reviewed checklist for the HOD but not for HR or administrators', function () {
     $this->budiList->update(['status' => ChecklistStatus::Reviewed, 'reviewed_by' => userWithRole(Role::Gm)->id, 'reviewed_at' => now()]);
-    $items = $this->budiList->items->pluck('id');
-    $edit = fn () => $this->put(route('checklists.update', $this->budiList), ['items' => answers($items, 'pending')]);
+    $item = $this->budiList->items->first();
+    $edit = fn () => $this->patchJson(route('checklists.items.update', [$this->budiList, $item]), ['status' => 'pending', 'note' => 'koreksi']);
 
     loggedIn($this->hod);
     $this->get(route('checklists.show', $this->budiList))->assertOk()->assertDontSee('>Edit<', false);
-    $this->get(route('fill.create', $this->budiList->fillParams()))->assertSee('terkunci')->assertDontSee('Simpan checklist');
+    $this->get(route('checklists.fill', $this->budiList))->assertRedirect(route('checklists.show', $this->budiList));
     $edit()->assertForbidden();
     $this->post('/logout');
 
@@ -66,16 +66,18 @@ it('locks a reviewed checklist for the HOD but not for HR or administrators', fu
 
     loggedIn(userWithRole(Role::Hr));
     $this->get(route('checklists.show', $this->budiList))->assertSee('>Edit<', false);
-    $edit()->assertRedirect();
-    expect($this->budiList->fresh()->items->pluck('status.value')->unique()->all())->toBe(['pending']);
+    $this->get(route('checklists.fill', $this->budiList))->assertOk();
+    $edit()->assertOk();
+    expect($item->fresh()->status->value)->toBe('pending');
 });
 
 it('lets the HOD edit until the checklist is reviewed, but only in their own department', function () {
     loggedIn($this->hod);
     $this->get(route('checklists.show', $this->budiList))->assertSee('>Edit<', false);
-    $this->put(route('checklists.update', $this->budiList), ['items' => answers($this->budiList->items->pluck('id'), 'ongoing')])->assertRedirect();
-    $this->put(route('checklists.update', $this->sariList), ['items' => answers($this->sariList->items->pluck('id'), 'ongoing')])->assertForbidden();
+    $this->patchJson(route('checklists.items.update', [$this->budiList, $this->budiList->items->first()]), ['status' => 'ongoing'])->assertOk();
+    $this->patchJson(route('checklists.items.update', [$this->sariList, $this->sariList->items->first()]), ['status' => 'ongoing'])->assertForbidden();
     $this->get(route('checklists.show', $this->sariList))->assertForbidden();
+    $this->get(route('checklists.fill', $this->sariList))->assertForbidden();
 
     expect($this->budiList->fresh()->items->first()->status->value)->toBe('ongoing')->and($this->sariList->fresh()->items->first()->status->value)->toBe('done');
 });
@@ -118,4 +120,27 @@ it('lists checklists by date, limited to the departments the viewer may see', fu
 
     loggedIn(User::factory()->for($this->budi)->create());
     $this->get(route('checklists.index'))->assertForbidden();
+});
+
+it('does not let an incomplete checklist be reviewed, and says so', function () {
+    $draft = makeChecklist($this->budi, $this->gsa, now()->toImmutable()->subDay(), null);
+    $draft->items->first()->update(['status' => 'done']);
+    loggedIn(userWithRole(Role::Gm));
+
+    $this->get(route('checklists.show', $draft))->assertSee('Belum lengkap (1 / 2 tugas terisi)')->assertDontSee('Tandai sudah direview');
+    $this->post(route('checklists.review', $draft))->assertForbidden();
+
+    $draft->items->last()->update(['status' => 'pending']); // Pending tanpa alasan = masih belum lengkap
+    $this->post(route('checklists.review', $draft))->assertForbidden();
+
+    $draft->items->last()->update(['note' => 'Menunggu barang']);
+    $this->post(route('checklists.review', $draft))->assertRedirect();
+    expect($draft->fresh()->status)->toBe(ChecklistStatus::Reviewed);
+});
+
+it('marks incomplete checklists in the list', function () {
+    makeChecklist($this->budi, $this->gsa, now()->toImmutable()->subDay(), null)->items->first()->update(['status' => 'done']);
+    loggedIn(userWithRole(Role::Gm));
+
+    $this->get(route('checklists.index', ['date' => now()->subDay()->toDateString()]))->assertSee('Belum lengkap 1/2');
 });

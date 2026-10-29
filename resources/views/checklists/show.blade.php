@@ -90,7 +90,7 @@
     <div class="mt-4 flex flex-wrap items-center justify-between gap-2 print:hidden">
         <div class="flex flex-wrap gap-2">
             @if ($canEdit)
-                <a href="{{ route('fill.create', $checklist->fillParams()) }}" class="btn-secondary">Edit</a>
+                <a href="{{ route('checklists.fill', $checklist) }}" class="btn-secondary">Edit</a>
             @endif
             <button type="button" onclick="window.print()" class="btn-secondary">Cetak</button>
             @if ($canDelete)
@@ -101,7 +101,9 @@
                 </form>
             @endif
         </div>
-        @if ($canReview)
+        @if (! $checklist->isReviewed() && ! $checklist->isComplete())
+            <p class="text-sm text-amber-800">Belum lengkap ({{ $checklist->answeredCount() }} / {{ $total }} tugas terisi). Belum bisa direview.</p>
+        @elseif ($canReview)
             <form method="POST" action="{{ route('checklists.review', $checklist) }}">
                 @csrf
                 <button class="btn-primary">Tandai sudah direview</button>

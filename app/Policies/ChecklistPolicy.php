@@ -57,10 +57,10 @@ class ChecklistPolicy
         };
     }
 
-    /** GM, HR dan Administrator menandai sudah direview; tidak pernah checklist sendiri. */
+    /** GM, HR dan Administrator menandai sudah direview, hanya bila checklist lengkap; tidak pernah checklist sendiri. */
     public function review(User $user, Checklist $checklist): bool
     {
-        return ! $checklist->isReviewed() && $user->role->reviews() && ! $this->owns($user, $checklist);
+        return ! $checklist->isReviewed() && $user->role->reviews() && ! $this->owns($user, $checklist) && $checklist->isComplete();
     }
 
     public function delete(User $user, Checklist $checklist): bool

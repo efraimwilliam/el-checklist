@@ -26,7 +26,9 @@ it('does not let staff see or change another employee\'s checklist or open manag
 
     $this->get(route('checklists.show', $this->budiList))->assertOk();
     $this->get(route('checklists.show', $this->sariList))->assertForbidden();
-    $this->put(route('checklists.update', $this->sariList), ['items' => answers($this->sariList->items->pluck('id'))])->assertForbidden();
+    $this->patchJson(route('checklists.items.update', [$this->sariList, $this->sariList->items->first()]), ['status' => 'done'])->assertForbidden();
+    $this->get(route('checklists.fill', $this->sariList))->assertForbidden();
+    $this->post(route('fill.start'), ['position' => $this->sariList->position_id, 'employee' => $this->sariList->employee_id, 'date' => now()->toDateString()])->assertForbidden();
     $this->post(route('checklists.review', $this->sariList))->assertForbidden();
     $this->delete(route('checklists.destroy', $this->sariList))->assertForbidden();
     $this->get(route('checklists.index'))->assertForbidden();
