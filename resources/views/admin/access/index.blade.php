@@ -1,7 +1,7 @@
 <x-app-layout title="Akses pengguna">
     <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
-            <h1 class="text-xl font-semibold">Akses pengguna</h1>
+            <h1 class="text-3xl text-slate-900">Akses pengguna</h1>
             <p class="text-sm text-slate-500">
                 Data pegawai dari Sistem Absensi.
                 @if ($lastSync)

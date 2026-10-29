@@ -1,6 +1,6 @@
 <x-app-layout title="Kelola tugas">
     <div class="mb-4">
-        <h1 class="text-xl font-semibold">Kelola tugas</h1>
+        <h1 class="text-3xl text-slate-900">Kelola tugas</h1>
         <p class="text-sm text-slate-500">Pilih jabatan untuk mengubah daftar tugasnya. Perubahan berlaku untuk checklist yang dibuat sesudahnya; checklist yang sudah ada tidak berubah.</p>
     </div>
 
@@ -9,7 +9,7 @@
     <div class="space-y-4">
         @foreach ($departments as $department)
             <section class="card p-4">
-                <h2 class="mb-2 font-semibold">{{ $department->name }}</h2>
+                <h2 class="mb-2 font-display text-xl">{{ $department->name }}</h2>
                 <ul class="divide-y divide-slate-100 text-sm">
                     @forelse ($department->positions as $position)
                         <li class="flex items-center justify-between gap-3 py-2">

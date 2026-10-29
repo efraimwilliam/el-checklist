@@ -1,11 +1,79 @@
 {
+  "node_modules/@fontsource/cormorant-garamond/files/cormorant-garamond-latin-500-italic.woff": {
+    "file": "assets/cormorant-garamond-latin-500-italic-DhNIfkTX.woff",
+    "src": "node_modules/@fontsource/cormorant-garamond/files/cormorant-garamond-latin-500-italic.woff"
+  },
+  "node_modules/@fontsource/cormorant-garamond/files/cormorant-garamond-latin-500-italic.woff2": {
+    "file": "assets/cormorant-garamond-latin-500-italic-Y14P-dkT.woff2",
+    "src": "node_modules/@fontsource/cormorant-garamond/files/cormorant-garamond-latin-500-italic.woff2"
+  },
+  "node_modules/@fontsource/cormorant-garamond/files/cormorant-garamond-latin-500-normal.woff": {
+    "file": "assets/cormorant-garamond-latin-500-normal-zIXX3Q-H.woff",
+    "src": "node_modules/@fontsource/cormorant-garamond/files/cormorant-garamond-latin-500-normal.woff"
+  },
+  "node_modules/@fontsource/cormorant-garamond/files/cormorant-garamond-latin-500-normal.woff2": {
+    "file": "assets/cormorant-garamond-latin-500-normal-BsRWmXhO.woff2",
+    "src": "node_modules/@fontsource/cormorant-garamond/files/cormorant-garamond-latin-500-normal.woff2"
+  },
+  "node_modules/@fontsource/cormorant-garamond/files/cormorant-garamond-latin-600-normal.woff": {
+    "file": "assets/cormorant-garamond-latin-600-normal-2CBVLo0M.woff",
+    "src": "node_modules/@fontsource/cormorant-garamond/files/cormorant-garamond-latin-600-normal.woff"
+  },
+  "node_modules/@fontsource/cormorant-garamond/files/cormorant-garamond-latin-600-normal.woff2": {
+    "file": "assets/cormorant-garamond-latin-600-normal-Co1r35X9.woff2",
+    "src": "node_modules/@fontsource/cormorant-garamond/files/cormorant-garamond-latin-600-normal.woff2"
+  },
+  "node_modules/@fontsource/jost/files/jost-latin-400-normal.woff": {
+    "file": "assets/jost-latin-400-normal-C7S-3Ky6.woff",
+    "src": "node_modules/@fontsource/jost/files/jost-latin-400-normal.woff"
+  },
+  "node_modules/@fontsource/jost/files/jost-latin-400-normal.woff2": {
+    "file": "assets/jost-latin-400-normal-q-RKOgPK.woff2",
+    "src": "node_modules/@fontsource/jost/files/jost-latin-400-normal.woff2"
+  },
+  "node_modules/@fontsource/jost/files/jost-latin-500-normal.woff": {
+    "file": "assets/jost-latin-500-normal-B-AtzreL.woff",
+    "src": "node_modules/@fontsource/jost/files/jost-latin-500-normal.woff"
+  },
+  "node_modules/@fontsource/jost/files/jost-latin-500-normal.woff2": {
+    "file": "assets/jost-latin-500-normal-41lBe9I9.woff2",
+    "src": "node_modules/@fontsource/jost/files/jost-latin-500-normal.woff2"
+  },
+  "node_modules/@fontsource/jost/files/jost-latin-600-normal.woff": {
+    "file": "assets/jost-latin-600-normal-Bv_M0d15.woff",
+    "src": "node_modules/@fontsource/jost/files/jost-latin-600-normal.woff"
+  },
+  "node_modules/@fontsource/jost/files/jost-latin-600-normal.woff2": {
+    "file": "assets/jost-latin-600-normal-C497H-z9.woff2",
+    "src": "node_modules/@fontsource/jost/files/jost-latin-600-normal.woff2"
+  },
   "resources/css/app.css": {
-    "file": "assets/app-Co8ahff4.css",
+    "file": "assets/app-BLL3F_Am.css",
     "name": "app",
     "names": [
       "app.css"
     ],
     "src": "resources/css/app.css",
+    "isEntry": true,
+    "assets": [
+      "assets/jost-latin-400-normal-q-RKOgPK.woff2",
+      "assets/jost-latin-400-normal-C7S-3Ky6.woff",
+      "assets/jost-latin-500-normal-41lBe9I9.woff2",
+      "assets/jost-latin-500-normal-B-AtzreL.woff",
+      "assets/jost-latin-600-normal-C497H-z9.woff2",
+      "assets/jost-latin-600-normal-Bv_M0d15.woff",
+      "assets/cormorant-garamond-latin-500-normal-BsRWmXhO.woff2",
+      "assets/cormorant-garamond-latin-500-normal-zIXX3Q-H.woff",
+      "assets/cormorant-garamond-latin-600-normal-Co1r35X9.woff2",
+      "assets/cormorant-garamond-latin-600-normal-2CBVLo0M.woff",
+      "assets/cormorant-garamond-latin-500-italic-Y14P-dkT.woff2",
+      "assets/cormorant-garamond-latin-500-italic-DhNIfkTX.woff"
+    ]
+  },
+  "resources/js/checklist.js": {
+    "file": "assets/checklist-DAinlOhy.js",
+    "name": "checklist",
+    "src": "resources/js/checklist.js",
     "isEntry": true
   }
 }

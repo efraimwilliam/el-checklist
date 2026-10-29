@@ -11,8 +11,8 @@ enum ItemStatus: string
     public function label(): string
     {
         return match ($this) {
-            self::Done => 'Selesai',
-            self::Ongoing => 'Berjalan',
+            self::Done => 'Done',
+            self::Ongoing => 'Ongoing',
             self::Pending => 'Pending',
         };
     }

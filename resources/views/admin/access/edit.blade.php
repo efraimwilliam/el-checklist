@@ -1,5 +1,5 @@
 <x-app-layout :title="'Akses '.$employee->name">
-    <h1 class="text-xl font-semibold">{{ $employee->name }}</h1>
+    <h1 class="text-3xl text-slate-900">{{ $employee->name }}</h1>
     <p class="mb-4 text-sm text-slate-500">{{ $employee->username }} · {{ $employee->department?->name ?? 'Tanpa departemen' }} · {{ $employee->position_title ?? '—' }}</p>
 
     <form method="POST" action="{{ route('admin.access.update', $employee) }}" class="card max-w-2xl space-y-5 p-6">

@@ -1,16 +1,93 @@
 @import 'tailwindcss';
+@import '@fontsource/jost/latin-400.css';
+@import '@fontsource/jost/latin-500.css';
+@import '@fontsource/jost/latin-600.css';
+@import '@fontsource/cormorant-garamond/latin-500.css';
+@import '@fontsource/cormorant-garamond/latin-600.css';
+@import '@fontsource/cormorant-garamond/latin-500-italic.css';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 
+/*
+ * Tema eL Hotel & Resort Bali Sanur: krem hangat, cokelat gelap, emas.
+ * Palet bawaan Tailwind (slate, sky, emerald, amber, rose) diganti supaya semua halaman otomatis memakai warna hotel:
+ * slate = netral krem/cokelat, sky = cokelat tembaga (tautan, aksen), emerald = hijau Done, amber = emas Ongoing, rose = bata Pending.
+ */
 @theme {
-    --font-sans: ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+    --font-sans: 'Jost', ui-sans-serif, system-ui, sans-serif;
+    --font-display: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+
+    --color-slate-50: #faf7f2;
+    --color-slate-100: #f3ede3;
+    --color-slate-200: #eadfce;
+    --color-slate-300: #dccdb6;
+    --color-slate-400: #a99a8a;
+    --color-slate-500: #7b6d61;
+    --color-slate-600: #5f5249;
+    --color-slate-700: #44392f;
+    --color-slate-800: #2c241e;
+    --color-slate-900: #1b1511;
+
+    --color-sky-50: #f8f0e7;
+    --color-sky-100: #f0e2cf;
+    --color-sky-200: #e2c9a8;
+    --color-sky-600: #9b5a33;
+    --color-sky-700: #8b4a2b;
+    --color-sky-800: #6f3a21;
+    --color-sky-900: #522a17;
+
+    --color-emerald-50: #eaf3ec;
+    --color-emerald-100: #dcebe0;
+    --color-emerald-200: #bfd9c7;
+    --color-emerald-700: #2d5a3f;
+    --color-emerald-800: #234a33;
+
+    --color-amber-100: #f6ebcb;
+    --color-amber-200: #ecd9a0;
+    --color-amber-800: #8a6212;
+
+    --color-rose-50: #fbeeea;
+    --color-rose-100: #f6dcd6;
+    --color-rose-200: #efc2b8;
+    --color-rose-300: #e3a193;
+    --color-rose-600: #b23a24;
+    --color-rose-700: #a8341f;
+    --color-rose-800: #86291a;
+
+    --color-ink: #1b1511;
+    --color-gold-400: #e2c47c;
+    --color-gold-500: #c9a24f;
+    --color-gold-600: #b08a3e;
+    --color-gold-700: #8a6a2a;
 }
 
-@utility btn { @apply inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition disabled:opacity-50; }
-@utility btn-primary { @apply btn bg-sky-700 text-white hover:bg-sky-800; }
-@utility btn-secondary { @apply btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-50; }
+@layer base {
+    html { background-color: var(--color-slate-50); }
+    body { font-family: var(--font-sans); }
+    h1 { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.01em; }
+    ::selection { background: var(--color-gold-400); color: var(--color-ink); }
+}
+
+@utility btn { @apply inline-flex items-center justify-center rounded-full px-5 py-2.5 text-[13px] font-semibold tracking-wide transition disabled:opacity-50; }
+@utility btn-primary {
+    @apply btn text-[#3a2a12] shadow-sm hover:brightness-105;
+    background-image: linear-gradient(135deg, #c9a24f, #e2c47c);
+}
+@utility btn-secondary { @apply btn border border-slate-300 bg-white text-slate-700 hover:border-gold-500 hover:bg-slate-50; }
 @utility btn-danger { @apply btn bg-rose-600 text-white hover:bg-rose-700; }
-@utility input { @apply block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-sky-600 focus:ring-2 focus:ring-sky-600/20 focus:outline-none; }
-@utility label { @apply mb-1 block text-sm font-medium text-slate-700; }
-@utility card { @apply rounded-xl border border-slate-200 bg-white shadow-sm; }
+@utility input { @apply block w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-gold-500 focus:ring-2 focus:ring-gold-500/25 focus:outline-none; }
+@utility label { @apply mb-1.5 block text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500; }
+@utility card { @apply rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(60,40,20,0.04),0_10px_28px_-14px_rgba(60,40,20,0.14)]; }
+@utility font-display { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.005em; }
+@utility eyebrow { @apply inline-flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-gold-600; }
+
+/* Pil status: Done (hijau), Ongoing (emas), Pending (bata), netral. */
+@utility pill { @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold before:h-1.5 before:w-1.5 before:rounded-full before:bg-current before:content-['']; }
+@utility pill-done { @apply pill bg-[#e3eee6] text-[#2d5a3f]; }
+@utility pill-ongoing { @apply pill bg-[#f4e7c6] text-[#8a6212]; }
+@utility pill-pending { @apply pill bg-[#f6dcd6] text-[#a8341f]; }
+@utility pill-neutral { @apply pill bg-slate-100 text-slate-600; }
+
+/* Garis emas tipis di atas header dan halaman */
+@utility gold-rule { background-image: linear-gradient(90deg, #8a5a2b, #c9a24f 55%, #e2c47c); }

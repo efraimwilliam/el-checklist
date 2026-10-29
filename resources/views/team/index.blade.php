@@ -1,13 +1,13 @@
 <x-app-layout title="Atur tugas tim">
     <div class="mb-4">
-        <h1 class="text-xl font-semibold">Atur tugas tim</h1>
+        <h1 class="text-3xl text-slate-900">Atur tugas tim</h1>
         <p class="text-sm text-slate-500">Pilih tugas apa saja yang masuk checklist harian tiap pegawai. Perubahan berlaku untuk checklist yang dibuat sesudahnya.</p>
     </div>
 
     <div class="space-y-4">
         @forelse ($membersByDepartment as $department => $members)
             <section class="card overflow-x-auto">
-                <h2 class="border-b border-slate-100 px-4 py-2 font-semibold">{{ $department }}</h2>
+                <h2 class="border-b border-slate-100 px-4 py-2 font-display text-xl">{{ $department }}</h2>
                 <table class="min-w-full text-sm">
                     <tbody class="divide-y divide-slate-100">
                         @foreach ($members as $member)

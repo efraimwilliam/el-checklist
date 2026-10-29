@@ -32,7 +32,7 @@ return [
     |
     */
 
-    'lifetime' => (int) env('SESSION_LIFETIME', 30),
+    'lifetime' => (int) env('SESSION_LIFETIME', 360),
 
     // Batas mutlak sesi (menit) sejak login, walau terus aktif. Dicek EnsureActiveSession.
     'absolute_lifetime' => (int) env('SESSION_ABSOLUTE_LIFETIME', 720),

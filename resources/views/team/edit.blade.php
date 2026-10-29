@@ -1,6 +1,6 @@
 <x-app-layout :title="'Tugas '.$member->name()">
     <a href="{{ route('team.index') }}" class="text-sm text-sky-700 hover:underline">← Tim</a>
-    <h1 class="mt-1 text-xl font-semibold">{{ $member->name() }}</h1>
+    <h1 class="mt-1 text-3xl text-slate-900">{{ $member->name() }}</h1>
     <p class="text-sm text-slate-500">{{ $member->employee->department->name }} · {{ $member->position?->name ?? 'Jabatan checklist belum diatur' }}</p>
     <p class="mb-4 mt-1 text-sm {{ $member->custom_tasks ? 'text-sky-800' : 'text-slate-500' }}">
         {{ $member->custom_tasks ? 'Tugas sudah disesuaikan.' : 'Memakai semua tugas jabatan (bawaan).' }}

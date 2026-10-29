@@ -1,6 +1,6 @@
 <x-app-layout title="Review checklist">
     <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
-        <h1 class="text-xl font-semibold">Review checklist</h1>
+        <h1 class="text-3xl text-slate-900">Review checklist</h1>
         <form method="GET" class="flex flex-wrap items-end gap-2">
             <div>
                 <label class="label" for="date">Tanggal</label>

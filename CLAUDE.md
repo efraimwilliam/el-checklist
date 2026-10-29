@@ -15,7 +15,7 @@ Laravel 13 + Blade + Tailwind 4 (Vite), MySQL, Pest. Timezone Asia/Makassar (WIT
   pesan umum untuk salah PIN & nonaktif; `pin_not_set` = pesan petunjuk saja (minta HR/HOD membuka izin buat PIN, lalu buat PIN di aplikasi absensi dan kembali ke sini); tidak ada tombol/pengalihan, PIN tidak pernah dibuat di aplikasi ini.
   Berhasil = pegawai lokal dicocokkan lewat `external_id` (id absensi), harus punya `users` aktif, sesi diregenerasi, `auth.logged_in_at` disimpan.
 - `EnsureActiveSession` (semua route login): keluar otomatis bila akun dicabut, pegawai nonaktif di absensi, atau melewati `session.absolute_lifetime`
-  (default 720 menit). Batas diam = `SESSION_LIFETIME` (30). Logout = invalidate + token CSRF baru. Log hasil login: channel `auth` (`storage/logs/auth-*.log`).
+  (default 720 menit). Batas diam = `SESSION_LIFETIME` (360 menit = 6 jam, sesuai tutorial). Logout = invalidate + token CSRF baru. Log hasil login: channel `auth` (`storage/logs/auth-*.log`).
 - `ATTENDANCE_API_VERIFY_TLS=false` ditolak saat boot di produksi.
 
 ## Data master

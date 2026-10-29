@@ -1,6 +1,6 @@
 <x-app-layout :title="'Tugas '.$position->name">
     <a href="{{ route('admin.tasks.index') }}" class="text-sm text-sky-700 hover:underline">← Semua jabatan</a>
-    <h1 class="mt-1 text-xl font-semibold">{{ $position->name }}</h1>
+    <h1 class="mt-1 text-3xl text-slate-900">{{ $position->name }}</h1>
     <p class="mb-4 text-sm text-slate-500">{{ $position->department->name }}. Perubahan berlaku untuk checklist yang dibuat sesudahnya.</p>
 
     @if ($errors->any())
@@ -23,7 +23,7 @@
         <button class="btn-secondary">Simpan jabatan</button>
     </form>
 
-    <h2 class="mb-2 font-semibold">Daftar tugas ({{ $position->tasks->where('is_active', true)->count() }} aktif)</h2>
+    <h2 class="mb-2 font-display text-xl">Daftar tugas ({{ $position->tasks->where('is_active', true)->count() }} aktif)</h2>
     <div class="space-y-2">
         @forelse ($position->tasks as $task)
             <div class="card p-3 {{ $task->is_active ? '' : 'bg-slate-50' }}">
@@ -65,7 +65,7 @@
 
     <form method="POST" action="{{ route('admin.tasks.store', $position) }}" class="card mt-6 space-y-3 p-4">
         @csrf
-        <h2 class="font-semibold">Tambah tugas</h2>
+        <h2 class="font-display text-xl">Tambah tugas</h2>
         @include('admin.tasks.fields', ['task' => null])
         <div class="flex justify-end"><button class="btn-primary">Tambah tugas</button></div>
     </form>

@@ -1,24 +1,48 @@
-<x-app-layout title="Login">
-    <div class="mx-auto mt-10 max-w-sm">
-        <h1 class="mb-1 text-xl font-semibold">{{ config('app.name') }}</h1>
-        <p class="mb-6 text-sm text-slate-500">Masuk dengan username dan PIN yang sama dengan aplikasi absensi.</p>
-
-        <form method="POST" action="{{ url('/login') }}" class="card space-y-4 p-6">
-            @csrf
-            <div>
-                <label for="username" class="label">Username absensi</label>
-                <input id="username" name="username" value="{{ old('username') }}" required autofocus autocomplete="username" autocapitalize="none" class="input">
+@php($photo = asset('images/pantai-'.(now()->dayOfYear % 2 + 1).'.jpg'))
+<x-guest-layout title="Masuk">
+    <div class="min-h-dvh lg:flex">
+        {{-- Foto pantai: kepala halaman di HP, setengah layar di komputer. --}}
+        <section class="relative h-80 bg-cover bg-center lg:h-auto lg:w-[52%]" style="background-image: url('{{ $photo }}')">
+            <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/5 to-black/25"></div>
+            <div class="relative flex h-full flex-col justify-between p-6 pb-14 lg:p-12">
+                <div>
+                    <img src="{{ asset('images/logo-el.png') }}" alt="éL Hotel &amp; Resort" class="h-14 w-auto lg:h-24">
+                    <p class="mt-2 text-[9px] font-medium uppercase tracking-[0.3em] text-gold-400 lg:text-[11px]">Hotel &amp; Resort · ★★★★ · Bali - Sanur</p>
+                </div>
+                <div class="text-white">
+                    <p class="eyebrow !text-gold-400"><span class="h-px w-8 bg-gold-500"></span>Daily Department Checklist</p>
+                    <p class="mt-2 max-w-md font-display text-[26px] italic leading-tight lg:text-[40px]">Standar terjaga, setiap hari, di setiap departemen.</p>
+                </div>
             </div>
-            <div>
-                <label for="pin" class="label">PIN</label>
-                <input id="pin" name="pin" type="password" inputmode="numeric" required autocomplete="current-password" maxlength="20" class="input">
-            </div>
-            @error('username')
-                <p class="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{{ $message }}</p>
-            @enderror
-            <button class="btn-primary w-full">Masuk</button>
-        </form>
+        </section>
 
-        <p class="mt-4 text-sm text-slate-500">Belum punya PIN atau lupa PIN? Buat atau reset PIN di aplikasi absensi, lalu kembali ke sini.</p>
+        <section class="relative flex flex-1 items-start justify-center px-4 pb-12 lg:items-center lg:overflow-hidden lg:px-12">
+            {{-- Pola gelombang emas di tepi kanan --}}
+            <div class="pointer-events-none absolute inset-y-0 right-0 hidden w-1/4 opacity-90 lg:block" style="background-image: url('{{ asset('images/pola-seigaiha.svg') }}'); background-size: 120px 60px; -webkit-mask-image: linear-gradient(to right, transparent, #000 60%); mask-image: linear-gradient(to right, transparent, #000 60%)"></div>
+
+            <div class="card relative -mt-8 w-full max-w-sm p-7 lg:mt-0">
+                <p class="eyebrow"><span class="h-px w-6 bg-gold-500"></span>Selamat datang</p>
+                <h1 class="mt-2 text-4xl text-slate-900">Masuk</h1>
+                <p class="mt-1 text-sm text-slate-500">éL Hotel &amp; Resort Bali Sanur</p>
+
+                <form method="POST" action="{{ url('/login') }}" class="mt-6 space-y-4">
+                    @csrf
+                    <div>
+                        <label for="username" class="label">Username</label>
+                        <input id="username" name="username" value="{{ old('username') }}" required autofocus autocomplete="username" autocapitalize="none" class="input">
+                    </div>
+                    <div>
+                        <label for="pin" class="label">PIN</label>
+                        <input id="pin" name="pin" type="password" inputmode="numeric" required autocomplete="current-password" maxlength="20" class="input">
+                    </div>
+                    @error('username')
+                        <p class="rounded-xl bg-rose-50 px-3.5 py-2.5 text-sm text-rose-700">{{ $message }}</p>
+                    @enderror
+                    <button class="btn-primary w-full">Masuk</button>
+                </form>
+
+                <p class="mt-5 text-center text-xs text-slate-500">Username dan PIN sama dengan aplikasi absensi.<br>Lupa PIN? Buat atau reset di aplikasi absensi.</p>
+            </div>
+        </section>
     </div>
-</x-app-layout>
+</x-guest-layout>
