@@ -1,0 +1,151 @@
+<?php
+
+namespace App\Attendance;
+
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+
+/**
+ * Klien API Sistem Absensi. PIN hanya diteruskan ke API; tidak pernah dicatat atau disimpan.
+ * Permintaan login tidak diulang otomatis (retry bisa menghabiskan jatah salah PIN pegawai).
+ */
+class AttendanceApiService
+{
+    private const REFUSALS = [
+        'invalid_credentials' => AuthOutcome::InvalidCredentials,
+        'locked' => AuthOutcome::Locked,
+        'pin_not_set' => AuthOutcome::PinNotSet,
+        'pin_disabled' => AuthOutcome::PinDisabled,
+        'inactive' => AuthOutcome::Inactive,
+    ];
+
+    public function configured(): bool
+    {
+        return filled(config('attendance.url')) && filled(config('attendance.token'));
+    }
+
+    public function authenticate(string $username, string $pin): AuthResult
+    {
+        if (! $this->configured()) {
+            return $this->fail(AuthOutcome::NotConfigured);
+        }
+
+        try {
+            $response = $this->client()->post(config('attendance.paths.login'), ['username' => $username, 'pin' => $pin]);
+        } catch (ConnectionException $e) {
+            // Pesan exception Guzzle tidak memuat isi permintaan; tetap hanya kelasnya yang dicatat.
+            $timedOut = str_contains(strtolower($e->getMessage()), 'timed out');
+
+            return $this->fail($timedOut ? AuthOutcome::Timeout : AuthOutcome::Unavailable, ['error' => $e::class]);
+        }
+
+        if (! $response->ok()) {
+            return $this->fail(AuthOutcome::Unavailable, ['status' => $response->status()]);
+        }
+
+        $body = $response->json();
+        if (! is_array($body) || ! is_bool($body['authenticated'] ?? null)) {
+            return $this->fail(AuthOutcome::Malformed);
+        }
+
+        if (! $body['authenticated']) {
+            $outcome = self::REFUSALS[$body['reason'] ?? ''] ?? null;
+
+            return $outcome
+                ? new AuthResult($outcome, retryAfter: isset($body['retry_after']) ? (int) $body['retry_after'] : null)
+                : $this->fail(AuthOutcome::Malformed);
+        }
+
+        $employee = $this->normalizeEmployee($body['employee'] ?? null);
+
+        return $employee ? new AuthResult(AuthOutcome::Authenticated, $employee) : $this->fail(AuthOutcome::Malformed);
+    }
+
+    /**
+     * @return list<array{id: int, username: string, name: string, department_id: ?int, position: ?string, is_active: bool}>
+     *
+     * @throws AttendanceUnavailable
+     */
+    public function employees(): array
+    {
+        return array_values(array_filter(array_map($this->normalizeEmployee(...), $this->fetch('employees'))));
+    }
+
+    /**
+     * @return list<array{id: int, code: ?string, name: string}>
+     *
+     * @throws AttendanceUnavailable
+     */
+    public function departments(): array
+    {
+        $rows = [];
+        foreach ($this->fetch('departments') as $row) {
+            if (is_array($row) && is_int($row['id'] ?? null) && filled($row['name'] ?? null)) {
+                $rows[] = ['id' => $row['id'], 'code' => filled($row['code'] ?? null) ? (string) $row['code'] : null, 'name' => (string) $row['name']];
+            }
+        }
+
+        return $rows;
+    }
+
+    /** @return list<mixed> */
+    private function fetch(string $resource): array
+    {
+        if (! $this->configured()) {
+            throw new AttendanceUnavailable(__('Koneksi Sistem Absensi belum diatur (ATTENDANCE_API_URL & ATTENDANCE_API_TOKEN).'));
+        }
+
+        try {
+            $response = $this->client()->get(config("attendance.paths.{$resource}"));
+        } catch (ConnectionException) {
+            throw new AttendanceUnavailable(__('Sistem Absensi tidak dapat dihubungi.'));
+        }
+        if (! $response->ok()) {
+            throw new AttendanceUnavailable(__('Sistem Absensi menolak permintaan (kode :code).', ['code' => $response->status()]));
+        }
+        $data = $response->json('data');
+        if (! is_array($data) || ! array_is_list($data)) {
+            throw new AttendanceUnavailable(__('Respons Sistem Absensi tidak dikenali.'));
+        }
+
+        return $data;
+    }
+
+    /** @return array{id: int, username: string, name: string, department_id: ?int, position: ?string, is_active: bool}|null */
+    private function normalizeEmployee(mixed $row): ?array
+    {
+        if (! is_array($row) || ! is_int($row['id'] ?? null) || ! filled($row['username'] ?? null) || ! filled($row['name'] ?? null) || ! is_bool($row['is_active'] ?? null)) {
+            return null;
+        }
+
+        return [
+            'id' => $row['id'],
+            'username' => mb_strtolower((string) $row['username']),
+            'name' => (string) $row['name'],
+            'department_id' => is_int($row['department_id'] ?? null) ? $row['department_id'] : null,
+            'position' => filled($row['position'] ?? null) ? (string) $row['position'] : null,
+            'is_active' => $row['is_active'],
+        ];
+    }
+
+    private function client(): PendingRequest
+    {
+        return Http::baseUrl(config('attendance.url'))
+            ->withToken((string) config('attendance.token'))
+            ->withHeaders(config('attendance.headers', []))
+            ->acceptJson()
+            ->connectTimeout(config('attendance.connect_timeout'))
+            ->timeout(config('attendance.timeout'))
+            ->withOptions(['verify' => config('attendance.verify_tls')]);
+    }
+
+    /** @param  array<string, mixed>  $context */
+    private function fail(AuthOutcome $outcome, array $context = []): AuthResult
+    {
+        Log::warning('Attendance API problem', ['outcome' => $outcome->value, ...$context]);
+
+        return new AuthResult($outcome);
+    }
+}

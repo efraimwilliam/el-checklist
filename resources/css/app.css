@@ -1,0 +1,16 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+
+@theme {
+    --font-sans: ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+}
+
+@utility btn { @apply inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition disabled:opacity-50; }
+@utility btn-primary { @apply btn bg-sky-700 text-white hover:bg-sky-800; }
+@utility btn-secondary { @apply btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-50; }
+@utility btn-danger { @apply btn bg-rose-600 text-white hover:bg-rose-700; }
+@utility input { @apply block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-sky-600 focus:ring-2 focus:ring-sky-600/20 focus:outline-none; }
+@utility label { @apply mb-1 block text-sm font-medium text-slate-700; }
+@utility card { @apply rounded-xl border border-slate-200 bg-white shadow-sm; }
