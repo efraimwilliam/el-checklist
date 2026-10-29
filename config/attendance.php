@@ -22,6 +22,6 @@ return [
     // Header tambahan bila API absensi memintanya, mis. versi API.
     'headers' => [],
 
-    // Halaman absensi tempat pegawai membuat / mereset PIN.
-    'pin_help_url' => env('ATTENDANCE_PIN_HELP_URL'),
+    // Alamat aplikasi absensi tempat pegawai membuat / mereset PIN (bawaan: sama dengan ATTENDANCE_API_URL; isi bila alamat untuk browser berbeda).
+    'pin_help_url' => env('ATTENDANCE_PIN_HELP_URL') ?: env('ATTENDANCE_API_URL'),
 ];

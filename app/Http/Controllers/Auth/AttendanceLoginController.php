@@ -55,7 +55,10 @@ class AttendanceLoginController extends Controller
             }
             $this->log($request, $username, $result->outcome->value);
 
-            return $this->failed($this->message($result));
+            $response = $this->failed($this->message($result));
+
+            // Pegawai belum punya PIN: halaman login menampilkan tombol ke aplikasi absensi untuk membuatnya.
+            return $result->outcome === AuthOutcome::PinNotSet ? $response->with('pin_not_set', true) : $response;
         }
 
         $employee = $this->resolveEmployee($result->employee);
