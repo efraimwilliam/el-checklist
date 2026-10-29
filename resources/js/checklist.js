@@ -26,7 +26,7 @@ if (root) {
     const noteInput = (item) => item.querySelector('[data-note-input]');
     const itemUrl = (id) => root.dataset.itemUrl.replace('__ITEM__', id);
 
-    // ---- Tampilan: kartu atau daftar, diingat di perangkat ini ----
+    // ---- Tampilan: kartu (satu tugas per layar, geser kiri / kanan) atau daftar, diingat di perangkat ini ----
     const toggles = [...root.querySelectorAll('[data-view-toggle]')];
     const setView = (view) => {
         root.dataset.view = view;
@@ -36,15 +36,11 @@ if (root) {
         } catch {
             /* penyimpanan browser tidak tersedia: tampilan tetap berganti, hanya tidak diingat */
         }
+        clearTimeout(scrollTimer); // gulir sisa dari tampilan sebelumnya tidak boleh mengubah kartu aktif
+        if (view === 'card') requestAnimationFrame(() => goTo(current, false));
+        else paintDeck();
     };
     toggles.forEach((button) => button.addEventListener('click', () => setView(button.dataset.viewToggle)));
-    let remembered = null;
-    try {
-        remembered = localStorage.getItem('checklist-view');
-    } catch {
-        /* abaikan */
-    }
-    setView(remembered === 'list' ? 'list' : 'card');
 
     // ---- Penyimpanan otomatis ----
     // Setiap kunci (satu tugas, atau "meta" = catatan umum + dicek oleh + tugas tambahan) punya antrean sendiri sehingga urutannya terjaga;
@@ -178,6 +174,7 @@ if (root) {
         ui.score.textContent = `${percent}%`;
         ui.score.style.color = scoreColor(percent);
         ui.complete.classList.toggle('hidden', !(items.length && filled === items.length && missingReasons === 0 && missingPhotos === 0));
+        paintDeck();
     }
 
     // Keadaan dari server (setelah "Sisa tugas = Done" / "Kosongkan") dipasang ke layar.
@@ -216,6 +213,10 @@ if (root) {
             const item = radio.closest('[data-item]');
             refresh();
             enqueue(`item:${item.dataset.id}`, sendItem(item));
+            // Done = tugas beres: kartu berikutnya terbuka sendiri (Ongoing / Pending butuh catatan, jadi tidak pindah).
+            if (isCard() && auto.checked && radio.value === 'done') {
+                setTimeout(() => slides[current] === item && goTo(current + 1), 450);
+            }
         } else if (event.target.matches('[data-extra-status]')) {
             enqueue('meta', sendMeta);
         }
@@ -368,5 +369,127 @@ if (root) {
         enqueue('meta', sendMeta);
     });
 
+    // ---- Dek kartu ----
+    const deck = root.querySelector('[data-deck]');
+    const slides = [...deck.querySelectorAll('[data-item], [data-final]')];
+    const segments = root.querySelector('[data-segments]');
+    const jump = root.querySelector('[data-jump]');
+    const jumpList = root.querySelector('[data-jump-list]');
+    const countLabel = root.querySelector('[data-deck-count]');
+    const prev = root.querySelector('[data-prev]');
+    const next = root.querySelector('[data-next]');
+    const auto = root.querySelector('[data-auto]');
+    const chips = [];
+    let current = 0;
+    const isCard = () => root.dataset.view === 'card';
+
+    try {
+        auto.checked = localStorage.getItem('checklist-autoadvance') !== '0';
+    } catch {
+        /* abaikan */
+    }
+    auto.addEventListener('change', () => {
+        try {
+            localStorage.setItem('checklist-autoadvance', auto.checked ? '1' : '0');
+        } catch {
+            /* abaikan */
+        }
+    });
+
+    slides.forEach((slide, index) => {
+        const final = slide.matches('[data-final]');
+        const segment = document.createElement('button');
+        segment.type = 'button';
+        segment.setAttribute('aria-label', final ? 'Ringkasan' : `Tugas ${index + 1}`);
+        segment.addEventListener('click', () => goTo(index));
+        segments.append(segment);
+        if (!final) {
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'cl-chip';
+            chip.textContent = String(index + 1);
+            chip.addEventListener('click', () => {
+                jump.classList.add('hidden');
+                goTo(index);
+            });
+            chips[index] = chip;
+            jumpList.append(chip);
+        }
+    });
+
+    function paintDeck() {
+        slides.forEach((slide, index) => {
+            const final = slide.matches('[data-final]');
+            segments.children[index].dataset.status = final ? '' : slide.dataset.status ?? '';
+            segments.children[index].setAttribute('aria-current', String(index === current));
+            if (chips[index]) chips[index].dataset.status = slide.dataset.status ?? '';
+        });
+        countLabel.textContent = slides[current].matches('[data-final]') ? 'Ringkasan' : `Tugas ${current + 1} dari ${items.length}`;
+        prev.setAttribute('aria-disabled', String(current === 0));
+        next.setAttribute('aria-disabled', String(current === slides.length - 1));
+        // Tinggi dek mengikuti kartu yang sedang terlihat (catatan, foto, dan tugas tambahan mengubah tingginya).
+        deck.style.height = isCard() ? `${slides[current].offsetHeight}px` : '';
+    }
+
+    function goTo(index, smooth = true) {
+        const target = Math.max(0, Math.min(slides.length - 1, index));
+        // Pindah satu-dua kartu digulirkan halus; loncat jauh langsung sampai (gulir halus ke kartu ke-20 terlalu lama).
+        const near = Math.abs(target - current) <= 2;
+        current = target;
+        const slide = slides[current];
+        deck.scrollTo({ left: slide.offsetLeft - (deck.clientWidth - slide.offsetWidth) / 2, behavior: smooth && near ? 'smooth' : 'auto' });
+        paintDeck();
+    }
+
+    // Digeser dengan jari: kartu yang paling dekat ke tengah menjadi kartu aktif setelah gulirannya berhenti.
+    let scrollTimer;
+    deck.addEventListener('scroll', () => {
+        if (!isCard()) return;
+        clearTimeout(scrollTimer);
+        scrollTimer = setTimeout(() => {
+            const center = deck.scrollLeft + deck.clientWidth / 2;
+            let best = current;
+            let distance = Infinity;
+            slides.forEach((slide, index) => {
+                const gap = Math.abs(slide.offsetLeft + slide.offsetWidth / 2 - center);
+                if (gap < distance) {
+                    distance = gap;
+                    best = index;
+                }
+            });
+            if (best !== current) {
+                current = best;
+                paintDeck();
+            }
+        }, 90);
+    });
+
+    prev.addEventListener('click', () => goTo(current - 1));
+    next.addEventListener('click', () => goTo(current + 1));
+    root.querySelector('[data-jump-toggle]').addEventListener('click', () => jump.classList.toggle('hidden'));
+    document.addEventListener('keydown', (event) => {
+        if (!isCard() || event.target.closest?.('input, textarea, select, [contenteditable]')) return;
+        if (event.key === 'ArrowRight') goTo(current + 1);
+        else if (event.key === 'ArrowLeft') goTo(current - 1);
+        else return;
+        event.preventDefault();
+    });
+    if ('ResizeObserver' in window) {
+        const observer = new ResizeObserver(() => paintDeck());
+        slides.forEach((slide) => observer.observe(slide));
+    }
+    window.addEventListener('resize', () => isCard() && goTo(current, false));
+
     refresh();
+
+    // Mulai dari tugas pertama yang belum diisi (atau ringkasan bila semuanya sudah terisi).
+    const firstEmpty = items.findIndex((item) => !statusOf(item));
+    current = firstEmpty === -1 ? slides.length - 1 : firstEmpty;
+    let remembered = null;
+    try {
+        remembered = localStorage.getItem('checklist-view');
+    } catch {
+        /* abaikan */
+    }
+    setView(remembered === 'list' ? 'list' : 'card');
 }

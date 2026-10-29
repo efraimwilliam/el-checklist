@@ -32,7 +32,7 @@
     "src": "node_modules/@fontsource/inter/files/inter-latin-700-normal.woff2"
   },
   "resources/css/app.css": {
-    "file": "assets/app-BXmtDuZ9.css",
+    "file": "assets/app-D-bOjstj.css",
     "name": "app",
     "names": [
       "app.css"
@@ -51,7 +51,7 @@
     ]
   },
   "resources/js/checklist.js": {
-    "file": "assets/checklist-Bpw1kT6Q.js",
+    "file": "assets/checklist-8FZJRtju.js",
     "name": "checklist",
     "src": "resources/js/checklist.js",
     "isEntry": true

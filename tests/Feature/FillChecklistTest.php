@@ -74,6 +74,7 @@ it('shows the work page with cards, the list toggle and the tasks', function () 
 
     $this->get(route('checklists.fill', $checklist))->assertOk()
         ->assertSee('Check-in tamu')->assertSee('Handover shift')->assertSee('data-view="card"', false)
+        ->assertSee('data-deck', false)->assertSee('Geser kiri atau kanan')->assertSee('Lanjut otomatis')->assertSee('Lihat semua tugas')
         ->assertSee('Kartu')->assertSee('Daftar')->assertSee('Sisa tugas = Done')->assertSee('Tugas tambahan')->assertSee('Tersimpan otomatis')
         ->assertDontSee('Simpan checklist');
 });

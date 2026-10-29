@@ -40,10 +40,22 @@
             </div>
         </div>
 
+        <div class="cl-stage">
+        {{-- Hanya tampilan Kartu: posisi, progres per tugas dan loncat ke tugas lain --}}
+        <div class="cl-card-only mb-3">
+            <div class="mb-2 flex items-center justify-between text-sm">
+                <span data-deck-count class="font-semibold text-slate-800">Tugas 1 dari {{ $items->count() }}</span>
+                <button type="button" data-jump-toggle class="font-semibold text-sky-700">Lihat semua tugas</button>
+            </div>
+            <div class="cl-segments" data-segments></div>
+            <div data-jump class="card mt-3 hidden p-3"><div class="flex flex-wrap gap-1.5" data-jump-list></div></div>
+        </div>
+
+        <div class="cl-deck" data-deck>
         @foreach ($items->groupBy(fn ($item) => $item->section ?? '') as $section => $group)
-            <section class="{{ $loop->first ? '' : 'mt-5' }}">
+            <section class="cl-section {{ $loop->first ? '' : 'mt-5' }}">
                 @if ($hasSections)
-                    <div class="flex items-center justify-between px-1 pb-2 text-xs font-semibold uppercase tracking-[0.1em]">
+                    <div class="cl-section-head flex items-center justify-between px-1 pb-2 text-xs font-semibold uppercase tracking-[0.1em]">
                         <span class="text-gold-700">{{ $section !== '' ? $section : 'Tugas' }}</span>
                         <span class="text-slate-400">{{ $group->count() }} tugas</span>
                     </div>
@@ -55,6 +67,7 @@
                             $showNote = in_array($item->status?->value, ['ongoing', 'pending'], true) || filled($item->note);
                         @endphp
                         <div class="cl-item" data-item data-id="{{ $item->id }}" data-status="{{ $item->status?->value }}">
+                            <div class="cl-card-head"><span>{{ $section !== '' ? $section : 'Tugas' }}</span><span>{{ $number }} / {{ $items->count() }}</span></div>
                             <div class="cl-row">
                                 <div class="min-w-0">
                                     <p class="cl-title"><span data-num class="cl-num">{{ $number }}.</span>{{ $item->title }}</p>
@@ -100,6 +113,8 @@
             </section>
         @endforeach
 
+        <div class="cl-final" data-final>
+            <div class="cl-card-head"><span>Ringkasan</span><span>{{ $items->count() }} tugas</span></div>
         {{-- Tugas tambahan: pekerjaan di luar daftar (mis. membantu banquet). Tidak dihitung dalam skor. --}}
         <div class="card mt-5 p-5" data-extras>
             <div class="flex items-center justify-between">
@@ -120,6 +135,21 @@
         <div class="card mt-4 p-5">
             <label for="note" class="label">Catatan umum</label>
             <textarea id="note" data-meta="note" rows="2" maxlength="2000" class="input" placeholder="Temuan lain yang perlu dicatat">{{ $checklist->note }}</textarea>
+        </div>
+        </div>
+        </div>
+
+        {{-- Hanya tampilan Kartu: panah dan "Lanjut otomatis" --}}
+        <div class="cl-card-only mt-3">
+            <div class="flex items-center justify-between gap-3">
+                <button type="button" class="cl-nav" data-prev aria-label="Tugas sebelumnya"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.5 4 6.5 10l6 6"/></svg></button>
+                <div class="text-center text-sm text-slate-500">
+                    <p>Geser kiri atau kanan</p>
+                    <label class="mt-1 inline-flex cursor-pointer items-center gap-2"><input type="checkbox" data-auto checked class="h-4 w-4">Lanjut otomatis</label>
+                </div>
+                <button type="button" class="cl-nav" data-next aria-label="Tugas berikutnya"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.5 4l6 6-6 6"/></svg></button>
+            </div>
+        </div>
         </div>
 
         {{-- Bilah progres menempel di bawah layar --}}
