@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Attendance\AttendanceApiService;
+use App\Attendance\AttendanceUnavailable;
 use App\Checklists\ChecklistService;
+use App\Enums\ChecklistStatus;
 use App\Enums\Role;
 use App\Models\Checklist;
 use App\Models\Department;
@@ -29,7 +32,7 @@ class FillController extends Controller
         return redirect()->route('fill.create');
     }
 
-    public function create(Request $request): View
+    public function create(Request $request, AttendanceApiService $attendance): View
     {
         Gate::authorize('fill-checklists');
         $user = $request->user();
@@ -64,11 +67,54 @@ class FillController extends Controller
             ? __('Jabatan checklist Anda belum diatur atau tidak sesuai departemen Anda, jadi daftar tugas belum bisa dibuat. Hubungi HR atau Administrator.')
             : null;
 
+        // Papan tim (HOD / HR / Administrator): setiap staff aktif departemen ini pada tanggal terpilih beserta checklistnya,
+        // supaya atasan cukup mengetuk nama staff untuk mulai / melanjutkan.
+        // Jadwal Absensi untuk tanggal ini: staff tanpa jadwal (kosong / belum diisi) tidak bisa dibuatkan checklist, jadi ditandai.
+        // Gagal membaca Absensi = tidak ada yang ditandai (dan pesannya ditampilkan), supaya tidak salah menonaktifkan staff.
+        $schedules = null;
+        $scheduleProblem = null;
+        if (! $staffMode && $department) {
+            try {
+                $schedules = $attendance->schedules($date);
+            } catch (AttendanceUnavailable $unavailable) {
+                $scheduleProblem = $unavailable->getMessage();
+            }
+        }
+
+        $board = collect();
+        if (! $staffMode && $department) {
+            $day = Checklist::with('items')->where('department_id', $department->id)->whereDate('date', $date)->get()->groupBy('employee_id');
+            $board = $employees->load('checklistPosition')
+                ->reject(fn (Employee $e) => $e->id === $user->employee_id && ! $user->isAdmin() && ! $day->has($e->id))
+                ->map(function (Employee $e) use ($day, $user, $schedules) {
+                    $checklists = $day->get($e->id, collect());
+                    $noSchedule = $schedules !== null && ($schedules[$e->external_id]['status'] ?? 'unscheduled') === 'unscheduled';
+                    $state = match (true) {
+                        $checklists->isEmpty() && $noSchedule => 'noschedule',
+                        $checklists->isEmpty() => 'none',
+                        $checklists->every(fn (Checklist $c) => $c->isReviewed()) => 'reviewed',
+                        $checklists->every(fn (Checklist $c) => $c->status !== ChecklistStatus::Saved) => 'hod_reviewed',
+                        $checklists->every(fn (Checklist $c) => $c->isComplete()) => 'complete',
+                        $checklists->sum(fn (Checklist $c) => $c->answeredCount()) === 0 => 'empty',
+                        default => 'partial',
+                    };
+
+                    return [
+                        'employee' => $e,
+                        'checklists' => $checklists,
+                        'state' => $state,
+                        'canStart' => $state !== 'noschedule' && $e->checklistPosition && $user->can('fill', [Checklist::class, $e, $e->checklistPosition]),
+                    ];
+                })->values();
+        }
+
         // Checklist yang belum lengkap (dibuatkan sekaligus atau tersimpan setengah jalan) supaya mudah dilanjutkan:
-        // staff melihat miliknya, HOD / HR / Administrator melihat milik departemen yang boleh mereka akses.
+        // staff melihat miliknya, HOD / HR / Administrator melihat milik departemen yang boleh mereka akses
+        // (yang sudah tampil di papan tim, yaitu departemen + tanggal terpilih, tidak diulang).
         $resume = Checklist::with(['items', 'employee'])->where('status', 'saved')->whereDate('date', '>=', $today->subDays(7))
             ->when($staffMode, fn ($q) => $q->where('employee_id', $user->employee_id), fn ($q) => $q->when($allowedIds !== null, fn ($q) => $q->whereIn('department_id', $allowedIds)))
-            ->latest('date')->latest('id')->limit(60)->get()->reject(fn (Checklist $c) => $c->isComplete())->take(30);
+            ->latest('date')->latest('id')->limit(60)->get()->reject(fn (Checklist $c) => $c->isComplete())
+            ->reject(fn (Checklist $c) => ! $staffMode && $c->department_id === $department?->id && $c->date->isSameDay($date))->take(30);
 
         return view('checklists.fill', [
             'staffMode' => $staffMode,
@@ -82,6 +128,8 @@ class FillController extends Controller
             'today' => $today,
             'problem' => $problem,
             'resume' => $resume,
+            'board' => $board,
+            'scheduleProblem' => $scheduleProblem,
             'summary' => session('assign_summary'),
             'history' => $staffMode ? Checklist::where('employee_id', $user->employee_id)->latest('date')->limit(14)->get() : collect(),
         ]);

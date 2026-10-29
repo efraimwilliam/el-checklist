@@ -9,6 +9,7 @@ use App\Enums\ChecklistStatus;
 use App\Enums\ItemStatus;
 use App\Enums\Role;
 use App\Models\Checklist;
+use App\Support\DateRange;
 use App\Models\Department;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
@@ -27,25 +28,26 @@ class ChecklistController extends Controller
         $user = $request->user();
         $allowed = $user->accessibleDepartmentIds();
         $filters = $request->validate([
-            'date' => ['nullable', 'date'],
             'department' => ['nullable', 'integer'],
             'status' => ['nullable', Rule::enum(ChecklistStatus::class)],
         ]);
-        $date = CarbonImmutable::parse($filters['date'] ?? 'today');
+        [$from, $to] = DateRange::fromRequest($request, 1, 92);
         $departmentId = isset($filters['department']) ? (int) $filters['department'] : null;
         abort_if($departmentId && ! $user->canAccessDepartment($departmentId), 403);
 
         $checklists = Checklist::with(['employee', 'department', 'items.photos'])
-            ->whereDate('date', $date)
+            ->whereBetween('date', [$from->toDateString(), $to->toDateString()])
             ->when($allowed !== null, fn ($q) => $q->whereIn('department_id', $allowed))
             ->when($departmentId, fn ($q) => $q->where('department_id', $departmentId))
             ->when($filters['status'] ?? null, fn ($q, $status) => $q->where('status', $status))
-            ->orderBy('department_id')->orderBy('position_name')->orderBy('id')
+            ->orderByDesc('date')->orderBy('department_id')->orderBy('position_name')->orderBy('id')
             ->get();
 
         return view('checklists.index', [
             'checklists' => $checklists,
-            'date' => $date,
+            'from' => $from,
+            'to' => $to,
+            'today' => CarbonImmutable::today(),
             'departments' => Department::when($allowed !== null, fn ($q) => $q->whereIn('id', $allowed))->orderBy('sort')->orderBy('name')->get(),
             'filters' => $filters,
         ]);
@@ -61,6 +63,7 @@ class ChecklistController extends Controller
             'checklist' => $checklist,
             'canEdit' => $user->can('update', $checklist),
             'canReview' => $user->can('review', $checklist),
+            'canUnreview' => $user->can('unreview', $checklist),
             'canDelete' => $user->can('delete', $checklist),
         ]);
     }
@@ -70,9 +73,11 @@ class ChecklistController extends Controller
     {
         Gate::authorize('view', $checklist);
         if (! $request->user()->can('update', $checklist)) {
-            return redirect()->route('checklists.show', $checklist)->with('status', $checklist->isReviewed()
-                ? __('Checklist ini sudah direview dan terkunci. Perubahan hanya lewat HR.')
-                : __('Anda tidak bisa mengubah checklist ini.'));
+            return redirect()->route('checklists.show', $checklist)->with('status', match (true) {
+                $checklist->isReviewed() => __('Checklist ini sudah direview GM/HR dan terkunci. Perubahan hanya lewat HR.'),
+                $checklist->isHodReviewed() => __('Checklist ini sudah direview HOD. Batalkan review dulu untuk mengedit.'),
+                default => __('Anda tidak bisa mengubah checklist ini.'),
+            });
         }
         $checklist->load(['items.photos', 'extraTasks', 'employee', 'department']);
 
@@ -104,12 +109,28 @@ class ChecklistController extends Controller
     }
 
     /** "Tandai sudah direview": nama dan waktu reviewer tercatat, lalu isian terkunci untuk HOD. */
+    /** HOD membatalkan verifikasinya: status kembali "Belum direview" dan isian bisa diubah lagi. */
+    public function unreview(Checklist $checklist): RedirectResponse
+    {
+        Gate::authorize('unreview', $checklist);
+        $checklist->update(['status' => ChecklistStatus::Saved, 'reviewed_by' => null, 'reviewed_at' => null]);
+
+        return redirect()->route('checklists.show', $checklist)->with('status', __('Review dibatalkan. Checklist bisa diubah lagi.'));
+    }
+
     public function review(Request $request, Checklist $checklist): RedirectResponse
     {
         Gate::authorize('review', $checklist);
-        $checklist->update(['status' => ChecklistStatus::Reviewed, 'reviewed_by' => $request->user()->id, 'reviewed_at' => now()]);
+        $final = $request->user()->role->reviews();
+        $checklist->update([
+            'status' => $final ? ChecklistStatus::Reviewed : ChecklistStatus::HodReviewed,
+            'reviewed_by' => $request->user()->id,
+            'reviewed_at' => now(),
+        ]);
 
-        return redirect()->route('checklists.show', $checklist)->with('status', __('Checklist ditandai sudah direview.'));
+        return redirect()->route('checklists.show', $checklist)->with('status', $final
+            ? __('Checklist ditandai direview oleh GM/HR dan terkunci.')
+            : __('Checklist ditandai direview oleh HOD. GM atau HR masih bisa mereview.'));
     }
 
     public function destroy(Checklist $checklist, ChecklistPhotoService $photos): RedirectResponse

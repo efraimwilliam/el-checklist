@@ -23,6 +23,11 @@ class Position extends Model
         return $this->belongsTo(Department::class);
     }
 
+    public function checklists(): HasMany
+    {
+        return $this->hasMany(Checklist::class);
+    }
+
     public function tasks(): HasMany
     {
         return $this->hasMany(Task::class)->orderBy('sort')->orderBy('id');

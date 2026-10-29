@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Department;
 use App\Models\Position;
 use App\Models\Task;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -25,6 +26,7 @@ class TaskController extends Controller
         return view('admin.tasks.index', [
             'departments' => Department::with(['positions' => fn ($q) => $q->withCount([
                 'tasks as active_tasks_count' => fn ($q) => $q->where('is_active', true),
+                'checklists',
             ])])->orderBy('sort')->orderBy('name')->get(),
         ]);
     }
@@ -61,6 +63,24 @@ class TaskController extends Controller
         return back()->with('status', __('Jabatan disimpan.'));
     }
 
+    /**
+     * Hapus jabatan beserta tugasnya. Hanya bila belum pernah dipakai checklist (riwayat tetap utuh);
+     * jabatan yang sudah dipakai cukup dinonaktifkan. Pegawai yang memakai jabatan ini dilepas dari jabatan checklist-nya.
+     */
+    public function destroyPosition(Position $position): RedirectResponse
+    {
+        Gate::authorize('manage-tasks');
+
+        if ($position->checklists()->exists()) {
+            return back()->withErrors(['name' => __('Jabatan ":name" sudah dipakai checklist, jadi tidak bisa dihapus. Nonaktifkan saja.', ['name' => $position->name])]);
+        }
+
+        $name = $position->name;
+        $position->delete();
+
+        return redirect()->route('admin.tasks.index')->with('status', __('Jabatan ":name" dihapus.', ['name' => $name]));
+    }
+
     public function storeTask(Request $request, Position $position): RedirectResponse
     {
         Gate::authorize('manage-tasks');
@@ -85,7 +105,7 @@ class TaskController extends Controller
         return redirect()->route('admin.tasks.show', $task->position_id)->with('status', __('Tugas dihapus. Checklist yang sudah dibuat tidak berubah.'));
     }
 
-    public function moveTask(Request $request, Task $task): RedirectResponse
+    public function moveTask(Request $request, Task $task): RedirectResponse|JsonResponse
     {
         Gate::authorize('manage-tasks');
         $direction = $request->validate(['direction' => ['required', Rule::in(['up', 'down'])]])['direction'];
@@ -99,6 +119,11 @@ class TaskController extends Controller
         }
         foreach ($ids as $i => $id) {
             Task::whereKey($id)->update(['sort' => $i + 1]);
+        }
+
+        // Dari halaman (JavaScript) cukup jawaban singkat: urutan sudah tersimpan, tanpa memuat ulang halaman.
+        if ($request->expectsJson()) {
+            return response()->json(['ok' => true, 'order' => $ids]);
         }
 
         return redirect()->route('admin.tasks.show', $task->position_id);

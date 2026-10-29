@@ -90,7 +90,7 @@ it('is safe to press again and shows what is still to do', function () {
     assignAll();
 
     expect(Checklist::count())->toBe(1)->and(session('assign_summary'))->toMatchArray(['created' => 0, 'existing' => 1]);
-    $this->get(route('fill.create'))->assertSee('Lanjutkan checklist')->assertSee('Budi Kerja')->assertSee('Belum diisi');
+    $this->get(route('fill.create'))->assertSee('Budi Kerja')->assertSee('Belum diisi')->assertSee('3 staff belum punya checklist hari ini')->assertDontSee('Lanjutkan checklist');
 });
 
 it('uses the tasks chosen for the staff member and allows past dates but not future ones', function () {
@@ -166,6 +166,7 @@ it('records the first manager who fills an assigned checklist as the checker, bu
 it('lets staff open the checklist for the position the HOD set for them', function () {
     $staff = User::factory()->for($this->work)->create(['position_id' => null]);
     loggedIn($staff);
+    standardSchedule();
 
     $this->get(route('fill.create'))->assertOk()->assertSee('Buka checklist GSA (Guest Service Agent)');
     $this->post(route('fill.start'), ['position' => $this->gsa->id, 'employee' => $this->work->id, 'date' => $this->today->toDateString()])->assertRedirect();
@@ -236,10 +237,12 @@ it('suggests only when exactly one position matches', function () {
 
 it('lets HODs, HR and administrators set the automatic time per department', function () {
     loggedIn($this->hod);
+    standardSchedule();
 
     $this->put(route('fill.auto-assign', $this->fo), ['auto_assign_at' => '05:00'])->assertRedirect();
     expect(substr((string) $this->fo->fresh()->auto_assign_at, 0, 5))->toBe('05:00');
-    $this->get(route('fill.create'))->assertSee('name="auto_assign_at"', false)->assertSee('value="05:00"', false);
+    $this->get(route('admin.settings.edit'))->assertSee('name="auto_assign_at"', false)->assertSee('value="05:00"', false);
+    $this->get(route('fill.create'))->assertDontSee('name="auto_assign_at"', false)->assertDontSee('Pengaturan tim');
 
     $this->put(route('fill.auto-assign', $this->fo), ['auto_assign_at' => '5 pagi'])->assertSessionHasErrors('auto_assign_at');
     $this->put(route('fill.auto-assign', $this->hk), ['auto_assign_at' => '06:00'])->assertForbidden();

@@ -168,7 +168,7 @@ it('throttles the login form per IP', function () {
 it('sends each role to its own first page', function () {
     loggedIn($this->user)->get('/')->assertRedirect(route('checklists.today'));
 
-    foreach ([[Role::Hod, 'fill.create'], [Role::Hr, 'checklists.index'], [Role::Gm, 'checklists.index'], [Role::Admin, 'checklists.index']] as [$role, $route]) {
+    foreach ([[Role::Hod, 'dashboard'], [Role::Hr, 'dashboard'], [Role::Gm, 'dashboard'], [Role::Admin, 'dashboard']] as [$role, $route]) {
         $this->post('/logout');
         loggedIn(userWithRole($role))->get('/')->assertRedirect(route($route));
     }

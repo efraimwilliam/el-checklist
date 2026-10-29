@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Checklists\ChecklistSettings;
 use App\Enums\Role;
+use App\Observers\AuditObserver;
 use App\Models\Employee;
 use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -24,6 +25,11 @@ class AppServiceProvider extends ServiceProvider
     {
         if ($this->app->isProduction() && ! config('attendance.verify_tls')) {
             throw new RuntimeException('ATTENDANCE_API_VERIFY_TLS tidak boleh false di produksi.');
+        }
+
+        // Log aplikasi: setiap perubahan data utama dicatat otomatis (lihat AuditObserver).
+        foreach (AuditObserver::MODELS as $model) {
+            $model::observe(AuditObserver::class);
         }
 
         // Batas kasar per IP untuk form login; kunci per username + IP ada di AttendanceLoginController.

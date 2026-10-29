@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Department;
 use App\Models\Employee;
 use App\Models\Position;
 use App\Models\Task;
@@ -34,18 +35,100 @@ class TeamTaskController extends Controller
         return view('team.index', ['membersByDepartment' => $members->groupBy(fn (Employee $employee) => $employee->department->name)]);
     }
 
+    /** Daftar tugas tiap jabatan di departemen yang boleh diakses. Menambah tugas: HOD (departemennya), HR, Administrator. */
+    public function catalog(Request $request): View
+    {
+        Gate::authorize('manage-team-tasks');
+        $allowed = $request->user()->accessibleDepartmentIds();
+
+        $catalog = Department::where('is_active', true)
+            ->when($allowed !== null, fn ($q) => $q->whereIn('id', $allowed))
+            ->orderBy('sort')->orderBy('name')
+            ->with(['positions' => fn ($q) => $q->where('is_active', true)->orderBy('sort')->orderBy('name')])
+            ->get();
+
+        // Semua tugas dimuat sekali; sortir, cari, dan halaman dikerjakan di browser (tanpa memuat ulang).
+        $tasks = Task::query()->select('tasks.*')
+            ->join('positions', 'positions.id', '=', 'tasks.position_id')
+            ->join('departments', 'departments.id', '=', 'positions.department_id')
+            ->where('tasks.is_active', true)->where('positions.is_active', true)->where('departments.is_active', true)
+            ->when($allowed !== null, fn ($q) => $q->whereIn('positions.department_id', $allowed))
+            ->with('position.department')
+            ->orderBy('departments.name')->orderBy('positions.name')->orderBy('tasks.sort')->orderBy('tasks.id')
+            ->get();
+
+        $sections = Task::query()->where('is_active', true)->whereNotNull('section')->distinct()->orderBy('section')->pluck('section');
+
+        return view('team.catalog', [
+            'catalog' => $catalog,
+            'tasks' => $tasks,
+            'sections' => $sections,
+        ]);
+    }
+
+    /** HOD (departemennya), HR dan Administrator menambah tugas ke jabatan. Mengubah / menghapus / mengurutkan tetap di Kelola tugas. */
+    public function storeTask(Request $request): RedirectResponse
+    {
+        Gate::authorize('manage-team-tasks');
+        $data = $request->validate(['position' => ['required', 'integer', 'exists:positions,id']] + $this->taskRules());
+        $position = Position::findOrFail($data['position']);
+        abort_unless($position->is_active && $request->user()->canAccessDepartment($position->department_id), 403);
+
+        $fields = $this->taskFields($data);
+        $position->tasks()->create($fields + ['sort' => (int) $position->tasks()->max('sort') + 1]);
+
+        return redirect()->route('team.catalog')->withFragment('jabatan-'.$position->id)->with('status', __('Tugas ":title" ditambahkan ke :position.', ['title' => $fields['title'], 'position' => $position->name]));
+    }
+
+    /** Ubah tugas dari Daftar tugas (HOD untuk departemennya, HR, Administrator). Error dikirim ke bag "editTask" supaya popup ubah yang dibuka lagi. */
+    public function updateCatalogTask(Request $request, Task $task): RedirectResponse
+    {
+        Gate::authorize('manage-team-tasks');
+        $task->loadMissing('position');
+        abort_unless($task->position->is_active && $request->user()->canAccessDepartment($task->position->department_id), 403);
+
+        $task->update($this->taskFields($request->validateWithBag('editTask', $this->taskRules())));
+
+        return redirect()->route('team.catalog')->withFragment('jabatan-'.$task->position_id)->with('status', __('Tugas diperbarui.'));
+    }
+
+    /** Hapus tugas dari Daftar tugas. Checklist yang sudah dibuat menyalin isi tugas, jadi riwayatnya tidak berubah. */
+    public function destroyCatalogTask(Request $request, Task $task): RedirectResponse
+    {
+        Gate::authorize('manage-team-tasks');
+        $task->loadMissing('position');
+        abort_unless($task->position->is_active && $request->user()->canAccessDepartment($task->position->department_id), 403);
+
+        $task->delete();
+
+        return redirect()->route('team.catalog')->withFragment('jabatan-'.$task->position_id)->with('status', __('Tugas dihapus. Checklist yang sudah dibuat tidak berubah.'));
+    }
+
+    /** @return array<string, array<int, string>> */
+    private function taskRules(): array
+    {
+        return [
+            'section' => ['nullable', 'string', 'max:255'],
+            'title' => ['required', 'string', 'max:500'],
+            'standard' => ['nullable', 'string', 'max:2000'],
+        ];
+    }
+
+    /** @return array{section: ?string, title: string, standard: ?string} */
+    private function taskFields(array $data): array
+    {
+        return array_map(fn ($value) => is_string($value) && trim($value) === '' ? null : (is_string($value) ? trim($value) : $value), collect($data)->only(['section', 'title', 'standard'])->all());
+    }
+
     public function edit(Request $request, Employee $employee): View
     {
         Gate::authorize('assign-tasks', $employee);
         $employee->load('department');
 
         $groups = $this->positionsWithTasks($employee);
-        $from = (int) $request->query('dari');
-        $selected = $employee->custom_tasks && ! $from
-            ? $employee->assignedTasks()->pluck('tasks.id')->all()
-            : $groups->firstWhere('id', $from)?->tasks->pluck('id')->all() ?? [];
+        $selected = $employee->custom_tasks ? $employee->assignedTasks()->pluck('tasks.id')->all() : [];
 
-        return view('team.edit', ['member' => $employee, 'groups' => $groups, 'from' => $from, 'selected' => old('tasks', $selected)]);
+        return view('team.edit', ['member' => $employee, 'groups' => $groups, 'selected' => old('tasks', $selected)]);
     }
 
     public function update(Request $request, Employee $employee): RedirectResponse

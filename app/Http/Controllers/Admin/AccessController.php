@@ -20,20 +20,16 @@ use Illuminate\View\View;
 /** Administrator mengatur siapa yang boleh memakai aplikasi, perannya, jabatan checklist, dan departemen HOD. */
 class AccessController extends Controller
 {
-    public function index(Request $request): View
+    public function index(): View
     {
         Gate::authorize('manage-access');
-        $search = trim((string) $request->query('q'));
 
+        // Semua pegawai dimuat sekali; cari, sortir, dan halaman dikerjakan di browser (tanpa memuat ulang).
         $employees = Employee::with(['department', 'user.position', 'user.departments'])
-            ->when($search !== '', fn ($q) => $q->where(fn ($q) => $q->where('name', 'like', "%{$search}%")->orWhere('username', 'like', "%{$search}%")))
-            ->when($request->boolean('with_access'), fn ($q) => $q->whereHas('user', fn ($q) => $q->where('is_active', true)))
-            ->orderByDesc('is_active')->orderBy('name')
-            ->paginate(50)->withQueryString();
+            ->orderByDesc('is_active')->orderBy('name')->get();
 
         return view('admin.access.index', [
             'employees' => $employees,
-            'search' => $search,
             'lastSync' => Cache::get(EmployeeSyncService::LAST_SYNC_CACHE),
         ]);
     }

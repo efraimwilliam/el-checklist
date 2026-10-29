@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Checklists\ChecklistSettings;
+use App\Models\Department;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -10,17 +11,21 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
-/** Pengaturan oleh Administrator: foto bukti wajib / opsional dan masa simpannya. */
+/**
+ * Pengaturan: foto bukti (Administrator) dan pembuatan otomatis tiap hari per departemen (HOD untuk departemennya, HR, Administrator).
+ */
 class SettingsController extends Controller
 {
-    public function edit(ChecklistSettings $settings): View
+    public function edit(Request $request, ChecklistSettings $settings): View
     {
-        Gate::authorize('manage-access');
+        abort_unless(Gate::allows('manage-access') || Gate::allows('manage-team-tasks'), 403);
+        $allowedIds = $request->user()->accessibleDepartmentIds();
 
         return view('admin.settings', [
             'requirement' => $settings->photoRequirement(),
             'retention' => $settings->photoRetentionDays(),
             'requirements' => ChecklistSettings::REQUIREMENTS,
+            'departments' => Department::where('is_active', true)->when($allowedIds !== null, fn ($q) => $q->whereIn('id', $allowedIds))->orderBy('sort')->orderBy('name')->get(),
         ]);
     }
 

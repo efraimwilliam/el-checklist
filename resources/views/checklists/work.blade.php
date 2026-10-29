@@ -27,14 +27,14 @@
             <a href="{{ route('checklists.show', $checklist) }}" class="btn-secondary">Lihat hasil</a>
         </div>
 
-        {{-- Ikon di kiri: tampilan Kartu / Daftar dan (hanya di Kartu) daftar semua tugas. --}}
+        {{-- Kiri: ikon daftar semua tugas (hanya di Kartu). Kanan: ikon tampilan Kartu / Daftar. --}}
         <div class="mb-4 flex items-center justify-between gap-3">
             <div class="flex items-center gap-2">
-                <div class="cl-toggle" role="group" aria-label="Tampilan checklist">
-                    <button type="button" data-view-toggle="card" aria-pressed="true" aria-label="Tampilan kartu" title="Kartu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3.5" width="14" height="17" rx="2.5"/><path d="M9 9h6M9 13h4"/></svg></button>
-                    <button type="button" data-view-toggle="list" aria-pressed="false" aria-label="Tampilan daftar" title="Daftar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/></svg></button>
-                </div>
                 <button type="button" class="cl-iconbtn cl-card-only-flex" data-jump-toggle aria-label="Lihat semua tugas" aria-expanded="false" title="Lihat semua tugas"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></svg></button>
+            </div>
+            <div class="cl-toggle" role="group" aria-label="Tampilan checklist">
+                <button type="button" data-view-toggle="card" aria-pressed="true" aria-label="Tampilan kartu" title="Kartu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3.5" width="14" height="17" rx="2.5"/><path d="M9 9h6M9 13h4"/></svg></button>
+                <button type="button" data-view-toggle="list" aria-pressed="false" aria-label="Tampilan daftar" title="Daftar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/></svg></button>
             </div>
         </div>
 

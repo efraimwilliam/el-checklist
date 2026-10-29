@@ -58,9 +58,16 @@ class Checklist extends Model
         return $this->hasMany(ChecklistExtraTask::class)->orderBy('sort')->orderBy('id');
     }
 
+    /** Terkunci: sudah direview GM / HR. */
     public function isReviewed(): bool
     {
         return $this->status === ChecklistStatus::Reviewed;
+    }
+
+    /** Sudah diverifikasi HOD, masih bisa diubah sampai GM / HR mereview. */
+    public function isHodReviewed(): bool
+    {
+        return $this->status === ChecklistStatus::HodReviewed;
     }
 
     /** Jumlah tugas yang sudah diberi status. */

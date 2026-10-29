@@ -48,17 +48,16 @@ it('does not accept tasks from another department, inactive tasks, or an empty s
     expect($this->staff->fresh()->custom_tasks)->toBeFalse()->and($this->staff->assignedTasks()->count())->toBe(0);
 });
 
-it('pre-selects the tasks of a position on request, or the saved choice', function () {
+it('shows the saved choice of tasks', function () {
     loggedIn($this->hod);
 
-    $this->get(route('team.tasks.edit', $this->staff))->assertOk()->assertSee('Memakai semua tugas jabatan')->assertDontSee('checked');
-    $html = $this->get(route('team.tasks.edit', ['employee' => $this->staff, 'dari' => $this->gsa->id]))->assertOk()->getContent();
-    expect(substr_count($html, 'checked'))->toBe(3);
+    $this->get(route('team.tasks.edit', $this->staff))->assertOk()->assertSee('Memakai semua tugas jabatan')->assertDontSee(' checked>')
+        ->assertDontSee('Centang semua')->assertDontSee('Isi dari tugas jabatan')->assertSee('Cari tugas');
 
     $this->staff->assignedTasks()->sync([$this->dmTask->id]);
     $this->staff->update(['custom_tasks' => true]);
     $html = $this->get(route('team.tasks.edit', $this->staff))->assertSee('Tugas sudah disesuaikan')->getContent();
-    expect(substr_count($html, 'checked'))->toBe(1);
+    expect(substr_count($html, ' checked>'))->toBe(1);
 });
 
 it('returns to the default tasks of the position on reset', function () {
@@ -124,9 +123,49 @@ it('lists only staff the viewer may manage, with their status', function () {
 
 it('shows the team link to HODs, HR and administrators only', function () {
     loggedIn($this->hod);
-    $this->get(route('fill.create'))->assertSee('Atur tugas tim');
+    $this->get(route('fill.create'))->assertSee('Atur tugas');
 
     $this->post('/logout');
     loggedIn(userWithRole(Role::Gm));
-    $this->get(route('checklists.index'))->assertDontSee('Atur tugas tim');
+    $this->get(route('checklists.index'))->assertDontSee('Atur tugas');
+});
+
+it('lets the HOD add a task only to positions of their own department', function () {
+    loggedIn($this->hod);
+
+    $this->post(route('team.tasks.store'), ['position' => $this->gsa->id, 'title' => 'Cek minibar', 'section' => 'Operasional'])
+        ->assertRedirect(route('team.catalog').'#jabatan-'.$this->gsa->id);
+    expect($this->gsa->tasks()->where('title', 'Cek minibar')->where('section', 'Operasional')->exists())->toBeTrue();
+    $this->get(route('team.catalog'))->assertOk()->assertSee('Cek minibar')->assertSee('Daftar tugas');
+    $this->get(route('team.index'))->assertOk()->assertDontSee('Cek minibar');
+
+    $this->post(route('team.tasks.store'), ['position' => $this->gsa->id, 'title' => ''])->assertSessionHasErrors('title');
+    $other = Position::factory()->for(Department::factory()->create())->create();
+    $this->post(route('team.tasks.store'), ['position' => $other->id, 'title' => 'Tidak boleh'])->assertForbidden();
+    expect(Task::where('title', 'Tidak boleh')->exists())->toBeFalse();
+});
+
+it('lets the HOD edit and delete tasks of their own department from the catalog', function () {
+    loggedIn($this->hod);
+
+    $this->put(route('team.catalog.tasks.update', $this->dmTask), ['title' => 'Review laporan harian (revisi)', 'section' => 'Operasional', 'standard' => 'Sebelum 08.00'])
+        ->assertRedirect(route('team.catalog').'#jabatan-'.$this->dm->id);
+    expect($this->dmTask->fresh())->title->toBe('Review laporan harian (revisi)')->section->toBe('Operasional')->standard->toBe('Sebelum 08.00');
+    $this->put(route('team.catalog.tasks.update', $this->dmTask), ['title' => ''])->assertSessionHasErrorsIn('editTask', 'title');
+
+    $this->delete(route('team.catalog.tasks.destroy', $this->dmTask))->assertRedirect(route('team.catalog').'#jabatan-'.$this->dm->id);
+    expect(Task::find($this->dmTask->id))->toBeNull();
+
+    $other = Task::factory()->for(Position::factory()->for(Department::factory()->create())->create())->create();
+    $this->put(route('team.catalog.tasks.update', $other), ['title' => 'Tidak boleh'])->assertForbidden();
+    $this->delete(route('team.catalog.tasks.destroy', $other))->assertForbidden();
+    expect($other->fresh()->title)->not->toBe('Tidak boleh');
+});
+
+it('lists every task once, so the browser can sort, search and page without reloading', function () {
+    loggedIn($this->hod);
+    Task::factory()->for($this->gsa)->count(30)->create(['section' => 'Operasional']);
+
+    $html = $this->get(route('team.catalog'))->assertOk()->assertSee('Handover shift')->getContent();
+    expect(substr_count($html, '<tr data-catalog-row'))->toBe(34);
 });

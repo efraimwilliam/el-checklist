@@ -13,3 +13,6 @@ Schedule::command('checklist:prune-photos')->dailyAt('03:30')->withoutOverlappin
 
 // Pembuatan otomatis checklist harian per departemen (jam diatur HOD / HR / Administrator di halaman Isi checklist).
 Schedule::command('checklist:auto-assign')->everyFiveMinutes()->withoutOverlapping();
+
+// Ringkasan mingguan (7 hari sampai kemarin) setiap Senin pagi, WITA. Pengiriman email menunggu alamat GM.
+Schedule::command('laporan:mingguan')->weeklyOn(1, '07:00')->timezone('Asia/Makassar')->withoutOverlapping();

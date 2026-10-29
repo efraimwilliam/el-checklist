@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Audit\AuditLogger;
 use App\Attendance\AttendanceApiService;
 use App\Attendance\AuthOutcome;
 use App\Attendance\AuthResult;
@@ -78,6 +79,7 @@ class AttendanceLoginController extends Controller
 
     public function destroy(Request $request): RedirectResponse
     {
+        AuditLogger::record('logout');
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
@@ -126,5 +128,6 @@ class AttendanceLoginController extends Controller
     private function log(Request $request, string $username, string $outcome): void
     {
         Log::channel('auth')->info('login', ['username' => $username, 'ip' => $request->ip(), 'outcome' => $outcome]);
+        AuditLogger::record('login.'.$outcome, null, null, null, null, $username);
     }
 }

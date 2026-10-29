@@ -198,7 +198,9 @@ it('lets only administrators change the photo settings', function () {
 
     foreach ([Role::Hr, Role::Gm, Role::Hod, Role::Staff] as $role) {
         loggedIn(userWithRole($role));
-        $this->get(route('admin.settings.edit'))->assertForbidden();
+        // Halaman Pengaturan terbuka untuk HOD / HR (pembuatan otomatis), tetapi bagian foto hanya untuk Administrator.
+        $page = $this->get(route('admin.settings.edit'));
+        in_array($role, [Role::Hr, Role::Hod], true) ? $page->assertOk()->assertDontSee('name="photo_requirement"') : $page->assertForbidden();
         $this->put(route('admin.settings.update'), ['photo_requirement' => 'all', 'photo_retention_days' => 5])->assertForbidden();
         $this->post('/logout');
     }

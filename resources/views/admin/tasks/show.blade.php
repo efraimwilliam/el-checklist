@@ -23,14 +23,20 @@
         <button class="btn-secondary">Simpan jabatan</button>
     </form>
 
-    <h2 class="mb-2 font-display text-xl">Daftar tugas ({{ $position->tasks->where('is_active', true)->count() }} aktif)</h2>
-    <div class="space-y-2">
+    <div class="mb-2 flex flex-wrap items-center justify-between gap-3">
+        <h2 class="font-display text-xl">Daftar tugas ({{ $position->tasks->where('is_active', true)->count() }} aktif)</h2>
+        <div class="flex items-center gap-3">
+            <span class="text-xs text-slate-500" data-move-status aria-live="polite"></span>
+            <button type="button" class="btn-primary" data-open-add>+ Tambah tugas</button>
+        </div>
+    </div>
+    <div class="space-y-2" data-task-list>
         @forelse ($position->tasks as $task)
-            <div class="card p-3 {{ $task->is_active ? '' : 'bg-slate-50' }}">
+            <div class="card p-3 {{ $task->is_active ? '' : 'bg-slate-50' }}" data-task-item>
                 <div class="flex items-start gap-3">
                     <div class="flex flex-col gap-1">
-                        <form method="POST" action="{{ route('admin.tasks.move', $task) }}">@csrf<input type="hidden" name="direction" value="up"><button class="btn-secondary !px-2 !py-0.5" @disabled($loop->first) aria-label="Naikkan">↑</button></form>
-                        <form method="POST" action="{{ route('admin.tasks.move', $task) }}">@csrf<input type="hidden" name="direction" value="down"><button class="btn-secondary !px-2 !py-0.5" @disabled($loop->last) aria-label="Turunkan">↓</button></form>
+                        <button type="button" class="btn-secondary !px-2 !py-0.5" data-move="up" data-url="{{ route('admin.tasks.move', $task) }}" @disabled($loop->first) aria-label="Naikkan">↑</button>
+                        <button type="button" class="btn-secondary !px-2 !py-0.5" data-move="down" data-url="{{ route('admin.tasks.move', $task) }}" @disabled($loop->last) aria-label="Turunkan">↓</button>
                     </div>
                     <div class="min-w-0 flex-1 {{ $task->is_active ? '' : 'text-slate-400' }}">
                         @if ($task->section) <p class="text-xs uppercase tracking-wide text-slate-500">{{ $task->section }}</p> @endif
@@ -59,14 +65,82 @@
                 </details>
             </div>
         @empty
-            <p class="card p-4 text-sm text-slate-500">Belum ada tugas untuk jabatan ini.</p>
+            <p class="card p-4 text-sm text-slate-500" data-task-empty>Belum ada tugas untuk jabatan ini.</p>
         @endforelse
     </div>
 
-    <form method="POST" action="{{ route('admin.tasks.store', $position) }}" class="card mt-6 space-y-3 p-4">
-        @csrf
-        <h2 class="font-display text-xl">Tambah tugas</h2>
-        @include('admin.tasks.fields', ['task' => null])
-        <div class="flex justify-end"><button class="btn-primary">Tambah tugas</button></div>
-    </form>
+    <dialog id="add-task-dialog" aria-labelledby="add-task-title" class="m-auto w-[min(42rem,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl backdrop:bg-[#2a1d12]/50">
+        <form method="POST" action="{{ route('admin.tasks.store', $position) }}" class="space-y-4 p-6">
+            @csrf
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <h2 id="add-task-title" class="font-display text-2xl text-slate-900">Tambah tugas</h2>
+                    <p class="text-sm text-slate-500">{{ $position->name }} · tugas baru masuk ke checklist yang dibuat sesudahnya.</p>
+                </div>
+                <button type="button" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-2xl leading-none text-slate-500 hover:bg-[#f6efdf] hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-500" aria-label="Tutup" data-close-add>×</button>
+            </div>
+            @include('admin.tasks.fields', ['task' => null])
+            <div class="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+                <button type="button" class="btn-secondary" data-close-add>Batal</button>
+                <button class="btn-primary">Tambah tugas</button>
+            </div>
+        </form>
+    </dialog>
+
+    <script>
+        (() => {
+            const csrf = document.querySelector('meta[name="csrf-token"]').content;
+            const list = document.querySelector('[data-task-list]');
+            const status = document.querySelector('[data-move-status]');
+            const addDialog = document.getElementById('add-task-dialog');
+            let busy = false;
+
+            // Tombol naik / turun: urutan berubah di layar, lalu disimpan otomatis tanpa memuat ulang halaman.
+            const refreshArrows = () => {
+                const items = [...list.querySelectorAll('[data-task-item]')];
+                items.forEach((item, index) => {
+                    item.querySelector('[data-move="up"]').disabled = index === 0;
+                    item.querySelector('[data-move="down"]').disabled = index === items.length - 1;
+                });
+            };
+
+            list.addEventListener('click', async (event) => {
+                const button = event.target.closest('[data-move]');
+                if (!button || busy) return;
+                const item = button.closest('[data-task-item]');
+                const up = button.dataset.move === 'up';
+                const neighbour = up ? item.previousElementSibling : item.nextElementSibling;
+                if (!neighbour || !neighbour.matches('[data-task-item]')) return;
+
+                up ? list.insertBefore(item, neighbour) : list.insertBefore(neighbour, item);
+                refreshArrows();
+                busy = true;
+                status.textContent = 'Menyimpan…';
+
+                try {
+                    const response = await fetch(button.dataset.url, {
+                        method: 'POST',
+                        headers: { 'X-CSRF-TOKEN': csrf, Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({ direction: button.dataset.move }),
+                    });
+                    if (!response.ok) throw new Error(response.status);
+                    status.textContent = 'Urutan tersimpan otomatis';
+                } catch (error) {
+                    // Gagal: kembalikan urutan di layar dan beri tahu pengguna (sesi habis bisa jadi sebabnya).
+                    up ? list.insertBefore(neighbour, item) : list.insertBefore(item, neighbour);
+                    refreshArrows();
+                    status.textContent = error.message === '419' || error.message === '401' ? 'Sesi habis, silakan muat ulang halaman' : 'Gagal menyimpan urutan, coba lagi';
+                } finally {
+                    busy = false;
+                }
+            });
+
+            document.querySelector('[data-open-add]')?.addEventListener('click', () => addDialog.showModal());
+            addDialog.querySelectorAll('[data-close-add]').forEach((button) => button.addEventListener('click', () => addDialog.close()));
+
+            @if ($errors->any() && ! old('_task'))
+                addDialog.showModal();
+            @endif
+        })();
+    </script>
 </x-app-layout>

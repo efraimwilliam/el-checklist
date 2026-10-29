@@ -8,6 +8,7 @@ use App\Models\Employee;
 use App\Models\Position;
 use App\Models\Task;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 
 beforeEach(function () {
     $this->fo = Department::factory()->create(['name' => 'Front Office']);
@@ -32,12 +33,13 @@ it('lets the GM, HR and administrators mark a checklist as reviewed, recording w
     $this->post(route('checklists.review', $this->budiList))->assertRedirect(route('checklists.show', $this->budiList));
 
     expect($this->budiList->fresh())->status->toBe(ChecklistStatus::Reviewed)->reviewed_by->toBe($reviewer->id)->reviewed_at->not->toBeNull();
-    $this->get(route('checklists.show', $this->budiList))->assertSee('Sudah direview')->assertSee($reviewer->name())->assertDontSee('Tandai sudah direview');
+    $this->get(route('checklists.show', $this->budiList))->assertSee('Direview oleh GM/HR')->assertSee($reviewer->name())->assertDontSee('Tandai sudah direview');
     $this->post(route('checklists.review', $this->budiList))->assertForbidden(); // sudah direview
 })->with([Role::Gm, Role::Hr, Role::Admin]);
 
-it('does not let HODs or staff review, nor anyone review their own checklist', function () {
-    loggedIn($this->hod);
+it('does not let staff review, nor anyone review their own checklist', function () {
+    $staff = User::factory()->role(Role::Staff)->create();
+    loggedIn($staff);
     $this->post(route('checklists.review', $this->budiList))->assertForbidden();
     $this->post('/logout');
 
@@ -47,6 +49,47 @@ it('does not let HODs or staff review, nor anyone review their own checklist', f
     $this->post(route('checklists.review', $this->budiList))->assertForbidden();
 
     expect($this->budiList->fresh()->status)->toBe(ChecklistStatus::Saved);
+});
+
+it('lets the HOD verify a staff checklist of their department, then only GM or HR can lock it', function () {
+    loggedIn($this->hod);
+    $this->get(route('checklists.show', $this->budiList))->assertSee('Tandai sudah direview');
+    $this->post(route('checklists.review', $this->budiList))->assertRedirect(route('checklists.show', $this->budiList));
+    expect($this->budiList->fresh())->status->toBe(ChecklistStatus::HodReviewed)->reviewed_by->toBe($this->hod->id);
+
+    // Terkunci untuk HOD: isian tidak bisa diubah sampai HOD membatalkan review sendiri.
+    $item = $this->budiList->items->first();
+    $this->patchJson(route('checklists.items.update', [$this->budiList, $item]), ['status' => 'pending', 'note' => 'koreksi'])->assertForbidden();
+    $this->get(route('checklists.show', $this->budiList))->assertSee('Batalkan review')->assertDontSee('>Edit<', false);
+    $this->post(route('checklists.review', $this->budiList))->assertForbidden(); // sudah diverifikasi HOD
+    $this->post('/logout');
+
+    loggedIn(userWithRole(Role::Gm));
+    $this->get(route('checklists.index'))->assertSee('Tandai direview');
+    $this->post(route('checklists.review', $this->budiList))->assertRedirect();
+    expect($this->budiList->fresh())->status->toBe(ChecklistStatus::Reviewed);
+    $this->get(route('checklists.show', $this->budiList))->assertSee('Direview oleh GM/HR');
+    $this->post('/logout');
+
+    loggedIn($this->hod);
+    $this->patchJson(route('checklists.items.update', [$this->budiList, $item]), ['status' => 'done'])->assertForbidden();
+});
+
+it('does not let the HOD verify checklists of another department', function () {
+    $hk = Department::factory()->create(['name' => 'Housekeeping']);
+    $ra = Position::factory()->for($hk)->create(['name' => 'Room Attendant']);
+    Task::factory()->for($ra)->create();
+    $other = makeChecklist(Employee::factory()->for($hk)->create(), $ra);
+
+    loggedIn($this->hod);
+    $this->post(route('checklists.review', $other))->assertForbidden();
+    expect($other->fresh()->status)->toBe(ChecklistStatus::Saved);
+});
+
+it('does not let anyone verify an incomplete checklist', function () {
+    $draft = makeChecklist($this->budi, $this->gsa, CarbonImmutable::today()->subDay(), null);
+    loggedIn($this->hod);
+    $this->post(route('checklists.review', $draft))->assertForbidden();
 });
 
 it('locks a reviewed checklist for the HOD but not for HR or administrators', function () {
@@ -142,5 +185,57 @@ it('marks incomplete checklists in the list', function () {
     makeChecklist($this->budi, $this->gsa, now()->toImmutable()->subDay(), null)->items->first()->update(['status' => 'done']);
     loggedIn(userWithRole(Role::Gm));
 
-    $this->get(route('checklists.index', ['date' => now()->subDay()->toDateString()]))->assertSee('Belum lengkap 1/2');
+    $yesterday = now()->subDay()->toDateString();
+    $this->get(route('checklists.index', ['from' => $yesterday, 'to' => $yesterday]))->assertSee('Belum lengkap 1/2');
 });
+
+it('lets the HOD review their own complete checklist from the history, but not someone else\'s', function () {
+    loggedIn($this->hod);
+    $own = makeChecklist($this->hod->employee, $this->gsa, CarbonImmutable::today(), 'done');
+
+    $this->get(route('checklists.index'))->assertOk()->assertSee('Tandai direview');
+    $this->post(route('checklists.review', $own))->assertRedirect(route('checklists.show', $own));
+    expect($own->fresh()->status)->toBe(ChecklistStatus::HodReviewed);
+    $this->get(route('checklists.show', $own))->assertSee('Direview oleh HOD');
+});
+
+it('lets the HOD cancel their review to edit again, until GM or HR has reviewed', function () {
+    loggedIn($this->hod);
+    $this->post(route('checklists.review', $this->budiList));
+    $this->post(route('checklists.unreview', $this->budiList))->assertRedirect(route('checklists.show', $this->budiList));
+    expect($this->budiList->fresh())->status->toBe(ChecklistStatus::Saved)->reviewed_by->toBeNull()->reviewed_at->toBeNull();
+
+    $item = $this->budiList->items->first();
+    $this->patchJson(route('checklists.items.update', [$this->budiList, $item]), ['status' => 'pending', 'note' => 'koreksi'])->assertOk();
+
+    $this->post(route('checklists.review', $this->budiList));
+    $this->post('/logout');
+    loggedIn(userWithRole(Role::Gm));
+    $this->post(route('checklists.review', $this->budiList));
+    $this->post('/logout');
+
+    loggedIn($this->hod);
+    $this->post(route('checklists.unreview', $this->budiList))->assertForbidden();
+});
+
+it('does not let the HOD cancel the review of another department', function () {
+    $hk = Department::factory()->create(['name' => 'Housekeeping']);
+    $ra = Position::factory()->for($hk)->create(['name' => 'Room Attendant']);
+    Task::factory()->for($ra)->create();
+    $other = makeChecklist(Employee::factory()->for($hk)->create(), $ra);
+    $other->update(['status' => ChecklistStatus::HodReviewed, 'reviewed_by' => userWithRole(Role::Hod)->id, 'reviewed_at' => now()]);
+
+    loggedIn($this->hod);
+    $this->post(route('checklists.unreview', $other))->assertForbidden();
+    expect($other->fresh()->status)->toBe(ChecklistStatus::HodReviewed);
+});
+
+it('lists checklists over a date range, newest first, with their dates', function () {
+    loggedIn($this->hod);
+    $yesterday = makeChecklist($this->budi, $this->gsa, CarbonImmutable::today()->subDay(), 'done');
+    $this->get(route('checklists.index', ['from' => CarbonImmutable::today()->subDays(2)->toDateString(), 'to' => CarbonImmutable::today()->toDateString()]))
+        ->assertOk()->assertSee($yesterday->date->translatedFormat('d M Y'))->assertSee('Budi Santoso');
+    $this->get(route('checklists.index', ['from' => CarbonImmutable::today()->subDays(10)->toDateString(), 'to' => CarbonImmutable::today()->subDays(5)->toDateString()]))
+        ->assertOk()->assertDontSee('Budi Santoso');
+});
+

@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\ChecklistStatus;
 use App\Enums\Role;
 use App\Models\Checklist;
 use App\Models\Employee;
@@ -42,10 +43,10 @@ class ChecklistPolicy
         };
     }
 
-    /** Mengubah checklist yang sudah ada. Setelah direview hanya HR / Administrator. */
+    /** Mengubah checklist yang sudah ada. Setelah direview HOD atau GM / HR, hanya HR / Administrator (HOD bisa membatalkan review HOD dulu). */
     public function update(User $user, Checklist $checklist): bool
     {
-        if ($checklist->isReviewed()) {
+        if ($checklist->isReviewed() || $checklist->isHodReviewed()) {
             return $user->role->overridesReview();
         }
 
@@ -57,10 +58,35 @@ class ChecklistPolicy
         };
     }
 
-    /** GM, HR dan Administrator menandai sudah direview, hanya bila checklist lengkap; tidak pernah checklist sendiri. */
+    /**
+     * Verifikasi, hanya bila checklist lengkap:
+     * - HOD (departemennya dan miliknya sendiri): dari "Belum direview" -> "Direview oleh HOD".
+     * - GM, HR, Administrator: checklist orang lain, dari "Belum direview" atau "Direview oleh HOD" -> "Direview oleh GM/HR" (terkunci).
+     */
     public function review(User $user, Checklist $checklist): bool
     {
-        return ! $checklist->isReviewed() && $user->role->reviews() && ! $this->owns($user, $checklist) && $checklist->isComplete();
+        if ($checklist->isReviewed() || ! $checklist->isComplete()) {
+            return false;
+        }
+
+        if ($user->role->reviews()) {
+            return ! $this->owns($user, $checklist);
+        }
+
+        return $user->role === Role::Hod
+            && $checklist->status === ChecklistStatus::Saved
+            && ($this->owns($user, $checklist) || $user->canAccessDepartment($checklist->department_id));
+    }
+
+    /** HOD membatalkan verifikasinya sendiri (atau di departemennya) supaya isian bisa diubah lagi. HR / Administrator juga boleh. */
+    public function unreview(User $user, Checklist $checklist): bool
+    {
+        if ($checklist->status !== ChecklistStatus::HodReviewed) {
+            return false;
+        }
+
+        return $user->role->overridesReview()
+            || ($user->role === Role::Hod && ($this->owns($user, $checklist) || $user->canAccessDepartment($checklist->department_id)));
     }
 
     public function delete(User $user, Checklist $checklist): bool

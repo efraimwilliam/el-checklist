@@ -9,7 +9,7 @@
     <link rel="icon" href="{{ asset('favicon.ico') }}">
     @vite(['resources/css/app.css'])
 </head>
-<body class="min-h-screen bg-slate-50 text-slate-800 antialiased">
+<body class="min-h-screen bg-white text-slate-800 antialiased">
 {{ $slot }}
 </body>
 </html>

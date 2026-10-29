@@ -8,13 +8,12 @@ use Illuminate\Http\Request;
 
 class HomeController extends Controller
 {
-    /** Staff ke checklist hari ini, HOD ke halaman isi, HR / GM / Administrator ke daftar checklist. */
+    /** Staff ke checklist hari ini; HOD / HR / GM / Administrator ke dashboard progres checklist per departemen. */
     public function __invoke(Request $request): RedirectResponse
     {
         return match ($request->user()->role) {
             Role::Staff => redirect()->route('checklists.today'),
-            Role::Hod => redirect()->route('fill.create'),
-            default => redirect()->route('checklists.index'),
+            default => redirect()->route('dashboard'),
         };
     }
 }

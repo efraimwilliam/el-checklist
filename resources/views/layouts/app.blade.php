@@ -7,9 +7,9 @@
     <meta name="theme-color" content="#1b1511">
     <title>{{ isset($title) ? $title.' · ' : '' }}{{ config('app.name') }}</title>
     <link rel="icon" href="{{ asset('favicon.ico') }}">
-    @vite(['resources/css/app.css'])
+    @vite(['resources/css/app.css', 'resources/js/date-picker.js'])
 </head>
-<body class="min-h-screen bg-slate-50 text-slate-800 antialiased">
+<body class="min-h-screen bg-white text-slate-800 antialiased">
 @auth
     @php($navLink = fn (bool $active) => 'whitespace-nowrap border-b-2 py-2.5 transition '.($active ? 'border-gold-500 font-semibold text-gold-400' : 'border-transparent text-white/70 hover:text-white'))
     <header class="bg-ink text-white print:hidden">
@@ -33,22 +33,29 @@
                 </div>
             </div>
             <nav class="mt-2 flex gap-6 overflow-x-auto text-sm">
+                @can('view-checklists')
+                    <a href="{{ route('dashboard') }}" class="{{ $navLink(request()->routeIs('dashboard')) }}">Dashboard</a>
+                @endcan
                 @can('fill-checklists')
                     <a href="{{ route('fill.create') }}" class="{{ $navLink(request()->routeIs('fill.*', 'checklists.today')) }}">{{ auth()->user()->role === \App\Enums\Role::Staff ? 'Checklist saya' : 'Isi checklist' }}</a>
                 @endcan
                 @can('view-checklists')
                     <a href="{{ route('checklists.index') }}" class="{{ $navLink(request()->routeIs('checklists.index', 'checklists.show')) }}">Riwayat</a>
+                    <a href="{{ route('laporan.index') }}" class="{{ $navLink(request()->routeIs('laporan.*')) }}">Laporan</a>
                 @endcan
                 @can('manage-team-tasks')
-                    <a href="{{ route('team.index') }}" class="{{ $navLink(request()->routeIs('team.*')) }}">Atur tugas tim</a>
+                    <a href="{{ route('team.index') }}" class="{{ $navLink(request()->routeIs('team.index', 'team.tasks.*', 'team.positions.*')) }}">Atur tugas</a>
+                    <a href="{{ route('team.catalog') }}" class="{{ $navLink(request()->routeIs('team.catalog')) }}">Daftar tugas</a>
                 @endcan
                 @can('manage-tasks')
                     <a href="{{ route('admin.tasks.index') }}" class="{{ $navLink(request()->routeIs('admin.tasks.*', 'admin.positions.*')) }}">Kelola tugas</a>
                 @endcan
                 @can('manage-access')
                     <a href="{{ route('admin.access.index') }}" class="{{ $navLink(request()->routeIs('admin.access.*', 'admin.sync')) }}">Akses pengguna</a>
-                    <a href="{{ route('admin.settings.edit') }}" class="{{ $navLink(request()->routeIs('admin.settings.*')) }}">Pengaturan</a>
                 @endcan
+                @canany(['manage-access', 'manage-team-tasks'])
+                    <a href="{{ route('admin.settings.edit') }}" class="{{ $navLink(request()->routeIs('admin.settings.*')) }}">Pengaturan</a>
+                @endcanany
             </nav>
         </div>
     </header>

@@ -1,13 +1,24 @@
 <x-app-layout title="Pengaturan">
     <div class="mb-4">
         <h1 class="text-3xl text-slate-900">Pengaturan</h1>
-        <p class="text-sm text-slate-500">Berlaku untuk semua departemen.</p>
+        <p class="text-sm text-slate-500">Pembuatan otomatis tiap hari, dan (Administrator) foto bukti untuk semua departemen.</p>
     </div>
+
+    @can('manage-access')
+        <a href="{{ route('admin.logs.index') }}" class="card mb-6 flex max-w-2xl items-center justify-between gap-4 p-5 transition hover:border-gold-500">
+            <span>
+                <span class="block font-display text-xl text-slate-900">Log aplikasi</span>
+                <span class="block text-sm text-slate-500">Riwayat semua aktivitas: login, checklist, tugas, jabatan, akses, dan pengaturan. Hanya Administrator.</span>
+            </span>
+            <span class="text-2xl text-gold-700" aria-hidden="true">›</span>
+        </a>
+    @endcan
 
     @if ($errors->any())
         <div class="mb-4 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">@foreach ($errors->all() as $message) <p>{{ $message }}</p> @endforeach</div>
     @endif
 
+    @can('manage-access')
     <form method="POST" action="{{ route('admin.settings.update') }}" class="card max-w-2xl space-y-6 p-6">
         @csrf
         @method('PUT')
@@ -38,4 +49,25 @@
 
         <div class="flex justify-end"><button class="btn-primary">Simpan pengaturan</button></div>
     </form>
+    @endcan
+
+    <div class="card mt-6 max-w-2xl p-6">
+        <h2 class="font-display text-xl">Pembuatan otomatis tiap hari</h2>
+        <p class="mb-3 mt-1 text-sm text-slate-500">Isi jam (WITA) supaya checklist dibuatkan sendiri setiap hari untuk staff yang masuk kerja menurut jadwal Absensi. Kosongkan untuk mematikan. Jadwal yang baru diisi sesudahnya bisa disusul dengan tombol "Buat checklist" di halaman Isi checklist.</p>
+        <div class="divide-y divide-slate-100">
+            @forelse ($departments as $option)
+                <form method="POST" action="{{ route('fill.auto-assign', $option) }}" class="flex flex-wrap items-center justify-between gap-2 py-3 text-sm">
+                    @csrf
+                    @method('PUT')
+                    <span class="font-medium text-slate-700">{{ $option->name }}@if ($option->auto_assigned_on) <span class="font-normal text-slate-500">· terakhir {{ $option->auto_assigned_on->translatedFormat('d M') }}</span>@endif</span>
+                    <span class="flex items-center gap-2">
+                        <input type="time" name="auto_assign_at" value="{{ $option->auto_assign_at ? substr($option->auto_assign_at, 0, 5) : '' }}" class="input !w-32" aria-label="Jam otomatis {{ $option->name }}">
+                        <button class="btn-secondary !px-4 !py-1.5">Simpan</button>
+                    </span>
+                </form>
+            @empty
+                <p class="py-3 text-sm text-slate-500">Tidak ada departemen yang bisa Anda atur.</p>
+            @endforelse
+        </div>
+    </div>
 </x-app-layout>

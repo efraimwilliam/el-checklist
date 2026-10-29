@@ -9,6 +9,7 @@ use App\Models\Position;
 use App\Models\Task;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 
 beforeEach(function () {
@@ -46,6 +47,7 @@ function startedChecklist(): Checklist
 it('shows the HOD only their own department in the selector', function () {
     Employee::factory()->for($this->fo)->create(['name' => 'Sudah Keluar', 'is_active' => false]);
     loggedIn($this->hod);
+    everyoneWorks();
 
     $this->get(route('fill.create'))->assertOk()
         ->assertSee('GSA (3 tugas)')->assertSee('Duty Manager (1 tugas)')
@@ -176,12 +178,19 @@ it('keeps one checklist per position for the same staff and date', function () {
     expect(Checklist::count())->toBe(2);
 });
 
-it('offers to continue checklists that are not complete yet', function () {
+it('shows the team board for the day and offers to continue unfinished checklists of earlier days', function () {
     loggedIn($this->hod);
+    everyoneWorks();
     $checklist = startedChecklist();
     $checklist->items[0]->update(['status' => 'done']);
 
-    $this->get(route('fill.create'))->assertSee('Lanjutkan checklist')->assertSee('Budi Santoso')->assertSee('1 / 3 terisi')->assertSee(route('checklists.fill', $checklist));
+    // Hari ini: di papan tim, tidak diulang di "Lanjutkan checklist".
+    $this->get(route('fill.create'))->assertSee('Tim Front Office')->assertSee('Budi Santoso')->assertSee('Belum lengkap')->assertSee('1 / 3 terisi')
+        ->assertSee('Lanjutkan')->assertSee(route('checklists.fill', $checklist))->assertDontSee('Lanjutkan checklist');
+
+    // Kemarin: papan hari ini kosong untuk staff itu, checklist lamanya muncul di "Lanjutkan checklist".
+    $checklist->update(['date' => today()->subDay()]);
+    $this->get(route('fill.create'))->assertSee('Lanjutkan checklist')->assertSee('1 / 3 terisi')->assertSee('Belum dibuat');
 
     $checklist->items()->update(['status' => 'done']);
     $this->get(route('fill.create'))->assertDontSee('Lanjutkan checklist');
@@ -200,6 +209,7 @@ it('does not let a HOD fill for another department or mix departments', function
 it('lets staff with an account work only on their own checklist', function () {
     $staff = User::factory()->for($this->budi)->create(['position_id' => $this->gsa->id]);
     loggedIn($staff);
+    everyoneWorks();
 
     $this->get(route('checklists.today'))->assertRedirect(route('fill.create'));
     $this->get(route('fill.create'))->assertOk()->assertSee('Checklist saya')->assertSee('Buka checklist GSA')->assertDontSee('Dicek oleh');
@@ -217,12 +227,14 @@ it('lets staff with an account work only on their own checklist', function () {
 
 it('tells staff without a checklist position to contact HR', function () {
     loggedIn(User::factory()->for($this->budi)->create(['position_id' => null]));
+    everyoneWorks();
 
     $this->get(route('fill.create'))->assertOk()->assertSee('Jabatan checklist Anda belum diatur');
 });
 
 it('does not let the GM fill checklists', function () {
     loggedIn(userWithRole(Role::Gm));
+    everyoneWorks();
 
     $this->get(route('fill.create'))->assertForbidden();
     $this->post(route('fill.start'), startData())->assertForbidden();
@@ -230,6 +242,7 @@ it('does not let the GM fill checklists', function () {
 
 it('lets HR and administrators work in any department', function (Role $role) {
     loggedIn(userWithRole($role));
+    everyoneWorks();
 
     $this->get(route('fill.create'))->assertOk()->assertSee('Front Office')->assertSee('Housekeeping');
     $this->get(route('fill.create', ['department' => $this->hk->id]))->assertSee('Room Attendant (1 tugas)')->assertSee('Sari Dewi')->assertDontSee('Budi Santoso');
@@ -319,3 +332,29 @@ it('does not offer the print button to staff', function () {
 
     $this->get(route('checklists.show', Checklist::sole()))->assertOk()->assertDontSee('Cetak');
 });
+
+function everyoneWorks(): void
+{
+    fakeSchedules([[test()->budi, 'work', 'P'], [test()->sari, 'work', 'M']]);
+}
+
+it('marks staff without a schedule in Absensi as disabled on the team board', function () {
+    loggedIn($this->hod);
+    Employee::factory()->for($this->fo)->create(['name' => 'Ani Kosong', 'checklist_position_id' => $this->gsa->id]);
+    fakeSchedules([[$this->budi, 'work', 'P']]);
+
+    $this->get(route('fill.create'))->assertOk()
+        ->assertSee('Ani Kosong')->assertSee('Jadwal belum diisi')->assertSee('Tidak ada jadwal di Absensi untuk tanggal ini')
+        ->assertSee('disabled class="btn-secondary !px-4 !py-1.5" title="Jadwal belum diisi di Absensi"', false);
+    expect(Checklist::count())->toBe(0);
+});
+
+it('does not mark anyone when the Absensi schedule cannot be read', function () {
+    loggedIn($this->hod);
+    Employee::factory()->for($this->fo)->create(['name' => 'Ani Kosong', 'checklist_position_id' => $this->gsa->id]);
+    fakeAttendance([SCHEDULES_URL => Http::response(['message' => 'down'], 500)]);
+
+    $this->get(route('fill.create'))->assertOk()
+        ->assertSee('Jadwal Absensi belum bisa dibaca')->assertSee('Ani Kosong')->assertDontSee('Jadwal belum diisi');
+});
+

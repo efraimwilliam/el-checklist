@@ -132,3 +132,29 @@ it('shows the management link only to those who can manage tasks', function () {
     loggedIn(userWithRole(Role::Hod));
     $this->get(route('checklists.index'))->assertDontSee('Kelola tugas');
 });
+
+it('moves a task without a page reload when asked for JSON, keeping the order', function () {
+    loggedIn(userWithRole(Role::Admin));
+
+    $this->postJson(route('admin.tasks.move', $this->second), ['direction' => 'up'])->assertOk()->assertJsonPath('ok', true);
+    expect($this->second->fresh()->sort)->toBeLessThan($this->first->fresh()->sort);
+    $this->postJson(route('admin.tasks.move', $this->first), ['direction' => 'sideways'])->assertUnprocessable();
+});
+
+it('lets administrators rename, deactivate and delete a position, but keeps one that a checklist has used', function () {
+    loggedIn(userWithRole(Role::Admin));
+
+    $this->put(route('admin.positions.update', $this->position), ['name' => 'Duty Manager Senior', 'is_active' => '0'])->assertRedirect();
+    expect($this->position->fresh())->name->toBe('Duty Manager Senior')->is_active->toBeFalse();
+
+    $unused = Position::factory()->for($this->fo)->create(['name' => 'Sementara']);
+    Task::factory()->for($unused)->create();
+    $this->delete(route('admin.positions.destroy', $unused))->assertRedirect(route('admin.tasks.index'));
+    expect(Position::find($unused->id))->toBeNull()->and(Task::where('position_id', $unused->id)->exists())->toBeFalse();
+
+    $employee = Employee::factory()->for($this->fo)->create();
+    makeChecklist($employee, $this->position);
+    $this->delete(route('admin.positions.destroy', $this->position))->assertSessionHasErrors('name');
+    expect(Position::find($this->position->id))->not->toBeNull();
+});
+

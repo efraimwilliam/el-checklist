@@ -26,8 +26,9 @@
             <div class="lg:col-span-4">
                 <dt class="label !mb-0.5">Review</dt>
                 <dd>
-                    @if ($checklist->isReviewed())
-                        Direview {{ $checklist->reviewer?->name() ?? '—' }}, {{ $checklist->reviewed_at?->format('d M Y H:i') }}
+                    @if ($checklist->isReviewed() || $checklist->isHodReviewed())
+                        {{ $checklist->status->label() }} {{ $checklist->reviewer?->name() ?? '—' }}, {{ $checklist->reviewed_at?->format('d M Y H:i') }}
+                        @if ($checklist->isHodReviewed()) <span class="text-slate-500">· terkunci untuk HOD dan staff; GM atau HR masih bisa mereview</span> @endif
                     @else
                         Belum direview
                     @endif
@@ -116,6 +117,12 @@
             <form method="POST" action="{{ route('checklists.review', $checklist) }}">
                 @csrf
                 <button class="btn-primary">Tandai sudah direview</button>
+            </form>
+        @endif
+        @if ($canUnreview)
+            <form method="POST" action="{{ route('checklists.unreview', $checklist) }}" onsubmit="return confirm('Batalkan review HOD? Checklist bisa diubah lagi dan perlu direview ulang.')">
+                @csrf
+                <button class="btn-secondary">Batalkan review</button>
             </form>
         @endif
     </div>
