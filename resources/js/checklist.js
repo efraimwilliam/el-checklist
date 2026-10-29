@@ -1,5 +1,5 @@
 // Halaman checklist: setiap pilihan tersimpan otomatis ke server (tanpa tombol simpan), tampilan kartu / daftar,
-// catatan otomatis untuk Ongoing / Pending, progres + skor sementara, "Sisa tugas = Done", "Kosongkan" dan tugas tambahan.
+// catatan otomatis untuk Ongoing / Pending, progres + skor sementara, dan tugas tambahan.
 // Server tetap menjadi sumber kebenaran: setiap permintaan mengirim keadaan terbaru dari layar, dan gagal simpan ditampilkan jelas.
 const root = document.querySelector('[data-checklist-root]');
 
@@ -161,12 +161,14 @@ if (root) {
             const needsPhoto = photoCount === 0 && (photoRequirement === 'all' || (photoRequirement === 'pending' && status === 'pending'));
             if (needsPhoto) missingPhotos++;
             item.querySelector('[data-photo-hint]')?.classList.toggle('hidden', !needsPhoto);
-            item.querySelector('[data-photo-add]')?.classList.toggle('hidden', photoCount >= photoMax);
+            item.querySelectorAll('[data-photo-add]').forEach((control) => control.classList.toggle('hidden', photoCount >= photoMax));
 
             // Catatan muncul otomatis untuk Ongoing dan Pending; untuk Done hanya bila diminta atau sudah ada isinya.
             const show = status === 'ongoing' || status === 'pending' || input.value.trim() !== '' || note.dataset.open === '1';
             note.classList.toggle('hidden', !show);
-            item.querySelector('[data-note-toggle]')?.classList.toggle('hidden', show);
+            const noteToggle = item.querySelector('[data-note-toggle]');
+            noteToggle?.setAttribute('aria-pressed', String(show));
+            noteToggle?.classList.toggle('has-note', input.value.trim() !== '');
             item.querySelector('[data-note-hint]')?.classList.toggle('hidden', !needsReason);
             input.placeholder = status === 'pending' ? 'Alasan wajib diisi, mis. menunggu barang dari store' : 'Catatan (opsional)';
         }
@@ -180,44 +182,33 @@ if (root) {
         paintDeck();
     }
 
-    // Keadaan dari server (setelah "Sisa tugas = Done" / "Kosongkan") dipasang ke layar.
-    function applyItems(states) {
-        for (const item of items) {
-            const state = states[item.dataset.id];
-            if (!state) continue;
-            item.querySelectorAll('input[type=radio]').forEach((radio) => (radio.checked = radio.value === state.status));
-            noteInput(item).value = state.note ?? '';
-        }
-        refresh();
-    }
-
-    async function bulk(url) {
-        flushAll();
-        await settle();
-        inflight++;
-        setState('saving', 'Menyimpan…');
-        try {
-            const data = await request('POST', url);
-            applyItems(data.items);
-            setState('saved', `Tersimpan otomatis · ${data.saved_at}`);
-        } catch (error) {
-            setState('error', error.message);
-        } finally {
-            inflight--;
-        }
-    }
-
     // ---- Tugas ----
     const sendItem = (item) => () => request('PATCH', itemUrl(item.dataset.id), { status: statusOf(item), note: noteInput(item).value });
+
+    // Menekan pilihan yang sedang terpilih sekali lagi = pilihan dibatalkan (radio bawaan browser tidak bisa).
+    const lastStatus = new Map(items.map((item) => [item, statusOf(item)]));
+
+    root.addEventListener('click', (event) => {
+        const radio = event.target.closest('[data-item] input[type=radio]');
+        if (!radio) return;
+        const item = radio.closest('[data-item]');
+        if (lastStatus.get(item) === radio.value) {
+            radio.checked = false;
+            lastStatus.set(item, null);
+            refresh();
+            enqueue(`item:${item.dataset.id}`, sendItem(item));
+        }
+    });
 
     root.addEventListener('change', (event) => {
         const radio = event.target.closest('[data-item] input[type=radio]');
         if (radio) {
             const item = radio.closest('[data-item]');
+            lastStatus.set(item, radio.value);
             refresh();
             enqueue(`item:${item.dataset.id}`, sendItem(item));
-            // Done = tugas beres: kartu berikutnya terbuka sendiri (Ongoing / Pending butuh catatan, jadi tidak pindah).
-            if (isCard() && auto.checked && radio.value === 'done') {
+            // Done = tugas beres: kartu berikutnya terbuka sendiri, tanpa pilihan (Ongoing / Pending butuh catatan, jadi tidak pindah).
+            if (isCard() && radio.value === 'done') {
                 setTimeout(() => slides[current] === item && goTo(current + 1), 450);
             }
         } else if (event.target.matches('[data-extra-status]')) {
@@ -247,14 +238,17 @@ if (root) {
         const toggle = event.target.closest('[data-note-toggle]');
         if (!toggle) return;
         const item = toggle.closest('[data-item]');
-        item.querySelector('[data-note]').dataset.open = '1';
-        refresh();
+        const note = item.querySelector('[data-note]');
+        const required = ['ongoing', 'pending'].includes(statusOf(item)) || noteInput(item).value.trim() !== '';
+        if (note.classList.contains('hidden')) {
+            note.dataset.open = '1';
+            refresh();
+        } else if (!required) {
+            note.dataset.open = ''; // dibuka manual dan masih kosong: tombol Catatan menutupnya lagi
+            refresh();
+            return;
+        }
         noteInput(item).focus();
-    });
-
-    root.querySelector('[data-rest-done]')?.addEventListener('click', () => bulk(root.dataset.restDoneUrl));
-    root.querySelector('[data-clear]')?.addEventListener('click', () => {
-        if (confirm('Kosongkan semua status dan catatan tugas di checklist ini?')) bulk(root.dataset.clearUrl);
     });
 
     // ---- Foto bukti per tugas ----
@@ -293,7 +287,7 @@ if (root) {
         thumb.innerHTML = '<a target="_blank" rel="noopener"><img loading="lazy" alt="Foto tugas"></a><button type="button" data-photo-remove aria-label="Hapus foto">✕</button>';
         thumb.querySelector('a').href = photo.url;
         thumb.querySelector('img').src = photo.url;
-        list.insertBefore(thumb, item.querySelector('[data-photo-add]'));
+        list.append(thumb);
     }
 
     // Mengirim satu foto (sudah dikecilkan) ke server; mengembalikan true bila berhasil.
@@ -480,23 +474,9 @@ if (root) {
     const countLabel = root.querySelector('[data-deck-count]');
     const prev = root.querySelector('[data-prev]');
     const next = root.querySelector('[data-next]');
-    const auto = root.querySelector('[data-auto]');
     const chips = [];
     let current = 0;
     const isCard = () => root.dataset.view === 'card';
-
-    try {
-        auto.checked = localStorage.getItem('checklist-autoadvance') !== '0';
-    } catch {
-        /* abaikan */
-    }
-    auto.addEventListener('change', () => {
-        try {
-            localStorage.setItem('checklist-autoadvance', auto.checked ? '1' : '0');
-        } catch {
-            /* abaikan */
-        }
-    });
 
     slides.forEach((slide, index) => {
         const final = slide.matches('[data-final]');
@@ -512,6 +492,7 @@ if (root) {
             chip.textContent = String(index + 1);
             chip.addEventListener('click', () => {
                 jump.classList.add('hidden');
+                jumpToggle.setAttribute('aria-expanded', 'false');
                 goTo(index);
             });
             chips[index] = chip;
@@ -568,7 +549,11 @@ if (root) {
 
     prev.addEventListener('click', () => goTo(current - 1));
     next.addEventListener('click', () => goTo(current + 1));
-    root.querySelector('[data-jump-toggle]').addEventListener('click', () => jump.classList.toggle('hidden'));
+    const jumpToggle = root.querySelector('[data-jump-toggle]');
+    jumpToggle.addEventListener('click', () => {
+        jump.classList.toggle('hidden');
+        jumpToggle.setAttribute('aria-expanded', String(!jump.classList.contains('hidden')));
+    });
     document.addEventListener('keydown', (event) => {
         if (!isCard() || event.target.closest?.('input, textarea, select, [contenteditable]')) return;
         if (event.key === 'ArrowRight') goTo(current + 1);

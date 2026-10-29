@@ -99,7 +99,9 @@
             @if ($canEdit)
                 <a href="{{ route('checklists.fill', $checklist) }}" class="btn-secondary">Edit</a>
             @endif
-            <button type="button" onclick="window.print()" class="btn-secondary">Cetak</button>
+            @if (auth()->user()->role !== \App\Enums\Role::Staff)
+                <button type="button" onclick="window.print()" class="btn-secondary">Cetak</button>
+            @endif
             @if ($canDelete)
                 <form method="POST" action="{{ route('checklists.destroy', $checklist) }}" onsubmit="return confirm('Hapus checklist ini? Tindakan ini tidak bisa dibatalkan.')">
                     @csrf

@@ -30,22 +30,6 @@ class ChecklistItemController extends Controller
         return $this->response($checklist);
     }
 
-    public function restDone(Request $request, Checklist $checklist): JsonResponse
-    {
-        Gate::authorize('update', $checklist);
-        $this->service->markRestDone($checklist, $request->user());
-
-        return $this->response($checklist);
-    }
-
-    public function clear(Request $request, Checklist $checklist): JsonResponse
-    {
-        Gate::authorize('update', $checklist);
-        $this->service->clear($checklist, $request->user());
-
-        return $this->response($checklist);
-    }
-
     private function response(Checklist $checklist): JsonResponse
     {
         $progress = $this->service->progress($checklist);

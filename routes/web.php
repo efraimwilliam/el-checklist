@@ -37,8 +37,6 @@ Route::middleware(['auth', EnsureActiveSession::class])->group(function () {
     Route::post('/checklists/{checklist}/items/{item}/photos', [ChecklistPhotoController::class, 'store'])->scopeBindings()->middleware('throttle:60,1')->name('checklists.photos.store');
     Route::get('/checklists/{checklist}/photos/{photo}', [ChecklistPhotoController::class, 'show'])->name('checklists.photos.show');
     Route::delete('/checklists/{checklist}/photos/{photo}', [ChecklistPhotoController::class, 'destroy'])->name('checklists.photos.destroy');
-    Route::post('/checklists/{checklist}/rest-done', [ChecklistItemController::class, 'restDone'])->name('checklists.rest-done');
-    Route::post('/checklists/{checklist}/clear', [ChecklistItemController::class, 'clear'])->name('checklists.clear');
     Route::post('/checklists/{checklist}/review', [ChecklistController::class, 'review'])->name('checklists.review');
     Route::delete('/checklists/{checklist}', [ChecklistController::class, 'destroy'])->name('checklists.destroy');
 

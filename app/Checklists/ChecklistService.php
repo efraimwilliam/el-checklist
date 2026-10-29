@@ -92,20 +92,6 @@ class ChecklistService
         $this->touch($item->checklist, $by);
     }
 
-    /** "Sisa tugas = Done": semua tugas yang belum diisi menjadi Done. */
-    public function markRestDone(Checklist $checklist, User $by): void
-    {
-        $checklist->items()->whereNull('status')->update(['status' => ItemStatus::Done->value]);
-        $this->touch($checklist, $by);
-    }
-
-    /** "Kosongkan": semua status dan catatan tugas dikosongkan. */
-    public function clear(Checklist $checklist, User $by): void
-    {
-        $checklist->items()->update(['status' => null, 'note' => null]);
-        $this->touch($checklist, $by);
-    }
-
     /**
      * Catatan umum dan tugas tambahan; hanya kunci yang dikirim yang diubah.
      *

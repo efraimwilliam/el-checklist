@@ -104,7 +104,6 @@
     .cl-std { @apply mt-1 text-sm; }
     .cl-std summary { @apply cursor-pointer select-none font-semibold text-sky-700; }
     .cl-std p { @apply mt-1.5 rounded-lg bg-slate-50 px-3 py-2 text-slate-600; }
-    .cl-note-toggle { @apply mt-2 text-sm font-semibold text-sky-700; }
 
     .cl-seg { display: flex; width: 100%; overflow: hidden; border-radius: 9999px; border: 1px solid var(--color-slate-200); background: #fff; font-size: 0.8125rem; font-weight: 600; flex-shrink: 0; }
     .cl-seg label { flex: 1; cursor: pointer; }
@@ -168,15 +167,31 @@
     [data-save-state][data-state='saving'] { color: var(--color-gold-400); }
     [data-save-state][data-state='error'] { color: #f0a090; }
     .cl-toggle { display: inline-flex; overflow: hidden; border-radius: 9999px; border: 1px solid var(--color-slate-300); background: #fff; }
-    .cl-toggle button { padding: 0.45rem 1rem; font-size: 0.875rem; font-weight: 600; color: var(--color-slate-500); }
+    .cl-toggle button { display: flex; width: 2.5rem; height: 2.5rem; align-items: center; justify-content: center; color: var(--color-slate-500); }
+    .cl-iconbtn { width: 2.5rem; height: 2.5rem; align-items: center; justify-content: center; border-radius: 9999px; border: 1px solid var(--color-slate-300); background: #fff; color: var(--color-slate-600); }
+    .cl-iconbtn[aria-expanded='true'] { background: var(--color-ink); border-color: var(--color-ink); color: #fff; }
+    .cl-card-only-flex { display: none; }
+    [data-view='card'] .cl-card-only-flex { display: flex; }
     .cl-toggle button[aria-pressed='true'] { background: var(--color-ink); color: #fff; }
 
     .cl-photo { position: relative; width: 4.25rem; height: 4.25rem; flex-shrink: 0; overflow: hidden; border-radius: 0.75rem; border: 1px solid var(--color-slate-200); background: var(--color-slate-100); }
     .cl-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .cl-photo button { position: absolute; top: 2px; right: 2px; width: 1.5rem; height: 1.5rem; border-radius: 9999px; background: rgb(27 21 17 / 0.75); color: #fff; font-size: 0.75rem; line-height: 1; }
-    .cl-photo-add { display: inline-flex; min-height: 2.75rem; cursor: pointer; align-items: center; justify-content: center; gap: 0.25rem; border-radius: 9999px; border: 1px dashed var(--color-slate-400); padding: 0 1rem; font-size: 0.875rem; font-weight: 600; color: var(--color-sky-700); }
-    .cl-photo-add:hover { border-color: var(--color-gold-500); background: var(--color-slate-100); }
-    .cl-photo-add:has(input:focus-visible) { outline: 2px solid var(--color-gold-500); }
+    /* Aksi pendukung tiap tugas: Kamera, Galeri, Catatan sejajar dan sama besar; yang disembunyikan (foto sudah penuh) tidak menyisakan celah. */
+    .cl-extras { display: flex; flex-direction: column; gap: 0.625rem; margin-top: 0.75rem; }
+    .cl-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 0.5rem; }
+    .cl-action { display: flex; min-height: 2.75rem; cursor: pointer; align-items: center; justify-content: center; gap: 0.375rem; border-radius: 0.75rem; border: 1px solid var(--color-slate-300); background: #fff; padding: 0 0.5rem; font-size: 0.875rem; font-weight: 600; color: var(--color-sky-700); transition: border-color .15s, background-color .15s; }
+    .cl-action:hover { border-color: var(--color-gold-500); background: var(--color-slate-50); }
+    .cl-action:has(input:focus-visible), .cl-action:focus-visible { outline: 2px solid var(--color-gold-500); outline-offset: 1px; }
+    .cl-action[aria-pressed='true'] { border-color: var(--color-gold-500); background: var(--color-slate-100); }
+    .cl-action { position: relative; }
+    .cl-action.has-note::after { content: ''; position: absolute; top: 0.375rem; right: 0.375rem; width: 0.5rem; height: 0.5rem; border-radius: 9999px; background: var(--color-gold-500); }
+    .cl-thumbs { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .cl-thumbs:empty { display: none; }
+    [data-view='list'] .cl-extras { margin-top: 0.5rem; }
+    [data-view='list'] .cl-actions { display: flex; flex-wrap: wrap; }
+    [data-view='list'] .cl-action { min-height: 2.25rem; border-radius: 9999px; padding: 0 0.875rem; }
+    [data-view='card'] .cl-extras { border-top: 1px solid var(--color-slate-100); padding-top: 0.875rem; margin-top: 1rem; }
     @media print { .cl-photo { width: 5rem; height: 5rem; } }
 
     /* Kamera di halaman */

@@ -9,6 +9,7 @@ use App\Models\Position;
 use App\Models\Task;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Route;
 
 beforeEach(function () {
     $this->fo = Department::factory()->create(['name' => 'Front Office']);
@@ -74,8 +75,8 @@ it('shows the work page with cards, the list toggle and the tasks', function () 
 
     $this->get(route('checklists.fill', $checklist))->assertOk()
         ->assertSee('Check-in tamu')->assertSee('Handover shift')->assertSee('data-view="card"', false)
-        ->assertSee('data-deck', false)->assertSee('Geser kiri atau kanan')->assertSee('Lanjut otomatis')->assertSee('Lihat semua tugas')
-        ->assertSee('Kartu')->assertSee('Daftar')->assertSee('Sisa tugas = Done')->assertSee('Tugas tambahan')->assertSee('Tersimpan otomatis')
+        ->assertSee('cl-actions', false)->assertSee('data-note-toggle', false)->assertSee('data-deck', false)->assertSee('Geser kiri atau kanan')->assertSee('Lihat semua tugas')
+        ->assertSee('Tampilan kartu')->assertSee('Tampilan daftar')->assertSee('Lihat semua tugas')->assertDontSee('Kosongkan')->assertDontSee('Sisa tugas')->assertDontSee('Lanjut otomatis')->assertSee('Tugas tambahan')->assertSee('Tersimpan otomatis')
         ->assertDontSee('Simpan checklist');
 });
 
@@ -112,16 +113,16 @@ it('rejects invalid autosave requests and items of another checklist', function 
     expect($other->items[0]->fresh()->status)->toBeNull();
 });
 
-it('marks the rest as Done and clears everything on request', function () {
+it('lets a chosen status be taken back, and has no clear-all or "rest = Done" route', function () {
     loggedIn($this->hod);
     $checklist = startedChecklist();
-    $checklist->items[0]->update(['status' => 'pending', 'note' => 'Rusak']);
+    $checklist->items[0]->update(['status' => 'done']);
 
-    $this->postJson(route('checklists.rest-done', $checklist))->assertOk()->assertJsonPath('progress.filled', 3)->assertJsonPath('progress.complete', true);
-    expect($checklist->fresh()->items->pluck('status.value')->all())->toBe(['pending', 'done', 'done']);
+    $this->patchJson(route('checklists.items.update', [$checklist, $checklist->items[0]]), ['status' => null, 'note' => null])
+        ->assertOk()->assertJsonPath('progress.filled', 0);
 
-    $this->postJson(route('checklists.clear', $checklist))->assertOk()->assertJsonPath('progress.filled', 0);
-    expect($checklist->fresh()->items->pluck('status')->filter()->count())->toBe(0)->and($checklist->items[0]->fresh()->note)->toBeNull();
+    expect($checklist->items[0]->fresh()->status)->toBeNull();
+    expect(Route::has('checklists.rest-done'))->toBeFalse()->and(Route::has('checklists.clear'))->toBeFalse();
 });
 
 it('saves the general note, who checked and the extra tasks, changing only what is sent', function () {
@@ -145,7 +146,8 @@ it('saves the general note, who checked and the extra tasks, changing only what 
     expect($checklist->extraTasks()->count())->toBe(0);
 
     // Tugas tambahan tidak ikut skor.
-    $this->postJson(route('checklists.rest-done', $checklist))->assertJsonPath('progress.score', 100);
+    $checklist->items()->update(['status' => 'done']);
+    expect($checklist->fresh()->load('items')->score())->toBe(100);
 });
 
 it('allows past dates but never future ones when starting', function () {
@@ -181,7 +183,7 @@ it('offers to continue checklists that are not complete yet', function () {
 
     $this->get(route('fill.create'))->assertSee('Lanjutkan checklist')->assertSee('Budi Santoso')->assertSee('1 / 3 terisi')->assertSee(route('checklists.fill', $checklist));
 
-    $this->postJson(route('checklists.rest-done', $checklist));
+    $checklist->items()->update(['status' => 'done']);
     $this->get(route('fill.create'))->assertDontSee('Lanjutkan checklist');
 });
 
@@ -251,12 +253,11 @@ it('uses the tasks chosen for the staff member, but only for new checklists', fu
 it('locks a reviewed checklist for the HOD: no autosave, and the work page sends them to the result', function () {
     loggedIn($this->hod);
     $checklist = startedChecklist();
-    $this->postJson(route('checklists.rest-done', $checklist));
+    $checklist->items()->update(['status' => 'done']);
     $checklist->update(['status' => ChecklistStatus::Reviewed, 'reviewed_by' => userWithRole(Role::Gm)->id, 'reviewed_at' => now()]);
 
     $this->patchJson(route('checklists.items.update', [$checklist, $checklist->items[0]]), ['status' => 'pending'])->assertForbidden();
     $this->patchJson(route('checklists.meta', $checklist), ['note' => 'x'])->assertForbidden();
-    $this->postJson(route('checklists.clear', $checklist))->assertForbidden();
     $this->get(route('checklists.fill', $checklist))->assertRedirect(route('checklists.show', $checklist));
     $this->post(route('fill.start'), startData())->assertRedirect(route('checklists.show', $checklist));
     expect($checklist->items[0]->fresh()->status->value)->toBe('done');
@@ -299,10 +300,22 @@ it('hides the finish button until the provisional score is 100%', function () {
 
     $this->get(route('checklists.fill', $checklist))->assertSee($finish.'hidden"', false)->assertDontSee('Aktif saat skor 100%');
 
-    $this->postJson(route('checklists.rest-done', $checklist));
+    $checklist->items()->update(['status' => 'done']);
     $this->get(route('checklists.fill', $checklist))->assertSee($finish.'"', false)->assertDontSee($finish.'hidden"', false);
 
     // Satu tugas Ongoing: skor di bawah 100%, tombol disembunyikan lagi. "Lihat hasil" di atas halaman tetap ada.
     $checklist->items[0]->update(['status' => 'ongoing']);
     $this->get(route('checklists.fill', $checklist))->assertSee($finish.'hidden"', false)->assertSee('Lihat hasil');
+});
+
+it('offers the print button to managers but not to staff', function () {
+    loggedIn($this->hod);
+    $this->get(route('checklists.show', startedChecklist()))->assertSee('Cetak');
+});
+
+it('does not offer the print button to staff', function () {
+    loggedIn(User::factory()->for($this->budi)->create(['role' => Role::Staff, 'position_id' => $this->gsa->id]));
+    $this->post(route('fill.start'), startData())->assertRedirect();
+
+    $this->get(route('checklists.show', Checklist::sole()))->assertOk()->assertDontSee('Cetak');
 });

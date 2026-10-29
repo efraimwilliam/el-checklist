@@ -10,8 +10,6 @@
     <div data-checklist-root data-view="card"
          data-item-url="{{ route('checklists.items.update', [$checklist, '__ITEM__']) }}"
          data-meta-url="{{ route('checklists.meta', $checklist) }}"
-         data-rest-done-url="{{ route('checklists.rest-done', $checklist) }}"
-         data-clear-url="{{ route('checklists.clear', $checklist) }}"
          data-photo-url="{{ route('checklists.photos.store', [$checklist, '__ITEM__']) }}"
          data-photo-requirement="{{ $photoRequirement }}"
          data-photo-max="{{ $photoMax }}"
@@ -29,23 +27,22 @@
             <a href="{{ route('checklists.show', $checklist) }}" class="btn-secondary">Lihat hasil</a>
         </div>
 
-        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div class="cl-toggle" role="group" aria-label="Tampilan checklist">
-                <button type="button" data-view-toggle="card" aria-pressed="true">Kartu</button>
-                <button type="button" data-view-toggle="list" aria-pressed="false">Daftar</button>
-            </div>
-            <div class="flex items-center gap-4 text-sm">
-                <button type="button" data-rest-done class="btn-secondary !px-4 !py-1.5">Sisa tugas = Done</button>
-                <button type="button" data-clear class="font-medium text-slate-600 hover:text-rose-700">Kosongkan</button>
+        {{-- Ikon di kiri: tampilan Kartu / Daftar dan (hanya di Kartu) daftar semua tugas. --}}
+        <div class="mb-4 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-2">
+                <div class="cl-toggle" role="group" aria-label="Tampilan checklist">
+                    <button type="button" data-view-toggle="card" aria-pressed="true" aria-label="Tampilan kartu" title="Kartu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3.5" width="14" height="17" rx="2.5"/><path d="M9 9h6M9 13h4"/></svg></button>
+                    <button type="button" data-view-toggle="list" aria-pressed="false" aria-label="Tampilan daftar" title="Daftar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/></svg></button>
+                </div>
+                <button type="button" class="cl-iconbtn cl-card-only-flex" data-jump-toggle aria-label="Lihat semua tugas" aria-expanded="false" title="Lihat semua tugas"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></svg></button>
             </div>
         </div>
 
         <div class="cl-stage">
         {{-- Hanya tampilan Kartu: posisi, progres per tugas dan loncat ke tugas lain --}}
         <div class="cl-card-only mb-3">
-            <div class="mb-2 flex items-center justify-between text-sm">
+            <div class="mb-2 text-sm">
                 <span data-deck-count class="font-semibold text-slate-800">Tugas 1 dari {{ $items->count() }}</span>
-                <button type="button" data-jump-toggle class="font-semibold text-sky-700">Lihat semua tugas</button>
             </div>
             <div class="cl-segments" data-segments></div>
             <div data-jump class="card mt-3 hidden p-3"><div class="flex flex-wrap gap-1.5" data-jump-list></div></div>
@@ -87,34 +84,40 @@
                                     @endforeach
                                 </div>
                             </div>
-                            <div class="mt-2" data-photos>
-                                <div class="flex flex-wrap items-center gap-2" data-photo-list>
+                            {{-- Aksi pendukung: tiga tombol sama besar (Kamera, Galeri, Catatan), lalu foto dan kolom catatan di bawahnya. --}}
+                            <div class="cl-extras">
+                                <div class="cl-actions">
+                                    <button type="button" class="cl-action {{ $item->photos->count() >= $photoMax ? 'hidden' : '' }}" data-photo-add data-photo-camera aria-label="Ambil foto dengan kamera untuk tugas {{ $number }}">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="3.5"/></svg>
+                                        <span>Kamera</span>
+                                    </button>
+                                    <label class="cl-action {{ $item->photos->count() >= $photoMax ? 'hidden' : '' }}" data-photo-add>
+                                        <input type="file" accept="image/*" multiple class="sr-only" data-photo-input aria-label="Pilih foto dari galeri untuk tugas {{ $number }}">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="m21 16-5-5-8 8"/></svg>
+                                        <span>Galeri</span>
+                                    </label>
+                                    <button type="button" class="cl-action {{ filled($item->note) ? 'has-note' : '' }}" data-note-toggle aria-pressed="{{ $showNote ? 'true' : 'false' }}">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17l-1 3Z"/><path d="m14 7 3 3"/></svg>
+                                        <span>Catatan</span>
+                                    </button>
+                                    {{-- Cadangan: kamera bawaan HP bila kamera di halaman tidak bisa dipakai --}}
+                                    <input type="file" accept="image/*" capture="environment" class="sr-only" data-photo-native tabindex="-1" aria-hidden="true">
+                                </div>
+
+                                <div class="cl-thumbs" data-photos data-photo-list>
                                     @foreach ($item->photos as $photo)
                                         <div class="cl-photo" data-photo data-delete-url="{{ route('checklists.photos.destroy', [$checklist, $photo]) }}">
                                             <a href="{{ $photo->url() }}" target="_blank" rel="noopener"><img src="{{ $photo->url() }}" alt="Foto tugas {{ $number }}" loading="lazy"></a>
                                             <button type="button" data-photo-remove aria-label="Hapus foto">✕</button>
                                         </div>
                                     @endforeach
-                                    {{-- Dua pilihan: Kamera (dialog kamera di halaman) atau Galeri (pilih foto yang sudah ada). Input "capture" = cadangan bila kamera di halaman tidak bisa dipakai. --}}
-                                    <div class="flex flex-wrap items-center gap-2 {{ $item->photos->count() >= $photoMax ? 'hidden' : '' }}" data-photo-add>
-                                        <button type="button" class="cl-photo-add" data-photo-camera aria-label="Ambil foto dengan kamera untuk tugas {{ $number }}">
-                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="3.5"/></svg>
-                                            <span>Kamera</span>
-                                        </button>
-                                        <label class="cl-photo-add">
-                                            <input type="file" accept="image/*" multiple class="sr-only" data-photo-input aria-label="Pilih foto dari galeri untuk tugas {{ $number }}">
-                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="m21 16-5-5-8 8"/></svg>
-                                            <span>Galeri</span>
-                                        </label>
-                                        <input type="file" accept="image/*" capture="environment" class="sr-only" data-photo-native tabindex="-1" aria-hidden="true">
-                                    </div>
                                 </div>
-                                <p data-photo-hint class="mt-1 hidden text-sm text-rose-700">Foto wajib untuk tugas ini.</p>
-                            </div>
-                            <button type="button" data-note-toggle class="cl-note-toggle {{ $showNote ? 'hidden' : '' }}">+ Catatan</button>
-                            <div data-note class="mt-2 {{ $showNote ? '' : 'hidden' }}">
-                                <input data-note-input value="{{ $item->note }}" maxlength="1000" class="input" placeholder="{{ $item->status?->value === 'pending' ? 'Alasan wajib diisi, mis. menunggu barang dari store' : 'Catatan (opsional)' }}">
-                                <p data-note-hint class="mt-1 hidden text-sm text-rose-700">Tulis alasan agar checklist ini lengkap.</p>
+                                <p data-photo-hint class="hidden text-sm text-rose-700">Foto wajib untuk tugas ini.</p>
+
+                                <div data-note class="{{ $showNote ? '' : 'hidden' }}">
+                                    <input data-note-input value="{{ $item->note }}" maxlength="1000" class="input" placeholder="{{ $item->status?->value === 'pending' ? 'Alasan wajib diisi, mis. menunggu barang dari store' : 'Catatan (opsional)' }}">
+                                    <p data-note-hint class="mt-1 hidden text-sm text-rose-700">Tulis alasan agar checklist ini lengkap.</p>
+                                </div>
                             </div>
                         </div>
                     @endforeach
@@ -148,14 +151,11 @@
         </div>
         </div>
 
-        {{-- Hanya tampilan Kartu: panah dan "Lanjut otomatis" --}}
+        {{-- Hanya tampilan Kartu: panah kiri / kanan --}}
         <div class="cl-card-only mt-3">
             <div class="flex items-center justify-between gap-3">
                 <button type="button" class="cl-nav" data-prev aria-label="Tugas sebelumnya"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.5 4 6.5 10l6 6"/></svg></button>
-                <div class="text-center text-sm text-slate-500">
-                    <p>Geser kiri atau kanan</p>
-                    <label class="mt-1 inline-flex cursor-pointer items-center gap-2"><input type="checkbox" data-auto checked class="h-4 w-4">Lanjut otomatis</label>
-                </div>
+                <p class="text-center text-sm text-slate-500">Geser kiri atau kanan</p>
                 <button type="button" class="cl-nav" data-next aria-label="Tugas berikutnya"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.5 4l6 6-6 6"/></svg></button>
             </div>
         </div>
