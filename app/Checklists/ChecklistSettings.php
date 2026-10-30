@@ -35,6 +35,14 @@ class ChecklistSettings
         return is_numeric($value) ? max(0, (int) $value) : (int) config('checklist.photos.retention_days');
     }
 
+    /** Isi checklist untuk hari yang akan datang (Administrator yang mengaktifkan). Atur tugas ke depan selalu boleh. */
+    public function futureFillAllowed(): bool
+    {
+        return $this->get('checklist_future_fill') === '1';
+    }
+
+    public const MAX_DAYS_AHEAD = 60;
+
     public function photosPerTask(): int
     {
         return (int) config('checklist.photos.per_task');

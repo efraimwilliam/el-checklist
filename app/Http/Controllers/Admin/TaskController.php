@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Checklists\ParameterRules;
+use App\Tasks\TaskParameters;
 use App\Http\Controllers\Controller;
 use App\Models\Department;
 use App\Models\Position;
@@ -84,7 +86,9 @@ class TaskController extends Controller
     public function storeTask(Request $request, Position $position): RedirectResponse
     {
         Gate::authorize('manage-tasks');
-        $position->tasks()->create($this->validated($request) + ['sort' => (int) $position->tasks()->max('sort') + 1]);
+        $data = $request->validate($this->rules());
+        $task = $position->tasks()->create($this->fields($data) + ['sort' => (int) $position->tasks()->max('sort') + 1]);
+        TaskParameters::sync($task, TaskParameters::rows($data));
 
         return back()->with('status', __('Tugas ditambahkan.'));
     }
@@ -92,7 +96,9 @@ class TaskController extends Controller
     public function updateTask(Request $request, Task $task): RedirectResponse
     {
         Gate::authorize('manage-tasks');
-        $task->update($this->validated($request) + ['is_active' => $request->boolean('is_active')]);
+        $data = $request->validate($this->rules());
+        $task->update($this->fields($data) + ['is_active' => $request->boolean('is_active')]);
+        TaskParameters::sync($task, TaskParameters::rows($data));
 
         return redirect()->route('admin.tasks.show', $task->position_id)->with('status', __('Tugas disimpan.'));
     }
@@ -130,15 +136,20 @@ class TaskController extends Controller
     }
 
     /** @return array{section: ?string, title: string, standard: ?string, remarks: ?string} */
-    private function validated(Request $request): array
+    /** @return array<string, mixed> */
+    private function rules(): array
     {
-        $data = $request->validate([
+        return [
             'section' => ['nullable', 'string', 'max:255'],
             'title' => ['required', 'string', 'max:500'],
             'standard' => ['nullable', 'string', 'max:2000'],
             'remarks' => ['nullable', 'string', 'max:1000'],
-        ]);
+        ] + ParameterRules::editorRules();
+    }
 
-        return array_map(fn ($value) => is_string($value) && trim($value) === '' ? null : (is_string($value) ? trim($value) : $value), $data);
+    /** @param  array<string, mixed>  $data */
+    private function fields(array $data): array
+    {
+        return array_map(fn ($value) => is_string($value) && trim($value) === '' ? null : (is_string($value) ? trim($value) : $value), collect($data)->only(['section', 'title', 'standard', 'remarks'])->all());
     }
 }

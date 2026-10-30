@@ -17,3 +17,9 @@
     <label class="label">{{ __('Keterangan (opsional)') }}</label>
     <input name="remarks" value="{{ $old('remarks') }}" maxlength="1000" class="input" placeholder="{{ __('mis. Bulanan') }}">
 </div>
+@php($prefix = 'task-'.($task?->id ?? 'new'))
+@php($rows = old('parameters') ?? ($task ? $task->parameters->map(fn ($p) => $p->only(['name', 'type', 'unit', 'min_value', 'max_value', 'options', 'normal_option']))->values()->all() : []))
+<div>
+    <p class="label">{{ __('Parameter isian') }}</p>
+    @include('team.partials.parameter-editor', ['rows' => $rows, 'prefix' => $prefix])
+</div>

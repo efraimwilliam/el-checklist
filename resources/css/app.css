@@ -62,7 +62,7 @@
 }
 
 @layer base {
-    html { background-color: #fff; }
+    html { background-color: #fff; color-scheme: light; }
     body { font-family: var(--font-sans); font-size: 1rem; line-height: 1.55; -webkit-font-smoothing: antialiased; }
     h1 { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.02em; }
     ::selection { background: var(--color-gold-400); color: var(--color-ink); }

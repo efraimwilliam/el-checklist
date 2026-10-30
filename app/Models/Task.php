@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /** Templat tugas sebuah jabatan. */
 class Task extends Model
@@ -21,5 +22,11 @@ class Task extends Model
     public function position(): BelongsTo
     {
         return $this->belongsTo(Position::class);
+    }
+
+    /** Parameter isian tugas, urut. */
+    public function parameters(): HasMany
+    {
+        return $this->hasMany(TaskParameter::class)->orderBy('sort')->orderBy('id');
     }
 }

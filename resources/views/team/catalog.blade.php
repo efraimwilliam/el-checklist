@@ -8,6 +8,14 @@
             @can('manage-tasks')
                 <a href="{{ route('admin.tasks.index') }}" class="btn-secondary">{{ __('Ubah atau urutkan tugas') }}</a>
             @endcan
+            @can('manage-team-tasks')
+                <a href="{{ route('team.catalog.export') }}" class="btn-secondary !w-11 !px-0" aria-label="{{ __('Unduh Excel') }}" title="{{ __('Unduh Excel') }}">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+                </a>
+                <a href="{{ route('team.catalog.import') }}" class="btn-secondary !w-11 !px-0" aria-label="{{ __('Impor Excel') }}" title="{{ __('Impor Excel') }}">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg>
+                </a>
+            @endcan
             @if ($catalog->flatMap->positions->isNotEmpty())
                 <button type="button" class="btn-primary" data-open-task-dialog>{{ __('+ Tambah tugas') }}</button>
             @endif
@@ -16,6 +24,14 @@
 
     <div class="card overflow-hidden">
         <div class="border-b border-slate-100 p-4">
+            @if (auth()->user()->role->seesAllDepartments())
+            <div class="mb-3 flex flex-wrap gap-2" role="group" aria-label="{{ __('Pilih departemen') }}">
+                <button type="button" class="rounded-full border px-3.5 py-1.5 text-sm font-semibold transition aria-[pressed=true]:border-ink aria-[pressed=true]:bg-ink aria-[pressed=true]:text-white aria-[pressed=false]:border-slate-300 aria-[pressed=false]:bg-white aria-[pressed=false]:text-slate-700 hover:border-gold-500" data-dept-filter="" aria-pressed="true">{{ __('Semua departemen') }}</button>
+                @foreach ($catalog->filter(fn ($department) => $department->positions->isNotEmpty()) as $department)
+                    <button type="button" class="rounded-full border px-3.5 py-1.5 text-sm font-semibold transition aria-[pressed=true]:border-ink aria-[pressed=true]:bg-ink aria-[pressed=true]:text-white aria-[pressed=false]:border-slate-300 aria-[pressed=false]:bg-white aria-[pressed=false]:text-slate-700 hover:border-gold-500" data-dept-filter="{{ $department->name }}" aria-pressed="false">{{ $department->name }}</button>
+                @endforeach
+            </div>
+            @endif
             <label for="catalog-search" class="label">{{ __('Cari tugas') }}</label>
             <input id="catalog-search" type="search" placeholder="{{ __('Nama tugas, jabatan, jenis, atau departemen') }}" class="input" data-catalog-search>
         </div>
@@ -24,7 +40,7 @@
             <table class="min-w-full text-sm">
                 <thead class="bg-[#fbf6ea] text-left text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
                     <tr>
-                        @foreach (['department' => 'Departemen', 'position' => 'Jabatan', 'section' => 'Jenis', 'title' => __('Nama tugas')] as $key => $label)
+                        @foreach (['department' => __('Departemen'), 'position' => __('Jabatan'), 'section' => __('Jenis'), 'title' => __('Nama tugas')] as $key => $label)
                             <th class="px-4 py-3" data-sort-th="{{ $key }}" aria-sort="{{ $key === 'department' ? 'ascending' : 'none' }}">
                                 <button type="button" class="inline-flex items-center gap-1.5 hover:text-slate-900" data-sort="{{ $key }}">
                                     {{ $label }}
@@ -52,7 +68,7 @@
                             <td class="whitespace-nowrap px-4 py-2 text-right">
                                 <button type="button" class="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:bg-[#f6efdf] hover:text-gold-700"
                                     data-edit-task data-id="{{ $task->id }}" data-url="{{ route('team.catalog.tasks.update', $task) }}"
-                                    data-title="{{ $task->title }}" data-section="{{ $task->section }}" data-standard="{{ $task->standard }}" data-position="{{ $task->position->name }}"
+                                    data-title="{{ $task->title }}" data-section="{{ $task->section }}" data-standard="{{ $task->standard }}" data-position="{{ $task->position->name }}" data-parameters="{{ json_encode($task->parameters->map(fn ($p) => $p->only(['name', 'type', 'unit', 'min_value', 'max_value', 'options', 'normal_option']))->values()) }}"
                                     aria-label="{{ __('Ubah tugas') }}" title="{{ __('Ubah tugas') }}">
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
                                 </button>
@@ -133,6 +149,11 @@
                     <textarea id="dialog-standard" name="standard" rows="6" maxlength="2000" class="input min-h-40 leading-relaxed" placeholder="{{ __('Cara atau standar yang diharapkan, misalnya langkah dan batas waktu') }}">{{ old('standard') }}</textarea>
                 </div>
 
+                <div>
+                    <p class="label">{{ __('Parameter isian') }}</p>
+                    @include('team.partials.parameter-editor', ['rows' => old('parameters') ?? [['name' => 'Status', 'type' => 'status']], 'prefix' => 'dialog'])
+                </div>
+
                 @if ($errors->any())
                     <p class="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{{ $errors->first() }}</p>
                 @endif
@@ -177,6 +198,11 @@
                     <textarea id="edit-standard" name="standard" rows="6" maxlength="2000" class="input min-h-40 leading-relaxed">{{ $errors->editTask->any() ? old('standard') : '' }}</textarea>
                 </div>
 
+                <div>
+                    <p class="label">{{ __('Parameter isian') }}</p>
+                    @include('team.partials.parameter-editor', ['rows' => $errors->editTask->any() ? (old('parameters') ?? []) : [], 'prefix' => 'edit'])
+                </div>
+
                 @if ($errors->editTask->any())
                     <p class="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{{ $errors->editTask->first() }}</p>
                 @endif
@@ -213,6 +239,8 @@
             const pager = document.querySelector('[data-catalog-pager]');
             const empty = document.querySelector('[data-catalog-empty]');
             const headers = [...document.querySelectorAll('[data-sort-th]')];
+            const deptButtons = [...document.querySelectorAll('[data-dept-filter]')];
+            let department = '';
             let sortKey = 'department';
             let direction = 1;
             let page = 1;
@@ -241,7 +269,7 @@
 
             const render = () => {
                 const query = search.value.trim().toLowerCase();
-                const matched = rows.filter((row) => query === '' || row.dataset.search.includes(query));
+                const matched = rows.filter((row) => (department === '' || row.dataset.department === department) && (query === '' || row.dataset.search.includes(query)));
                 const size = Number(perPage.value);
                 const pages = Math.max(1, Math.ceil(matched.length / size));
                 page = Math.min(page, pages);
@@ -271,6 +299,12 @@
                 });
             };
 
+            deptButtons.forEach((button) => button.addEventListener('click', () => {
+                department = button.dataset.deptFilter;
+                deptButtons.forEach((other) => other.setAttribute('aria-pressed', String(other === button)));
+                page = 1;
+                render();
+            }));
             search.addEventListener('input', () => { page = 1; render(); });
             perPage.addEventListener('change', () => { page = 1; render(); });
             headers.forEach((th) => th.querySelector('[data-sort]').addEventListener('click', () => {
@@ -303,6 +337,7 @@
                         document.getElementById('edit-title').value = button.dataset.title;
                         document.getElementById('edit-section').value = button.dataset.section;
                         document.getElementById('edit-standard').value = button.dataset.standard;
+                        document.getElementById('edit-editor').paramEditor.setRows(JSON.parse(button.dataset.parameters || '[]'));
                     }
                     editDialog.showModal();
                 };

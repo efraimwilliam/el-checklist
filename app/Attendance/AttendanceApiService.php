@@ -78,6 +78,55 @@ class AttendanceApiService
     }
 
     /**
+     * Ubah username / password dashboard akun di Sistem Absensi. PIN atau password pengubah ikut dikirim untuk diperiksa di sana
+     * (tidak disimpan di sini). Respons 422 (validasi) dikembalikan sebagai alasan `validation`.
+     *
+     * @param  array<string, string>  $payload
+     * @return array{ok: bool, reason?: string, message?: string, retry_after?: int, employee?: array{id: int, username: string, name: string, department_id: ?int, position: ?string, is_active: bool}}
+     *
+     * @throws AttendanceUnavailable
+     */
+    public function updateAccount(array $payload): array
+    {
+        if (! $this->configured()) {
+            throw new AttendanceUnavailable(__('Koneksi Sistem Absensi belum diatur (ATTENDANCE_API_URL & ATTENDANCE_API_TOKEN).'));
+        }
+
+        try {
+            $response = $this->client()->patch(config('attendance.paths.account'), $payload);
+        } catch (ConnectionException) {
+            throw new AttendanceUnavailable(__('Sistem Absensi tidak dapat dihubungi.'));
+        }
+
+        if ($response->status() === 422) {
+            return ['ok' => false, 'reason' => 'validation'];
+        }
+        if (! $response->ok()) {
+            throw new AttendanceUnavailable(__('Sistem Absensi menolak permintaan (kode :code).', ['code' => $response->status()]));
+        }
+
+        $body = $response->json();
+        if (! is_array($body) || ! is_bool($body['ok'] ?? null)) {
+            throw new AttendanceUnavailable(__('Respons Sistem Absensi tidak dikenali.'));
+        }
+        if ($body['ok']) {
+            $employee = $this->normalizeEmployee($body['employee'] ?? null);
+            if (! $employee) {
+                throw new AttendanceUnavailable(__('Respons Sistem Absensi tidak dikenali.'));
+            }
+
+            return ['ok' => true, 'employee' => $employee];
+        }
+
+        return array_filter([
+            'ok' => false,
+            'reason' => is_string($body['reason'] ?? null) ? $body['reason'] : 'unknown',
+            'message' => is_string($body['message'] ?? null) ? $body['message'] : null,
+            'retry_after' => isset($body['retry_after']) ? (int) $body['retry_after'] : null,
+        ], fn ($value) => $value !== null);
+    }
+
+    /**
      * @return list<array{id: int, username: string, name: string, department_id: ?int, position: ?string, is_active: bool}>
      *
      * @throws AttendanceUnavailable

@@ -43,8 +43,24 @@ class ChecklistPolicy
         };
     }
 
-    /** Mengubah checklist yang sudah ada. Setelah direview HOD atau GM / HR, hanya HR / Administrator (HOD bisa membatalkan review HOD dulu). */
+    /** Mengisi checklist (isian, catatan, foto). Hari yang akan datang hanya kalau Administrator mengaktifkannya. */
     public function update(User $user, Checklist $checklist): bool
+    {
+        if ($checklist->date->isFuture() && ! app(\App\Checklists\ChecklistSettings::class)->futureFillAllowed()) {
+            return false;
+        }
+
+        return $this->canChange($user, $checklist);
+    }
+
+    /** Mengatur tugas checklist (Atur tugas hari ini): juga untuk hari yang akan datang. */
+    public function plan(User $user, Checklist $checklist): bool
+    {
+        return $this->canChange($user, $checklist);
+    }
+
+    /** Setelah direview HOD atau GM / HR, hanya HR / Administrator (HOD bisa membatalkan review HOD dulu). */
+    private function canChange(User $user, Checklist $checklist): bool
     {
         if ($checklist->isReviewed() || $checklist->isHodReviewed()) {
             return $user->role->overridesReview();

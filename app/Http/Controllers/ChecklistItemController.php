@@ -23,22 +23,33 @@ class ChecklistItemController extends Controller
         Gate::authorize('update', $checklist);
         $data = $request->validate([
             'status' => ['nullable', Rule::enum(ItemStatus::class)],
+            'parameters' => ['nullable', 'array', 'max:30'],
+            'parameters.*' => ['nullable', 'string', 'max:255'],
             'note' => ['nullable', 'string', 'max:1000'],
         ]);
-        $this->service->saveItem($item, $data['status'] ?? null, $data['note'] ?? null, $request->user());
+        if (isset($data['parameters'])) {
+            $this->service->saveParameters($item, $data['parameters'], $data['note'] ?? null, $request->user());
+        } else {
+            $this->service->saveItem($item, $data['status'] ?? null, $data['note'] ?? null, $request->user());
+        }
 
         return $this->response($checklist);
     }
 
     private function response(Checklist $checklist): JsonResponse
     {
+        $checklist->load('items.parameters');
         $progress = $this->service->progress($checklist);
 
         return response()->json([
             'ok' => true,
             'saved_at' => now()->format('H:i:s'),
             'progress' => $progress,
-            'items' => $checklist->items->mapWithKeys(fn (ChecklistItem $item) => [$item->id => ['status' => $item->status?->value, 'note' => $item->note]]),
+            'items' => $checklist->items->mapWithKeys(fn (ChecklistItem $item) => [$item->id => [
+                'status' => $item->status?->value,
+                'note' => $item->note,
+                'parameters' => $item->parameters->mapWithKeys(fn ($parameter) => [$parameter->id => $parameter->value]),
+            ]]),
         ]);
     }
 }

@@ -1,5 +1,7 @@
 <?php
 
+use App\Health\SystemHealth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schedule;
 
 // Data pegawai mengikuti Sistem Absensi. Server perlu menjalankan "php artisan schedule:run" setiap menit.
@@ -19,3 +21,6 @@ Schedule::command('laporan:mingguan')->weeklyOn(1, '07:00')->timezone('Asia/Maka
 
 // Log aplikasi yang sudah lewat masa simpan (config/audit.php) dihapus setiap malam.
 Schedule::command('audit:prune')->dailyAt('03:40');
+
+// Denyut penjadwal: halaman Kesehatan sistem memastikan "schedule:run" masih berjalan tiap menit.
+Schedule::call(fn () => Cache::forever(SystemHealth::SCHEDULER_CACHE, now()->toIso8601String()))->everyMinute()->name('scheduler-heartbeat');

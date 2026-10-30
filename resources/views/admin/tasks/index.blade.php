@@ -1,42 +1,76 @@
 <x-app-layout title="{{ __('Kelola tugas') }}">
-    <div class="mb-4">
-        <h1 class="text-3xl text-slate-900">{{ __('Kelola tugas') }}</h1>
-        <p class="text-sm text-slate-500">Pilih jabatan untuk mengubah daftar tugasnya. Perubahan berlaku untuk checklist yang dibuat sesudahnya; checklist yang sudah ada tidak berubah.</p>
+    @php
+        $positionCount = $departments->sum(fn ($department) => $department->positions->count());
+        $activeTasks = $departments->sum(fn ($department) => $department->positions->sum('active_tasks_count'));
+    @endphp
+
+    <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <div class="min-w-0">
+            <p class="eyebrow"><span class="h-px w-6 bg-gold-500"></span>{{ __('Kelola tugas') }}</p>
+            <h1 class="mt-1 text-3xl text-slate-900">{{ __('Jabatan dan tugasnya') }}</h1>
+            <p class="mt-1 max-w-2xl text-sm text-slate-500">{{ __('Pilih jabatan untuk mengubah daftar tugasnya. Perubahan berlaku untuk checklist yang dibuat sesudahnya; checklist yang sudah ada tidak berubah.') }}</p>
+        </div>
+        <dl class="grid grid-cols-3 gap-3 text-center">
+            <div class="card px-4 py-2.5">
+                <dt class="text-xs text-slate-500">{{ __('Departemen') }}</dt>
+                <dd class="text-xl font-semibold tabular-nums text-slate-900">{{ $departments->count() }}</dd>
+            </div>
+            <div class="card px-4 py-2.5">
+                <dt class="text-xs text-slate-500">{{ __('Jabatan') }}</dt>
+                <dd class="text-xl font-semibold tabular-nums text-slate-900">{{ $positionCount }}</dd>
+            </div>
+            <div class="card px-4 py-2.5">
+                <dt class="text-xs text-slate-500">{{ __('Tugas aktif') }}</dt>
+                <dd class="text-xl font-semibold tabular-nums text-slate-900">{{ $activeTasks }}</dd>
+            </div>
+        </dl>
     </div>
 
-    @error('name') <p class="mb-4 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-700">{{ $message }}</p> @enderror
+    @error('name') <p class="mb-4 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{{ $message }}</p> @enderror
 
-    <div class="space-y-4">
+    <div class="grid gap-5 lg:grid-cols-2">
         @foreach ($departments as $department)
-            <section class="card p-4">
-                <h2 class="mb-2 font-display text-xl">{{ $department->name }}</h2>
-                <ul class="divide-y divide-slate-100 text-sm">
+            <section class="card flex flex-col p-5">
+                <header class="mb-2 flex items-center justify-between gap-3">
+                    <h2 class="font-display text-xl text-slate-900">{{ $department->name }}</h2>
+                    <span class="pill-neutral">{{ __(':n jabatan', ['n' => $department->positions->count()]) }}</span>
+                </header>
+
+                <ul class="flex-1 divide-y divide-slate-100">
                     @forelse ($department->positions as $position)
-                        <li class="flex items-center justify-between gap-3 py-2">
-                            <a href="{{ route('admin.tasks.show', $position) }}" class="min-w-0 truncate text-sky-700 hover:underline {{ $position->is_active ? '' : 'text-slate-400 line-through' }}">{{ $position->name }}</a>
-                            <div class="flex shrink-0 items-center gap-2">
-                                <span class="hidden text-slate-500 sm:inline">{{ $position->active_tasks_count }} tugas aktif{{ $position->is_active ? '' : ' · nonaktif' }}</span>
-                                <button type="button" class="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:bg-[#f6efdf] hover:text-gold-700"
+                        <li class="flex items-center gap-3 py-3">
+                            <div class="min-w-0 flex-1">
+                                <a href="{{ route('admin.tasks.show', $position) }}" class="block truncate font-medium text-slate-900 hover:text-sky-700 {{ $position->is_active ? '' : 'text-slate-400 line-through' }}">{{ $position->name }}</a>
+                                <p class="text-xs text-slate-500">
+                                    {{ __(':n tugas aktif', ['n' => $position->active_tasks_count]) }}
+                                    @unless ($position->is_active)
+                                        <span class="font-semibold text-rose-700">· {{ __('Nonaktif') }}</span>
+                                    @endunless
+                                </p>
+                            </div>
+                            <div class="flex shrink-0 items-center gap-1">
+                                <button type="button" class="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition hover:bg-[#f6efdf] hover:text-gold-700"
                                     data-edit-position data-url="{{ route('admin.positions.update', $position) }}" data-name="{{ $position->name }}" data-active="{{ $position->is_active ? '1' : '0' }}"
                                     aria-label="{{ __('Ubah jabatan') }}" title="{{ __('Ubah jabatan') }}">
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
                                 </button>
-                                <button type="button" class="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:bg-rose-50 hover:text-rose-700 disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-transparent"
+                                <button type="button" class="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition hover:bg-rose-50 hover:text-rose-700 disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-transparent"
                                     data-delete-position data-url="{{ route('admin.positions.destroy', $position) }}" data-name="{{ $position->name }}" data-used="{{ $position->checklists_count }}"
                                     @disabled($position->checklists_count > 0)
-                                    aria-label="{{ __('Hapus jabatan') }}" title="{{ $position->checklists_count > 0 ? 'Sudah dipakai checklist, nonaktifkan saja' : 'Hapus jabatan' }}">
+                                    aria-label="{{ __('Hapus jabatan') }}" title="{{ $position->checklists_count > 0 ? __('Sudah dipakai checklist, nonaktifkan saja') : __('Hapus jabatan') }}">
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12"/><path d="M9 7V4h6v3"/></svg>
                                 </button>
                             </div>
                         </li>
                     @empty
-                        <li class="py-2 text-slate-500">{{ __('Belum ada jabatan.') }}</li>
+                        <li class="py-8 text-center text-sm text-slate-500">{{ __('Belum ada jabatan.') }}</li>
                     @endforelse
                 </ul>
-                <form method="POST" action="{{ route('admin.positions.store') }}" class="mt-3 flex flex-wrap gap-2">
+
+                <form method="POST" action="{{ route('admin.positions.store') }}" class="mt-4 flex flex-wrap gap-2 rounded-xl border border-dashed border-slate-300 p-3">
                     @csrf
                     <input type="hidden" name="department_id" value="{{ $department->id }}">
-                    <input name="name" placeholder="{{ __('Nama jabatan baru') }}" required maxlength="255" class="input max-w-xs">
+                    <input name="name" placeholder="{{ __('Nama jabatan baru') }}" required maxlength="255" class="input min-w-0 flex-1" aria-label="{{ __('Nama jabatan baru') }}">
                     <button class="btn-secondary">{{ __('Tambah jabatan') }}</button>
                 </form>
             </section>

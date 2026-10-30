@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Attendance\AttendanceApiService;
 use App\Attendance\AttendanceUnavailable;
 use App\Checklists\ChecklistService;
+use App\Checklists\ChecklistSettings;
 use App\Enums\ChecklistStatus;
 use App\Enums\Role;
 use App\Models\Checklist;
@@ -32,13 +33,26 @@ class FillController extends Controller
         return redirect()->route('fill.create');
     }
 
+    /** Menu "Isi checklist": HOD / HR / Administrator mengisi checklist harian yang sudah dibuat. Staff melihat checklistnya sendiri. */
     public function create(Request $request, AttendanceApiService $attendance): View
+    {
+        return $this->board($request, $attendance, 'fill');
+    }
+
+    /** Menu "Checklist": atur tugas karyawan untuk hari itu (buat checklist, atur tugas hari ini). Tidak mengisi isian. */
+    public function assign(Request $request, AttendanceApiService $attendance): View
+    {
+        return $this->board($request, $attendance, 'assign');
+    }
+
+    private function board(Request $request, AttendanceApiService $attendance, string $menu): View
     {
         Gate::authorize('fill-checklists');
         $user = $request->user();
         $today = CarbonImmutable::today();
         $date = $this->date($request->query('date')) ?? $today;
         $staffMode = $user->role === Role::Staff;
+        $mode = $staffMode ? 'fill' : $menu;
         $allowedIds = $staffMode ? [] : $user->accessibleDepartmentIds();
 
         if ($staffMode) {
@@ -83,7 +97,7 @@ class FillController extends Controller
 
         $board = collect();
         if (! $staffMode && $department) {
-            $day = Checklist::with('items')->where('department_id', $department->id)->whereDate('date', $date)->get()->groupBy('employee_id');
+            $day = Checklist::with('items.parameters', 'items.photos')->where('department_id', $department->id)->whereDate('date', $date)->get()->groupBy('employee_id');
             $board = $employees->load('checklistPosition')
                 ->reject(fn (Employee $e) => $e->id === $user->employee_id && ! $user->isAdmin() && ! $day->has($e->id))
                 ->map(function (Employee $e) use ($day, $user, $schedules) {
@@ -103,6 +117,8 @@ class FillController extends Controller
                         'employee' => $e,
                         'checklists' => $checklists,
                         'state' => $state,
+                        // Rencana masa depan yang belum diisi boleh dihapus (per pegawai, atau sekaligus per departemen).
+                        'removable_ids' => $checklists->filter(fn (Checklist $c) => $c->date->isFuture() && $user->can('plan', $c) && ! $this->service->hasAnswers($c))->pluck('id')->values()->all(),
                         'canStart' => $state !== 'noschedule' && $e->checklistPosition && $user->can('fill', [Checklist::class, $e, $e->checklistPosition]),
                     ];
                 })->values();
@@ -111,13 +127,54 @@ class FillController extends Controller
         // Checklist yang belum lengkap (dibuatkan sekaligus atau tersimpan setengah jalan) supaya mudah dilanjutkan:
         // staff melihat miliknya, HOD / HR / Administrator melihat milik departemen yang boleh mereka akses
         // (yang sudah tampil di papan tim, yaitu departemen + tanggal terpilih, tidak diulang).
-        $resume = Checklist::with(['items', 'employee'])->where('status', 'saved')->whereDate('date', '>=', $today->subDays(7))
+        $resume = ($mode === 'assign' ? collect() : Checklist::with(['items', 'employee'])->where('status', 'saved')->whereDate('date', '>=', $today->subDays(7))
             ->when($staffMode, fn ($q) => $q->where('employee_id', $user->employee_id), fn ($q) => $q->when($allowedIds !== null, fn ($q) => $q->whereIn('department_id', $allowedIds)))
             ->latest('date')->latest('id')->limit(60)->get()->reject(fn (Checklist $c) => $c->isComplete())
-            ->reject(fn (Checklist $c) => ! $staffMode && $c->department_id === $department?->id && $c->date->isSameDay($date))->take(30);
+            ->reject(fn (Checklist $c) => ! $staffMode && $c->department_id === $department?->id && $c->date->isSameDay($date))->take(30));
+
+        // Popup "Mulai" di tanggal selain hari ini: tugas bawaan pegawai (Atur tugas) dan jabatan lain di departemen yang sama.
+        $planData = [];
+        if ($mode === 'assign' && $department && ! $date->isSameDay($today)) {
+            $deptPositions = Position::where('department_id', $department->id)->where('is_active', true)
+                ->with(['tasks' => fn ($q) => $q->where('is_active', true)->orderBy('sort')->orderBy('id')])
+                ->orderBy('sort')->orderBy('name')->get()->filter(fn (Position $p) => $p->tasks->isNotEmpty())->values();
+            foreach ($board as $row) {
+                $e = $row['employee'];
+                if ($row['state'] !== 'none' || ! $row['canStart'] || ! $e->checklistPosition) {
+                    continue;
+                }
+                $own = $e->checklistPosition;
+                $defaults = $this->service->tasksFor($e, $own)->pluck('id')->all();
+                $planData[$e->id] = [
+                    'name' => $e->name,
+                    'date' => $date->translatedFormat('l, d M Y'),
+                    'position' => $own->id,
+                    'positions' => $deptPositions->map(fn (Position $p) => [
+                        'id' => $p->id,
+                        'name' => $p->name,
+                        'tasks' => $p->tasks->map(fn ($task) => [
+                            'id' => $task->id,
+                            'title' => $task->title,
+                            'section' => $task->section,
+                            'default' => in_array($task->id, $defaults, true),
+                            'checked' => $p->id === $own->id ? in_array($task->id, $defaults, true) : true,
+                        ])->values(),
+                    ])->values(),
+                ];
+            }
+        }
+
+        // Rencana tugas hari berikutnya untuk staff: hanya catatan (belum tentu fix), tidak mengubah apa pun.
+        $upcoming = $staffMode
+            ? Checklist::with('items')->where('employee_id', $user->employee_id)->whereDate('date', '>', $today)->orderBy('date')->orderBy('id')->limit(40)->get()
+            : collect();
 
         return view('checklists.fill', [
             'staffMode' => $staffMode,
+            'upcoming' => $upcoming,
+            'futureFill' => app(ChecklistSettings::class)->futureFillAllowed(),
+            'mode' => $mode,
+            'indexRoute' => $mode === 'assign' ? 'fill.assign' : 'fill.create',
             'departments' => $departments,
             'department' => $department,
             'positions' => $positions,
@@ -129,9 +186,10 @@ class FillController extends Controller
             'problem' => $problem,
             'resume' => $resume,
             'board' => $board,
+            'removableTotal' => $board->sum(fn (array $row) => count($row['removable_ids'])),
+            'planData' => $planData,
             'scheduleProblem' => $scheduleProblem,
             'summary' => session('assign_summary'),
-            'history' => $staffMode ? Checklist::where('employee_id', $user->employee_id)->latest('date')->limit(14)->get() : collect(),
         ]);
     }
 
@@ -141,8 +199,8 @@ class FillController extends Controller
         $data = $request->validate([
             'position' => ['required', 'integer', 'exists:positions,id'],
             'employee' => ['required', 'integer', 'exists:employees,id'],
-            'date' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
-        ], ['date.before_or_equal' => __('Tanggal tidak boleh di masa depan.')]);
+            'date' => ['required', 'date_format:Y-m-d', 'before_or_equal:'.CarbonImmutable::today()->addDays(ChecklistSettings::MAX_DAYS_AHEAD)->toDateString()],
+        ], ['date.before_or_equal' => __('Tanggal terlalu jauh ke depan (maksimal :n hari).', ['n' => ChecklistSettings::MAX_DAYS_AHEAD])]);
         $employee = Employee::findOrFail($data['employee']);
         $position = Position::findOrFail($data['position']);
         Gate::authorize('fill', [Checklist::class, $employee, $position]);

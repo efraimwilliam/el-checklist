@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Checklists\ParameterRules;
+use App\Tasks\TaskParameters;
 use App\Models\Department;
 use App\Models\Employee;
 use App\Models\Position;
@@ -32,7 +34,11 @@ class TeamTaskController extends Controller
             ->filter(fn (Employee $employee) => Gate::allows('assign-tasks', $employee))
             ->sortBy([fn ($a, $b) => strcmp($a->department->name, $b->department->name), fn ($a, $b) => strcmp($a->name, $b->name)]);
 
-        return view('team.index', ['membersByDepartment' => $members->groupBy(fn (Employee $employee) => $employee->department->name)]);
+        return view('team.index', [
+            'membersByDepartment' => $members->groupBy(fn (Employee $employee) => $employee->department->name),
+            // HOD dengan satu departemen langsung melihat daftar pegawainya (tanpa kartu departemen).
+            'single' => $allowed !== null && count($allowed) === 1,
+        ]);
     }
 
     /** Daftar tugas tiap jabatan di departemen yang boleh diakses. Menambah tugas: HOD (departemennya), HR, Administrator. */
@@ -75,7 +81,8 @@ class TeamTaskController extends Controller
         abort_unless($position->is_active && $request->user()->canAccessDepartment($position->department_id), 403);
 
         $fields = $this->taskFields($data);
-        $position->tasks()->create($fields + ['sort' => (int) $position->tasks()->max('sort') + 1]);
+        $task = $position->tasks()->create($fields + ['sort' => (int) $position->tasks()->max('sort') + 1]);
+        TaskParameters::sync($task, TaskParameters::rows($data));
 
         return redirect()->route('team.catalog')->withFragment('jabatan-'.$position->id)->with('status', __('Tugas ":title" ditambahkan ke :position.', ['title' => $fields['title'], 'position' => $position->name]));
     }
@@ -87,7 +94,9 @@ class TeamTaskController extends Controller
         $task->loadMissing('position');
         abort_unless($task->position->is_active && $request->user()->canAccessDepartment($task->position->department_id), 403);
 
-        $task->update($this->taskFields($request->validateWithBag('editTask', $this->taskRules())));
+        $data = $request->validateWithBag('editTask', $this->taskRules());
+        $task->update($this->taskFields($data));
+        TaskParameters::sync($task, TaskParameters::rows($data, 'editTask'));
 
         return redirect()->route('team.catalog')->withFragment('jabatan-'.$task->position_id)->with('status', __('Tugas diperbarui.'));
     }
@@ -111,7 +120,7 @@ class TeamTaskController extends Controller
             'section' => ['nullable', 'string', 'max:255'],
             'title' => ['required', 'string', 'max:500'],
             'standard' => ['nullable', 'string', 'max:2000'],
-        ];
+        ] + ParameterRules::editorRules();
     }
 
     /** @return array{section: ?string, title: string, standard: ?string} */

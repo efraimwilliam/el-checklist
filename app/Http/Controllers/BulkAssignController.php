@@ -20,9 +20,9 @@ class BulkAssignController extends Controller
     {
         Gate::authorize('manage-team-tasks');
         $data = $request->validate([
-            'date' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
+            'date' => ['required', 'date_format:Y-m-d', 'before_or_equal:'.CarbonImmutable::today()->addDays(\App\Checklists\ChecklistSettings::MAX_DAYS_AHEAD)->toDateString()],
             'department' => ['nullable', 'regex:/^(all|\d+)$/'],
-        ], ['date.before_or_equal' => __('Tanggal tidak boleh di masa depan.')]);
+        ], ['date.before_or_equal' => __('Tanggal terlalu jauh ke depan (maksimal :n hari).', ['n' => \App\Checklists\ChecklistSettings::MAX_DAYS_AHEAD])]);
         $user = $request->user();
         $allowed = $user->accessibleDepartmentIds() ?? Department::where('is_active', true)->pluck('id')->all();
 
@@ -38,7 +38,7 @@ class BulkAssignController extends Controller
             return back()->withInput()->withErrors(['assign' => __('Sistem absensi tidak dapat dihubungi, jadi jadwal belum bisa dibaca. Coba lagi beberapa saat.')]);
         }
 
-        return redirect()->route('fill.create', ['date' => $data['date']])->with('assign_summary', $summary);
+        return redirect()->route('fill.assign', ['date' => $data['date']])->with('assign_summary', $summary);
     }
 
     /** Jam pembuatan otomatis per departemen; kosong = mati. */

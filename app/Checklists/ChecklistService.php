@@ -5,8 +5,10 @@ namespace App\Checklists;
 use App\Enums\ChecklistStatus;
 use App\Enums\ItemStatus;
 use App\Enums\Role;
+use App\Audit\AuditLogger;
 use App\Models\Checklist;
 use App\Models\ChecklistItem;
+use App\Models\TaskParameter;
 use App\Models\Employee;
 use App\Models\Position;
 use App\Models\Task;
@@ -15,6 +17,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Membuat checklist dan menyimpan isiannya satu per satu (penyimpanan otomatis). Checklist menyalin departemen, jabatan dan isi tugas
@@ -32,7 +35,7 @@ class ChecklistService
     public function tasksFor(Employee $employee, Position $position): Collection
     {
         if (! $employee->custom_tasks) {
-            return $position->tasks()->where('is_active', true)->get();
+            return $position->tasks()->where('is_active', true)->with('parameters')->get();
         }
 
         return Task::query()->select('tasks.*')
@@ -41,6 +44,7 @@ class ChecklistService
             ->where('tasks.is_active', true)
             ->orderByRaw('tasks.position_id = ? desc', [$position->id])
             ->orderBy('positions.sort')->orderBy('positions.name')->orderBy('tasks.sort')->orderBy('tasks.id')
+            ->with('parameters')
             ->get();
     }
 
@@ -50,10 +54,11 @@ class ChecklistService
     }
 
     /** Membuka checklist staff + jabatan + tanggal itu, atau membuatnya (semua tugas belum diisi) bila belum ada. $checkedBy = nama pemeriksa (akun HOD / HR / Admin yang memulai); null untuk staff yang mengisi sendiri. */
-    public function start(Employee $employee, Position $position, CarbonImmutable $date, ?User $by, ?string $checkedBy, bool $assigned = false): Checklist
+    /** @param  list<int>|null  $taskIds  tugas yang dipilih (dari jabatan mana pun); null = tugas bawaan pegawai untuk jabatannya */
+    public function start(Employee $employee, Position $position, CarbonImmutable $date, ?User $by, ?string $checkedBy, bool $assigned = false, ?array $taskIds = null): Checklist
     {
         try {
-            return DB::transaction(function () use ($employee, $position, $date, $by, $checkedBy, $assigned) {
+            return DB::transaction(function () use ($employee, $position, $date, $by, $checkedBy, $assigned, $taskIds) {
                 if ($existing = $this->find($employee, $position, $date)) {
                     return $existing;
                 }
@@ -69,13 +74,19 @@ class ChecklistService
                     'filled_by' => $by?->id,
                     'assigned_at' => $assigned ? now() : null,
                 ]);
-                $checklist->items()->createMany($this->tasksFor($employee, $position)->values()->map(fn (Task $task, int $i) => [
+                $tasks = ($taskIds === null
+                    ? $this->tasksFor($employee, $position)
+                    : $this->departmentTasks($position->department_id)->whereIn('id', $taskIds)->values())->values();
+                $items = $checklist->items()->createMany($tasks->map(fn (Task $task, int $i) => [
                     'task_id' => $task->id,
                     'section' => $task->section,
                     'title' => $task->title,
                     'standard' => $task->standard,
                     'sort' => $i + 1,
                 ])->all());
+                foreach ($items as $i => $item) {
+                    $item->parameters()->createMany($this->snapshotParameters($tasks[$i]));
+                }
 
                 return $checklist;
             });
@@ -85,11 +96,77 @@ class ChecklistService
         }
     }
 
-    /** Menyimpan satu tugas. Status kosong (null) berarti belum diisi. */
+    /** Status tunggal (Done / Ongoing / Pending) untuk tugas yang punya parameter Status. Status kosong (null) berarti belum diisi. */
     public function saveItem(ChecklistItem $item, ?string $status, ?string $note, User $by): void
     {
-        $item->update(['status' => $status, 'note' => $this->clean($note)]);
+        $statusParameter = $item->parameters()->where('type', ParameterRules::STATUS)->first();
+        $this->saveParameters($item, $statusParameter ? [(string) $statusParameter->id => $status] : [], $note, $by);
+    }
+
+    /**
+     * Menyimpan nilai parameter (hanya yang dikirim). Status tugas dihitung ulang dari semua parameternya.
+     *
+     * @param  array<string, ?string>  $values  id parameter => nilai
+     *
+     * @throws ValidationException
+     */
+    public function saveParameters(ChecklistItem $item, array $values, ?string $note, User $by): void
+    {
+        $parameters = $item->parameters()->get();
+        $results = [];
+        $errors = [];
+        foreach ($parameters as $parameter) {
+            if (! array_key_exists((string) $parameter->id, $values)) {
+                continue;
+            }
+            $result = ParameterRules::evaluate($parameter, $values[(string) $parameter->id]);
+            if ($result['error']) {
+                $errors["parameters.{$parameter->id}"] = $result['error'];
+
+                continue;
+            }
+            $results[$parameter->id] = $result['value'];
+        }
+        if ($errors) {
+            throw ValidationException::withMessages($errors);
+        }
+
+        DB::transaction(function () use ($item, $parameters, $results, $note) {
+            foreach ($parameters as $parameter) {
+                if (array_key_exists($parameter->id, $results)) {
+                    $parameter->update(['value' => $results[$parameter->id]]);
+                }
+            }
+            $item->update([
+                'status' => ParameterRules::status($item->parameters()->get())?->value,
+                'note' => $this->clean($note),
+            ]);
+        });
         $this->touch($item->checklist, $by);
+    }
+
+    /**
+     * Salinan parameter tugas untuk satu item. Tugas tanpa parameter tetap diberi Status (Done / Ongoing / Pending).
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function snapshotParameters(Task $task): array
+    {
+        if ($task->parameters->isEmpty()) {
+            return [['task_parameter_id' => null, 'sort' => 1, 'name' => 'Status', 'type' => ParameterRules::STATUS]];
+        }
+
+        return $task->parameters->values()->map(fn (TaskParameter $parameter, int $i) => [
+            'task_parameter_id' => $parameter->id,
+            'sort' => $i + 1,
+            'name' => $parameter->name,
+            'type' => $parameter->type,
+            'unit' => $parameter->unit,
+            'min_value' => $parameter->min_value,
+            'max_value' => $parameter->max_value,
+            'options' => $parameter->options,
+            'normal_option' => $parameter->normal_option,
+        ])->all();
     }
 
     /**
@@ -153,5 +230,96 @@ class ChecklistService
     private function clean(?string $value): ?string
     {
         return blank($value) ? null : trim($value);
+    }
+
+    /**
+     * Tugas yang dikerjakan pada satu checklist hari itu. Pilihannya dari tugas default pegawai (Atur tugas).
+     * Tugas yang belum diisi bisa dihapus dari checklist; yang sudah diisi (ada status, catatan, nilai, atau foto) tetap.
+     * Tugas yang dipilih lagi ditambahkan di akhir. Perubahan dicatat di log aplikasi.
+     *
+     * @param  list<int|string>  $taskIds
+     * @return array{added: int, removed: int, kept: int}
+     */
+    public function setTasks(Checklist $checklist, array $taskIds, User $by): array
+    {
+        $checklist->loadMissing(['employee', 'items.parameters', 'items.photos']);
+        $position = Position::findOrFail($checklist->position_id);
+        // Tugas bawaan pegawai, ditambah tugas jabatan lain di departemen yang sama (dikerjakan hari ini).
+        $defaults = $this->tasksFor($checklist->employee, $position)->merge($this->departmentTasks($position->department_id))->unique('id')->keyBy('id');
+        $wanted = collect($taskIds)->map(fn ($id) => (int) $id)->filter(fn (int $id) => $defaults->has($id))->unique()->values();
+
+        $added = 0;
+        $removed = 0;
+        $kept = 0;
+        DB::transaction(function () use ($checklist, $defaults, $wanted, &$added, &$removed, &$kept) {
+            foreach ($checklist->items as $item) {
+                if ($wanted->contains($item->task_id)) {
+                    continue;
+                }
+                if ($this->answered($item)) {
+                    $kept++;
+
+                    continue;
+                }
+                $item->delete();
+                $removed++;
+            }
+
+            $present = $checklist->items()->pluck('task_id');
+            $sort = (int) $checklist->items()->max('sort');
+            foreach ($wanted as $taskId) {
+                if ($present->contains($taskId)) {
+                    continue;
+                }
+                $task = $defaults[$taskId];
+                $item = $checklist->items()->create([
+                    'task_id' => $task->id,
+                    'section' => $task->section,
+                    'title' => $task->title,
+                    'standard' => $task->standard,
+                    'sort' => ++$sort,
+                ]);
+                $item->parameters()->createMany($this->snapshotParameters($task));
+                $added++;
+            }
+        });
+
+        if ($added || $removed) {
+            AuditLogger::record('checklist.tugas', 'Checklist', $checklist->id, $checklist->employee->name.' · '.$checklist->position_name, ['ditambah' => $added, 'dihapus' => $removed]);
+            $this->touch($checklist, $by);
+        }
+
+        return ['added' => $added, 'removed' => $removed, 'kept' => $kept];
+    }
+
+    /** Ada satu pun tugas yang sudah diisi pada checklist ini. */
+    public function hasAnswers(Checklist $checklist): bool
+    {
+        return $checklist->items->contains(fn (ChecklistItem $item) => $this->answered($item));
+    }
+
+    /** Sudah ada isian (status, catatan, nilai parameter, atau foto) sehingga tugas tidak boleh dihapus dari checklist. */
+    public function answered(ChecklistItem $item): bool
+    {
+        return $item->status !== null
+            || filled($item->note)
+            || $item->parameters->contains(fn ($parameter) => filled($parameter->value))
+            || $item->photos->isNotEmpty();
+    }
+
+    /**
+     * Semua tugas aktif di departemen (lintas jabatan), dengan parameternya. Dipakai untuk tugas tambahan dari jabatan lain.
+     *
+     * @return Collection<int, Task>
+     */
+    public function departmentTasks(int $departmentId): Collection
+    {
+        return Task::query()->select('tasks.*')
+            ->join('positions', 'positions.id', '=', 'tasks.position_id')
+            ->where('positions.department_id', $departmentId)->where('positions.is_active', true)
+            ->where('tasks.is_active', true)
+            ->orderBy('positions.sort')->orderBy('positions.name')->orderBy('tasks.sort')->orderBy('tasks.id')
+            ->with(['parameters', 'position'])
+            ->get();
     }
 }

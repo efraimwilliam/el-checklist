@@ -162,7 +162,7 @@ it('lists checklists by date, limited to the departments the viewer may see', fu
     $this->post('/logout');
 
     loggedIn(User::factory()->for($this->budi)->create());
-    $this->get(route('checklists.index'))->assertForbidden();
+    $this->get(route('checklists.index'))->assertOk()->assertDontSee('Sari Dewi');
 });
 
 it('does not let an incomplete checklist be reviewed, and says so', function () {

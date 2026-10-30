@@ -6,6 +6,9 @@
     @endphp
 
     <a href="{{ route('team.index') }}" class="text-sm font-semibold text-sky-700 hover:underline">{{ __('← Atur tugas') }}</a>
+    @can('manage-tasks')
+        <a href="{{ route('team.account.edit', $member) }}" class="ml-4 text-sm font-semibold text-sky-700 hover:underline">{{ __('Ubah akun Sistem Absensi') }}</a>
+    @endcan
 
     <div class="card mb-4 mt-2 flex flex-wrap items-center gap-4 p-5">
         <span class="hod-avatar !h-14 !w-14 !text-lg" aria-hidden="true">{{ $initials }}</span>
@@ -24,7 +27,7 @@
     </div>
 
     <p class="mb-4 text-sm text-slate-600">
-        {{ $member->custom_tasks ? 'Tugas sudah disesuaikan: hanya tugas yang dicentang yang masuk checklist pegawai ini.' : 'Memakai semua tugas jabatan yang dipilih saat mengisi.' }}
+        {{ $member->custom_tasks ? __('Tugas sudah disesuaikan: hanya tugas yang dicentang yang masuk checklist pegawai ini.') : __('Memakai semua tugas jabatan yang dipilih saat mengisi.') }}
         Perubahan berlaku untuk checklist yang dibuat sesudahnya; checklist yang sudah ada tidak berubah.
     </p>
 
@@ -84,7 +87,7 @@
         <form method="POST" action="{{ route('team.tasks.reset', $member) }}" class="mt-4 text-right">
             @csrf
             @method('DELETE')
-            <button class="text-sm text-slate-600 underline hover:text-rose-700" onclick="return confirm('Kembalikan ke semua tugas jabatan?')">{{ __('Kembalikan ke bawaan jabatan') }}</button>
+            <button class="text-sm text-slate-600 underline hover:text-rose-700" data-confirm-button="Kembalikan ke semua tugas jabatan?">{{ __('Kembalikan ke bawaan jabatan') }}</button>
         </form>
     @endif
 
@@ -104,7 +107,7 @@
                 });
                 form.querySelectorAll('[data-section]').forEach((section) => {
                     const boxes = boxesIn(section);
-                    section.querySelector('[data-section-toggle]').textContent = boxes.every((box) => box.checked) ? window.t('Kosongkan') : 'Pilih semua';
+                    section.querySelector('[data-section-toggle]').textContent = boxes.every((box) => box.checked) ? window.t('Kosongkan') : window.t('Pilih semua');
                 });
             };
 

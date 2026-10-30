@@ -14,6 +14,7 @@
                     <div class="cal-panel hidden" data-range-panel role="dialog" aria-label="{{ __('Pilih rentang tanggal') }}"></div>
                 </div>
             </div>
+            @unless ($own)
             <div>
                 <label class="label" for="department">{{ __('Departemen') }}</label>
                 <select id="department" name="department" class="input" onchange="this.form.submit()">
@@ -23,6 +24,7 @@
                     @endforeach
                 </select>
             </div>
+            @endunless
             <div>
                 <label class="label" for="status">{{ __('Review') }}</label>
                 <select id="status" name="status" class="input" onchange="this.form.submit()">
@@ -33,7 +35,9 @@
                 </select>
             </div>
         </form>
+        @unless ($own)
         <a href="{{ route('checklists.export', ['from' => $from->toDateString(), 'to' => $to->toDateString(), 'department' => $filters['department'] ?? null, 'status' => $filters['status'] ?? null]) }}" class="btn-secondary self-end">{{ __('Unduh Excel') }}</a>
+        @endunless
     </div>
 
     <div class="card overflow-x-auto">

@@ -28,9 +28,9 @@
                 <dd>
                     @if ($checklist->isReviewed() || $checklist->isHodReviewed())
                         {{ $checklist->status->label() }} {{ $checklist->reviewer?->name() ?? '—' }}, {{ $checklist->reviewed_at?->format('d M Y H:i') }}
-                        @if ($checklist->isHodReviewed()) <span class="text-slate-500">· terkunci untuk HOD dan staff; GM atau HR masih bisa mereview</span> @endif
+                        @if ($checklist->isHodReviewed()) <span class="text-slate-500">· {{ __('terkunci untuk HOD dan staff; GM atau HR masih bisa mereview') }}</span> @endif
                     @else
-                        Belum direview
+                        {{ __('Belum direview') }}
                     @endif
                 </dd>
             </div>
@@ -49,7 +49,7 @@
             <div class="{{ $loop->first ? '' : 'mt-3 border-t border-slate-200 pt-3' }}">
                 @if ($section !== '' || $checklist->items->pluck('section')->filter()->isNotEmpty())
                     <div class="flex items-center justify-between py-2 text-xs font-semibold uppercase tracking-[0.1em]">
-                        <span class="text-gold-600">{{ $section !== '' ? $section : 'Tugas' }}</span>
+                        <span class="text-gold-600">{{ $section !== '' ? $section : __('Tugas') }}</span>
                         <span class="text-slate-400">{{ $items->count() }} tugas</span>
                     </div>
                 @endif
@@ -60,6 +60,9 @@
                             <p class="text-base leading-snug text-slate-800"><span class="mr-0.5 font-semibold tabular-nums text-slate-400">{{ $number }}.</span> {{ $item->title }}</p>
                             <x-status-badge :status="$item->status" class="shrink-0" />
                         </div>
+                        @foreach ($item->parameters->where('type', '!=', 'status')->filter(fn ($p) => filled($p->value)) as $parameter)
+                            <p class="mt-1 text-sm text-slate-600">{{ $parameter->name }}: <span class="font-semibold tabular-nums text-slate-900">{{ $parameter->type === 'checkbox' ? __('Ya') : $parameter->value }}{{ $parameter->unit ? ' '.$parameter->unit : '' }}</span></p>
+                        @endforeach
                         @if ($item->note)
                             <p class="mt-1 text-sm text-slate-500">Catatan: {{ $item->note }}</p>
                         @endif
@@ -104,7 +107,7 @@
                 <button type="button" onclick="window.print()" class="btn-secondary">{{ __('Cetak') }}</button>
             @endif
             @if ($canDelete)
-                <form method="POST" action="{{ route('checklists.destroy', $checklist) }}" onsubmit="return confirm('Hapus checklist ini? Tindakan ini tidak bisa dibatalkan.')">
+                <form method="POST" action="{{ route('checklists.destroy', $checklist) }}" data-confirm="Hapus checklist ini? Tindakan ini tidak bisa dibatalkan.">
                     @csrf
                     @method('DELETE')
                     <button class="btn-secondary !text-rose-700">{{ __('Hapus') }}</button>
@@ -120,7 +123,7 @@
             </form>
         @endif
         @if ($canUnreview)
-            <form method="POST" action="{{ route('checklists.unreview', $checklist) }}" onsubmit="return confirm('Batalkan review HOD? Checklist bisa diubah lagi dan perlu direview ulang.')">
+            <form method="POST" action="{{ route('checklists.unreview', $checklist) }}" data-confirm="Batalkan review HOD? Checklist bisa diubah lagi dan perlu direview ulang.">
                 @csrf
                 <button class="btn-secondary">{{ __('Batalkan review') }}</button>
             </form>

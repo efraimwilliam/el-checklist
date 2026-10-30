@@ -319,7 +319,7 @@
                             · periode {{ $note->period_from->translatedFormat('d M') }} – {{ $note->period_to->translatedFormat('d M Y') }}
                         </span>
                         @if ($note->created_by === $userId || $canOverride)
-                            <form method="POST" action="{{ route('laporan.notes.destroy', $note) }}" class="print:hidden" onsubmit="return confirm('Hapus catatan ini?')">
+                            <form method="POST" action="{{ route('laporan.notes.destroy', $note) }}" class="print:hidden" data-confirm="Hapus catatan ini?">
                                 @csrf
                                 @method('DELETE')
                                 <button class="font-semibold text-slate-500 hover:text-rose-700">{{ __('Hapus') }}</button>

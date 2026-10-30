@@ -25,4 +25,10 @@ class ChecklistItem extends Model
     {
         return $this->belongsTo(Checklist::class);
     }
+
+    /** Salinan parameter item, urut. */
+    public function parameters(): HasMany
+    {
+        return $this->hasMany(ChecklistItemParameter::class)->orderBy('sort')->orderBy('id');
+    }
 }

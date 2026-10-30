@@ -51,8 +51,10 @@ class ChecklistController extends Controller
 
     public function index(Request $request): View
     {
-        Gate::authorize('view-checklists');
         $user = $request->user();
+        // Staff hanya melihat checklist miliknya sendiri (Riwayat dari menu header).
+        $own = $user->role === Role::Staff;
+        abort_unless($own || Gate::allows('view-checklists'), 403);
         $allowed = $user->accessibleDepartmentIds();
         $filters = $request->validate([
             'department' => ['nullable', 'integer'],
@@ -64,7 +66,8 @@ class ChecklistController extends Controller
 
         $checklists = Checklist::with(['employee', 'department', 'items.photos'])
             ->whereBetween('date', [$from->toDateString(), $to->toDateString()])
-            ->when($allowed !== null, fn ($q) => $q->whereIn('department_id', $allowed))
+            ->when($own, fn ($q) => $q->where('employee_id', $user->employee_id))
+            ->when(! $own && $allowed !== null, fn ($q) => $q->whereIn('department_id', $allowed))
             ->when($departmentId, fn ($q) => $q->where('department_id', $departmentId))
             ->when($filters['status'] ?? null, fn ($q, $status) => $q->where('status', $status))
             ->orderByDesc('date')->orderBy('department_id')->orderBy('position_name')->orderBy('id')
@@ -77,6 +80,7 @@ class ChecklistController extends Controller
             'today' => CarbonImmutable::today(),
             'departments' => Department::when($allowed !== null, fn ($q) => $q->whereIn('id', $allowed))->orderBy('sort')->orderBy('name')->get(),
             'filters' => $filters,
+            'own' => $own,
         ]);
     }
 

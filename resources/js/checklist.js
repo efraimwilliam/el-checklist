@@ -24,7 +24,7 @@ if (root) {
         finish: root.querySelector('[data-finish]'),
     };
 
-    const statusOf = (item) => item.querySelector('input[type=radio]:checked')?.value ?? null;
+    const statusOf = (item) => item.dataset.status || null;
     const noteInput = (item) => item.querySelector('[data-note-input]');
     const itemUrl = (id) => root.dataset.itemUrl.replace('__ITEM__', id);
 
@@ -184,35 +184,70 @@ if (root) {
     }
 
     // ---- Tugas ----
-    const sendItem = (item) => () => request('PATCH', itemUrl(item.dataset.id), { status: statusOf(item), note: noteInput(item).value });
+    // Setiap parameter (status, angka, stand meter, pilihan, centang, teks) punya isian sendiri.
+    // Status tugas dihitung server dari semua parameternya dan dibaca dari data-status.
+    const paramsOf = (item) => {
+        const values = {};
+        item.querySelectorAll('[data-param-radio]').forEach((el) => { values[el.dataset.paramId] = ''; });
+        item.querySelectorAll('[data-param-input]').forEach((el) => { values[el.dataset.paramId] = el.value.trim(); });
+        item.querySelectorAll('[data-param-check]').forEach((el) => { values[el.dataset.paramId] = el.checked ? '1' : ''; });
+        item.querySelectorAll('[data-param-radio]:checked').forEach((el) => { values[el.dataset.paramId] = el.value; });
+
+        return values;
+    };
+
+    const sendItem = (item) => async () => {
+        const data = await request('PATCH', itemUrl(item.dataset.id), { parameters: paramsOf(item), note: noteInput(item).value });
+        applyServer(data);
+
+        return data;
+    };
+
+    // Tugas yang baru jadi Done (dari pilihan Done) membuka kartu berikutnya, setelah server mengonfirmasi.
+    const advanceOnDone = new Set();
+
+    // Hasil server: status turunan, nilai yang dinormalkan (mis. "24,5" jadi "24.5"); kolom yang sedang diketik tidak diganti.
+    function applyServer(data) {
+        for (const item of items) {
+            const saved = data.items?.[item.dataset.id];
+            if (!saved) continue;
+            item.dataset.status = saved.status ?? '';
+            for (const [id, value] of Object.entries(saved.parameters ?? {})) {
+                const input = item.querySelector(`[data-param-input][data-param-id="${id}"]`);
+                if (input && document.activeElement !== input) input.value = value ?? '';
+            }
+            if (advanceOnDone.has(item) && saved.status === 'done') {
+                advanceOnDone.delete(item);
+                if (isCard()) setTimeout(() => slides[current] === item && goTo(current + 1), 450);
+            }
+        }
+        refresh();
+    }
 
     // Menekan pilihan yang sedang terpilih sekali lagi = pilihan dibatalkan (radio bawaan browser tidak bisa).
-    const lastStatus = new Map(items.map((item) => [item, statusOf(item)]));
+    const lastChoice = new Map();
+    root.querySelectorAll('[data-param-radio]:checked').forEach((radio) => lastChoice.set(radio.name, radio.value));
 
     root.addEventListener('click', (event) => {
-        const radio = event.target.closest('[data-item] input[type=radio]');
-        if (!radio) return;
+        const radio = event.target.closest('[data-param-radio]');
+        if (!radio || lastChoice.get(radio.name) !== radio.value) return;
+        radio.checked = false;
+        lastChoice.delete(radio.name);
         const item = radio.closest('[data-item]');
-        if (lastStatus.get(item) === radio.value) {
-            radio.checked = false;
-            lastStatus.set(item, null);
-            refresh();
-            enqueue(`item:${item.dataset.id}`, sendItem(item));
-        }
+        enqueue(`item:${item.dataset.id}`, sendItem(item));
     });
 
     root.addEventListener('change', (event) => {
-        const radio = event.target.closest('[data-item] input[type=radio]');
-        if (radio) {
-            const item = radio.closest('[data-item]');
-            lastStatus.set(item, radio.value);
-            refresh();
+        const target = event.target;
+        if (target.matches('[data-param-radio]')) {
+            const item = target.closest('[data-item]');
+            lastChoice.set(target.name, target.value);
+            if (target.value === 'done') advanceOnDone.add(item);
             enqueue(`item:${item.dataset.id}`, sendItem(item));
-            // Done = tugas beres: kartu berikutnya terbuka sendiri, tanpa pilihan (Ongoing / Pending butuh catatan, jadi tidak pindah).
-            if (isCard() && radio.value === 'done') {
-                setTimeout(() => slides[current] === item && goTo(current + 1), 450);
-            }
-        } else if (event.target.matches('[data-extra-status]')) {
+        } else if (target.matches('[data-param-check]')) {
+            const item = target.closest('[data-item]');
+            enqueue(`item:${item.dataset.id}`, sendItem(item));
+        } else if (target.matches('[data-extra-status]')) {
             enqueue('meta', sendMeta);
         }
     });
@@ -223,14 +258,17 @@ if (root) {
             const item = input.closest('[data-item]');
             refresh();
             schedule(`item:${item.dataset.id}`, sendItem(item));
+        } else if (event.target.matches('[data-param-input]')) {
+            const item = event.target.closest('[data-item]');
+            schedule(`item:${item.dataset.id}`, sendItem(item));
         } else if (event.target.matches('[data-meta], [data-extra-title], [data-extra-note]')) {
             schedule('meta', sendMeta, 900);
         }
     });
 
-    // Berpindah dari kolom catatan = kirim sekarang, tidak menunggu jeda ketikan.
+    // Berpindah dari kolom catatan / isian = kirim sekarang, tidak menunggu jeda ketikan.
     root.addEventListener('focusout', (event) => {
-        const input = event.target.closest('[data-note-input]');
+        const input = event.target.closest('[data-note-input], [data-param-input]');
         if (input) flush(`item:${input.closest('[data-item]').dataset.id}`);
         else if (event.target.matches('[data-meta], [data-extra-title], [data-extra-note]')) flush('meta');
     });
@@ -421,7 +459,9 @@ if (root) {
 
     root.addEventListener('click', async (event) => {
         const remove = event.target.closest('[data-photo-remove]');
-        if (!remove || !confirm(t('Hapus foto ini?'))) return;
+        if (!remove) return;
+        // Konfirmasi lewat popup aplikasi (lihat layouts/app.blade.php); tanpa popup, dianggap tidak jadi.
+        if (!(await window.askConfirm?.(t('Hapus foto ini?')))) return;
         const thumb = remove.closest('[data-photo]');
         inflight++;
         setState('saving', t('Menghapus foto…'));

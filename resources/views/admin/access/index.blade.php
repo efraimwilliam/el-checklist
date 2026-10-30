@@ -54,7 +54,7 @@
             <table class="min-w-full text-sm">
                 <thead class="bg-[#fbf6ea] text-left text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
                     <tr>
-                        @foreach (['name' => 'Pegawai', 'department' => 'Departemen', 'role' => 'Peran', 'position' => __('Jabatan checklist')] as $key => $label)
+                        @foreach (['name' => __('Pegawai'), 'department' => __('Departemen'), 'role' => __('Peran'), 'position' => __('Jabatan checklist')] as $key => $label)
                             <th class="px-4 py-3" data-sort-th="{{ $key }}" aria-sort="none">
                                 <button type="button" class="inline-flex items-center gap-1.5 hover:text-slate-900" data-sort="{{ $key }}">
                                     {{ $label }}

@@ -57,7 +57,7 @@
                             <input type="checkbox" name="is_active" value="1" @checked($task->is_active)> {{ __('Tugas aktif (muncul di checklist baru)') }}
                         </label>
                         <div class="flex flex-wrap justify-between gap-2">
-                            <button form="delete-{{ $task->id }}" class="btn-danger" onclick="return confirm('Hapus tugas ini? Checklist yang sudah dibuat tidak berubah. Untuk sementara, cukup nonaktifkan.')">{{ __('Hapus') }}</button>
+                            <button form="delete-{{ $task->id }}" class="btn-danger" data-confirm-button="Hapus tugas ini? Checklist yang sudah dibuat tidak berubah. Untuk sementara, cukup nonaktifkan.">{{ __('Hapus') }}</button>
                             <button class="btn-primary">{{ __('Simpan tugas') }}</button>
                         </div>
                     </form>

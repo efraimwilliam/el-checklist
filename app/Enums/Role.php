@@ -45,4 +45,10 @@ enum Role: string
     {
         return in_array($this, [self::Admin, self::Hr], true);
     }
+
+    /** Akun ini masuk ke dashboard Absensi dengan password (HOD, HR, Administrator); Staff dan GM memakai PIN. */
+    public function usesDashboardPassword(): bool
+    {
+        return in_array($this, [self::Admin, self::Hr, self::Hod], true);
+    }
 }

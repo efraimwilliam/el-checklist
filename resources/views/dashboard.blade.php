@@ -12,7 +12,7 @@
         <h1 class="text-3xl text-slate-900">{{ __('Dashboard') }}</h1>
         <p class="text-sm text-slate-500">{{ __('Progres checklist per departemen, tren, dan hal yang perlu perhatian.') }}</p>
 
-        <form method="GET" action="{{ route('dashboard') }}" class="mt-4">
+        <form method="GET" action="{{ route('dashboard') }}" class="mt-4" data-dashboard-filter>
             <div class="relative w-max max-w-full" data-range-field data-max="{{ $today->toDateString() }}">
                 <input type="hidden" name="from" value="{{ $from->toDateString() }}" data-range-from>
                 <input type="hidden" name="to" value="{{ $to->toDateString() }}" data-range-to>
@@ -22,6 +22,7 @@
         </form>
     </div>
 
+    <div id="dashboard-body" class="transition-opacity">
     {{-- Ringkasan periode --}}
     <p class="mb-2 text-xs font-semibold uppercase tracking-[0.1em] text-slate-500">
         {{ \App\Support\DateRange::label($from, $to) }} · {{ $days }} hari
@@ -233,4 +234,44 @@
             <p class="py-4 text-center text-sm text-slate-500">{{ __('Belum ada checklist dalam periode ini.') }}</p>
         @endif
     </section>
+    </div>
+
+    <script>
+        // Tanggal diganti: data dashboard diambil di latar lalu hanya bagian ringkasan yang diganti (tanpa muat ulang halaman).
+        (() => {
+            const form = document.querySelector('[data-dashboard-filter]');
+            const body = document.getElementById('dashboard-body');
+            let latest = 0;
+
+            const load = async (url, push) => {
+                const run = ++latest;
+                body.classList.add('opacity-50', 'pointer-events-none');
+                body.setAttribute('aria-busy', 'true');
+                try {
+                    const response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest', Accept: 'text/html' }, credentials: 'same-origin' });
+                    if (!response.ok) throw new Error(String(response.status));
+                    const page = new DOMParser().parseFromString(await response.text(), 'text/html');
+                    const next = page.getElementById('dashboard-body');
+                    if (!next) throw new Error('missing');
+                    if (run !== latest) return; // permintaan yang lebih baru sudah jalan
+                    body.innerHTML = next.innerHTML;
+                    if (push) history.pushState(null, '', url);
+                } catch (error) {
+                    window.location.href = url; // gagal: muat halaman biasa
+                } finally {
+                    if (run === latest) {
+                        body.classList.remove('opacity-50', 'pointer-events-none');
+                        body.setAttribute('aria-busy', 'false');
+                    }
+                }
+            };
+
+            form.addEventListener('submit', (event) => {
+                event.preventDefault();
+                load(`${form.action}?${new URLSearchParams(new FormData(form))}`, true);
+            });
+
+            window.addEventListener('popstate', () => load(location.href, false));
+        })();
+    </script>
 </x-app-layout>

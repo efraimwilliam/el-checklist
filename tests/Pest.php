@@ -20,6 +20,8 @@ const ATTENDANCE_LOGIN = 'attendance.test/api/v1/tasks/auth/verify-pin';
 
 const ATTENDANCE_LOGIN_PASSWORD = 'attendance.test/api/v1/tasks/auth/verify-password';
 
+const ATTENDANCE_ACCOUNT = 'attendance.test/api/v1/tasks/account';
+
 /**
  * Ganti semua respons palsu API (Http::fake biasa menumpuk; respons pertama yang cocok selalu menang).
  * Login mencoba password dulu: kalau stub tidak menyebutkannya, password dianggap salah (akun biasa).
@@ -57,6 +59,12 @@ function attendanceAcceptsPassword(Employee $employee, array $overrides = []): v
     fakeAttendance([ATTENDANCE_LOGIN_PASSWORD => Http::response(['authenticated' => true, 'employee' => attendanceProfile($employee, $overrides)])]);
 }
 
+/** Respons API absensi untuk ubah akun (username / password). */
+function fakeAccount(array $body, int $status = 200): void
+{
+    fakeAttendance([ATTENDANCE_ACCOUNT => Http::response($body, $status)]);
+}
+
 function attendanceRefuses(string $reason, array $extra = []): void
 {
     fakeAttendance([ATTENDANCE_LOGIN => Http::response(['authenticated' => false, 'reason' => $reason, ...$extra])]);
@@ -82,6 +90,12 @@ function nextRequest()
     app('auth')->forgetGuards();
 
     return test();
+}
+
+/** Parameter Status saja (bawaan), untuk form tugas di tes. */
+function statusParameters(): array
+{
+    return [['name' => 'Status', 'type' => 'status']];
 }
 
 function userWithRole(Role $role = Role::Staff, array $attributes = []): User

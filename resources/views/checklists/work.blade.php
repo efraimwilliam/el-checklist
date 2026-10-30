@@ -24,7 +24,14 @@
                     @if ($checklist->checked_by && ! $staffMode) · Dicek: {{ $checklist->checked_by }} @endif
                 </p>
             </div>
-            <a href="{{ route('checklists.show', $checklist) }}" class="btn-secondary">{{ __('Lihat hasil') }}</a>
+            <div class="flex flex-wrap gap-2">
+                @can('plan', $checklist)
+                    @unless ($staffMode)
+                        <a href="{{ route('checklists.tasks.edit', $checklist) }}" class="btn-secondary">{{ __('Atur tugas hari ini') }}</a>
+                    @endunless
+                @endcan
+                <a href="{{ route('checklists.show', $checklist) }}" class="btn-secondary">{{ __('Lihat hasil') }}</a>
+            </div>
         </div>
 
         {{-- Kiri: ikon daftar semua tugas (hanya di Kartu). Kanan: ikon tampilan Kartu / Daftar. --}}
@@ -53,7 +60,7 @@
             <section class="cl-section {{ $loop->first ? '' : 'mt-5' }}">
                 @if ($hasSections)
                     <div class="cl-section-head flex items-center justify-between px-1 pb-2 text-xs font-semibold uppercase tracking-[0.1em]">
-                        <span class="text-gold-700">{{ $section !== '' ? $section : 'Tugas' }}</span>
+                        <span class="text-gold-700">{{ $section !== '' ? $section : __('Tugas') }}</span>
                         <span class="text-slate-400">{{ $group->count() }} tugas</span>
                     </div>
                 @endif
@@ -64,7 +71,7 @@
                             $showNote = in_array($item->status?->value, ['ongoing', 'pending'], true) || filled($item->note);
                         @endphp
                         <div class="cl-item" data-item data-id="{{ $item->id }}" data-status="{{ $item->status?->value }}">
-                            <div class="cl-card-head"><span>{{ $section !== '' ? $section : 'Tugas' }}</span><span>{{ $number }} / {{ $items->count() }}</span></div>
+                            <div class="cl-card-head"><span>{{ $section !== '' ? $section : __('Tugas') }}</span><span>{{ $number }} / {{ $items->count() }}</span></div>
                             <div class="cl-row">
                                 <div class="min-w-0">
                                     <p class="cl-title"><span data-num class="cl-num">{{ $number }}.</span>{{ $item->title }}</p>
@@ -75,14 +82,7 @@
                                         </details>
                                     @endif
                                 </div>
-                                <div class="cl-seg" role="radiogroup" aria-label="Status tugas {{ $number }}">
-                                    @foreach ($statuses as $status)
-                                        <label>
-                                            <input type="radio" name="status-{{ $item->id }}" value="{{ $status->value }}" class="sr-only" @checked($item->status === $status)>
-                                            <span>{{ $status->label() }}</span>
-                                        </label>
-                                    @endforeach
-                                </div>
+                                @include('checklists.partials.item-parameters', ['item' => $item, 'number' => $number])
                             </div>
                             {{-- Aksi pendukung: tiga tombol sama besar (Kamera, Galeri, Catatan), lalu foto dan kolom catatan di bawahnya. --}}
                             <div class="cl-extras">

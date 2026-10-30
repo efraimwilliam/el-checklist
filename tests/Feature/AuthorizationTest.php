@@ -31,7 +31,7 @@ it('does not let staff see or change another employee\'s checklist or open manag
     $this->post(route('fill.start'), ['position' => $this->sariList->position_id, 'employee' => $this->sariList->employee_id, 'date' => now()->toDateString()])->assertForbidden();
     $this->post(route('checklists.review', $this->sariList))->assertForbidden();
     $this->delete(route('checklists.destroy', $this->sariList))->assertForbidden();
-    $this->get(route('checklists.index'))->assertForbidden();
+    $this->get(route('checklists.index'))->assertOk()->assertDontSee($this->sari->employee->name);
     $this->get(route('team.index'))->assertForbidden();
     $this->get(route('admin.access.index'))->assertForbidden();
 });
@@ -71,7 +71,7 @@ it('applies revoked roles and departments on the next request', function () {
     nextRequest()->get(route('checklists.show', $this->budiList))->assertForbidden();
 
     $hod->update(['role' => Role::Staff]);
-    nextRequest()->get(route('checklists.index'))->assertForbidden();
+    nextRequest()->get(route('checklists.index'))->assertOk(); // staff: hanya checklist miliknya
 });
 
 it('logs out users whose access is revoked or who become inactive at the attendance system', function (Closure $revoke) {

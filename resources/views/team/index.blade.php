@@ -7,6 +7,17 @@
             <a href="{{ route('team.positions.edit') }}" class="font-semibold text-sky-700 hover:underline">{{ __('Atur jabatan checklist tiap staff') }}</a> {{ __('dipakai saat checklist dibuatkan sekaligus.') }}</p>
     </div>
 
+    @if ($single)
+        @foreach ($membersByDepartment as $department => $members)
+            <section class="card overflow-hidden p-0">
+                <div class="border-b border-slate-100 px-5 py-4">
+                    <h2 class="font-display text-2xl text-slate-900">{{ $department }}</h2>
+                    <p class="text-sm text-slate-500">{{ __(':n pegawai · pilih nama untuk mengatur tugasnya', ['n' => $members->count()]) }}</p>
+                </div>
+                @include('team.partials.member-list', ['members' => $members])
+            </section>
+        @endforeach
+    @else
     @forelse ($membersByDepartment as $department => $members)
         @php
             $dialogId = 'dept-'.$loop->index;
@@ -52,6 +63,7 @@
     @empty
         <p class="card p-6 text-sm text-slate-500">Belum ada pegawai di departemen Anda. Data pegawai datang dari Absensi (Administrator bisa menekan "Sinkron dari absensi").</p>
     @endforelse
+    @endif
 
     <script>
         (() => {

@@ -65,7 +65,7 @@ it('creates checklists only for staff who work today, and reports who was skippe
     standardSchedule();
     fakeSchedules([[$this->work, 'work', 'P'], [$this->off, 'off'], [$this->leave, 'leave', 'CT'], [$this->noPosition, 'work', 'P'], [$second, 'work', 'S']]);
 
-    assignAll()->assertRedirect(route('fill.create', ['date' => $this->today->toDateString()]))->assertSessionHas('assign_summary');
+    assignAll()->assertRedirect(route('fill.assign', ['date' => $this->today->toDateString()]))->assertSessionHas('assign_summary');
 
     $summary = session('assign_summary');
     expect($summary)->toMatchArray(['created' => 1, 'existing' => 1, 'off' => 1, 'leave' => ['CT' => 1], 'unscheduled' => 1])
@@ -79,7 +79,7 @@ it('creates checklists only for staff who work today, and reports who was skippe
         ->and(Checklist::where('employee_id', $this->off->id)->count())->toBe(0)
         ->and(Checklist::where('employee_id', $this->hkStaff->id)->count())->toBe(0) // departemen lain tidak ikut
         ->and(Checklist::count())->toBe(2);
-    $this->get(route('fill.create'))->assertSee('1 dibuat')->assertSee('Made Tanpa Jabatan');
+    $this->get(route('fill.assign'))->assertSee('1 dibuat')->assertSee('Made Tanpa Jabatan');
 });
 
 it('is safe to press again and shows what is still to do', function () {
@@ -90,7 +90,7 @@ it('is safe to press again and shows what is still to do', function () {
     assignAll();
 
     expect(Checklist::count())->toBe(1)->and(session('assign_summary'))->toMatchArray(['created' => 0, 'existing' => 1]);
-    $this->get(route('fill.create'))->assertSee('Budi Kerja')->assertSee('Belum diisi')->assertSee('3 staff belum punya checklist hari ini')->assertDontSee('Lanjutkan checklist');
+    $this->get(route('fill.assign'))->assertSee('Budi Kerja')->assertSee('Belum diisi')->assertSee('3 staff belum punya checklist hari ini')->assertDontSee('Lanjutkan checklist');
 });
 
 it('uses the tasks chosen for the staff member and allows past dates but not future ones', function () {
@@ -104,7 +104,7 @@ it('uses the tasks chosen for the staff member and allows past dates but not fut
 
     expect(Checklist::sole()->items->pluck('title')->all())->toBe([$this->tasks[1]->title])->and(Checklist::sole()->date->toDateString())->toBe($yesterday);
     Http::assertSent(fn ($request) => str_contains($request->url(), 'schedules') && $request['date'] === $yesterday);
-    assignAll(['date' => $this->today->addDay()->toDateString()])->assertSessionHasErrors('date');
+    assignAll(['date' => $this->today->addDays(61)->toDateString()])->assertSessionHasErrors('date');
 });
 
 it('creates nothing and says so when the attendance system cannot be reached', function () {
@@ -168,7 +168,7 @@ it('lets staff open the checklist for the position the HOD set for them', functi
     loggedIn($staff);
     standardSchedule();
 
-    $this->get(route('fill.create'))->assertOk()->assertSee('Buka checklist GSA (Guest Service Agent)');
+    $this->get(route('fill.create'))->assertOk()->assertDontSee('Buka checklist'); // staff tidak lagi membuka checklist dari halaman ini
     $this->post(route('fill.start'), ['position' => $this->gsa->id, 'employee' => $this->work->id, 'date' => $this->today->toDateString()])->assertRedirect();
     expect(Checklist::sole()->position_id)->toBe($this->gsa->id);
 });

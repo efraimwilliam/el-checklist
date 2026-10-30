@@ -222,7 +222,7 @@ class ReportService
         $rows = $this->itemsQuery($ids, $range)->groupByRaw('DAYOFWEEK(c.date)')
             ->selectRaw("DAYOFWEEK(c.date) as d, count(i.id) as items, coalesce(sum(i.status = 'pending'), 0) as pending")
             ->get()->keyBy('d');
-        $labels = [2 => 'Senin', 3 => 'Selasa', 4 => 'Rabu', 5 => 'Kamis', 6 => 'Jumat', 7 => 'Sabtu', 1 => 'Minggu'];
+        $labels = [2 => __('Senin'), 3 => __('Selasa'), 4 => __('Rabu'), 5 => __('Kamis'), 6 => __('Jumat'), 7 => __('Sabtu'), 1 => __('Minggu')];
 
         return collect([2, 3, 4, 5, 6, 7, 1])->map(function (int $day) use ($rows, $labels) {
             $row = $rows->get($day);

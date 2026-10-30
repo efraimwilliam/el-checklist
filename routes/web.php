@@ -1,5 +1,9 @@
 <?php
 
+use App\Http\Controllers\PlanController;
+use App\Http\Controllers\ChecklistTaskController;
+use App\Http\Controllers\TaskCatalogImportController;
+use App\Http\Controllers\AccountController;
 use App\Http\Controllers\Admin\AccessController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\SettingsController;
@@ -37,6 +41,10 @@ Route::middleware(['auth', EnsureActiveSession::class])->group(function () {
 
     Route::get('/checklist', [FillController::class, 'today'])->name('checklists.today');
     Route::get('/isi', [FillController::class, 'create'])->name('fill.create');
+    Route::get('/checklist/atur', [FillController::class, 'assign'])->name('fill.assign');
+    Route::delete('/checklist/atur/rencana', [PlanController::class, 'destroyDay'])->name('fill.plan.destroy-day');
+    Route::post('/checklist/atur/mulai', [PlanController::class, 'start'])->name('fill.plan.start');
+    Route::delete('/checklists/{checklist}/rencana', [PlanController::class, 'destroy'])->name('checklists.plan.destroy');
     Route::post('/isi/mulai', [FillController::class, 'start'])->name('fill.start');
     Route::post('/isi/semua', [BulkAssignController::class, 'store'])->name('fill.assign-all');
     Route::put('/isi/otomatis/{department}', [BulkAssignController::class, 'auto'])->name('fill.auto-assign');
@@ -44,6 +52,8 @@ Route::middleware(['auth', EnsureActiveSession::class])->group(function () {
     Route::get('/checklists/ekspor.xlsx', [ChecklistController::class, 'export'])->name('checklists.export');
     Route::get('/checklists/{checklist}', [ChecklistController::class, 'show'])->name('checklists.show');
     Route::get('/checklists/{checklist}/isi', [ChecklistController::class, 'fill'])->name('checklists.fill');
+    Route::get('/checklists/{checklist}/tugas', [ChecklistTaskController::class, 'edit'])->name('checklists.tasks.edit');
+    Route::put('/checklists/{checklist}/tugas', [ChecklistTaskController::class, 'update'])->name('checklists.tasks.update');
     Route::patch('/checklists/{checklist}', [ChecklistController::class, 'meta'])->name('checklists.meta');
     Route::patch('/checklists/{checklist}/items/{item}', [ChecklistItemController::class, 'update'])->scopeBindings()->name('checklists.items.update');
     Route::post('/checklists/{checklist}/items/{item}/photos', [ChecklistPhotoController::class, 'store'])->scopeBindings()->middleware('throttle:60,1')->name('checklists.photos.store');
@@ -53,12 +63,21 @@ Route::middleware(['auth', EnsureActiveSession::class])->group(function () {
     Route::post('/checklists/{checklist}/batal-review', [ChecklistController::class, 'unreview'])->name('checklists.unreview');
     Route::delete('/checklists/{checklist}', [ChecklistController::class, 'destroy'])->name('checklists.destroy');
 
+    Route::get('/profil', [AccountController::class, 'editOwn'])->name('profile.edit');
+    Route::put('/profil', [AccountController::class, 'updateOwn'])->name('profile.update');
     Route::get('/tim', [TeamTaskController::class, 'index'])->name('team.index');
     Route::get('/tim/daftar', [TeamTaskController::class, 'catalog'])->name('team.catalog');
-    Route::get('/tim/jabatan', [TeamPositionController::class, 'edit'])->name('team.positions.edit');
+
+    Route::get('/tim/daftar/ekspor.xlsx', [TaskCatalogImportController::class, 'export'])->name('team.catalog.export');
+    Route::get('/tim/daftar/impor', [TaskCatalogImportController::class, 'create'])->name('team.catalog.import');
+    Route::post('/tim/daftar/impor', [TaskCatalogImportController::class, 'preview'])->name('team.catalog.import.preview');
+    Route::post('/tim/daftar/impor/simpan', [TaskCatalogImportController::class, 'apply'])->name('team.catalog.import.apply');
+    Route::post('/tim/daftar/impor/batal', [TaskCatalogImportController::class, 'cancel'])->name('team.catalog.import.cancel');    Route::get('/tim/jabatan', [TeamPositionController::class, 'edit'])->name('team.positions.edit');
     Route::put('/tim/jabatan', [TeamPositionController::class, 'update'])->name('team.positions.update');
     Route::get('/tim/{employee}/tugas', [TeamTaskController::class, 'edit'])->name('team.tasks.edit');
     Route::put('/tim/{employee}/tugas', [TeamTaskController::class, 'update'])->name('team.tasks.update');
+    Route::get('/tim/{employee}/akun', [AccountController::class, 'editOther'])->middleware('can:manage-tasks')->name('team.account.edit');
+    Route::put('/tim/{employee}/akun', [AccountController::class, 'updateOther'])->middleware('can:manage-tasks')->name('team.account.update');
     Route::delete('/tim/{employee}/tugas', [TeamTaskController::class, 'reset'])->name('team.tasks.reset');
     Route::post('/tim/daftar/tugas', [TeamTaskController::class, 'storeTask'])->name('team.tasks.store');
     Route::put('/tim/daftar/tugas/{task}', [TeamTaskController::class, 'updateCatalogTask'])->name('team.catalog.tasks.update');
@@ -72,6 +91,7 @@ Route::middleware(['auth', EnsureActiveSession::class])->group(function () {
         Route::get('/pengaturan', [SettingsController::class, 'edit'])->name('settings.edit');
         Route::get('/log', [AuditLogController::class, 'index'])->name('logs.index');
         Route::put('/pengaturan', [SettingsController::class, 'update'])->name('settings.update');
+        Route::put('/pengaturan/aturan', [SettingsController::class, 'updateRules'])->name('settings.rules.update');
 
         Route::get('/tugas', [TaskController::class, 'index'])->name('tasks.index');
         Route::post('/tugas/jabatan', [TaskController::class, 'storePosition'])->name('positions.store');

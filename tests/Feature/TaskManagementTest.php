@@ -27,8 +27,8 @@ it('is available to administrators and HR only', function (Role $role, bool $all
     $status = $allowed ? 200 : 403;
     $this->get(route('admin.tasks.index'))->assertStatus($status);
     $this->get(route('admin.tasks.show', $this->position))->assertStatus($status);
-    $this->post(route('admin.tasks.store', $this->position), ['title' => 'Tugas baru'])->assertStatus($allowed ? 302 : 403);
-    $this->put(route('admin.tasks.update', $this->first), ['title' => 'Diubah'])->assertStatus($allowed ? 302 : 403);
+    $this->post(route('admin.tasks.store', $this->position), ['parameters' => statusParameters(), 'title' => 'Tugas baru'])->assertStatus($allowed ? 302 : 403);
+    $this->put(route('admin.tasks.update', $this->first), ['parameters' => statusParameters(), 'title' => 'Diubah'])->assertStatus($allowed ? 302 : 403);
     $this->delete(route('admin.tasks.destroy', $this->first))->assertStatus($allowed ? 302 : 403);
     $this->post(route('admin.positions.store'), ['department_id' => $this->fo->id, 'name' => 'Baru'])->assertStatus($allowed ? 302 : 403);
 })->with([
@@ -51,7 +51,7 @@ it('adds a task at the end of the list', function () {
     loggedIn(userWithRole(Role::Admin));
 
     $this->post(route('admin.tasks.store', $this->position), [
-        'section' => '  Akhir shift ', 'title' => 'Write handover', 'standard' => 'Tulis di logbook', 'remarks' => '',
+        'section' => '  Akhir shift ', 'parameters' => statusParameters(), 'title' => 'Write handover', 'standard' => 'Tulis di logbook', 'remarks' => '',
     ])->assertRedirect();
 
     $task = Task::where('title', 'Write handover')->sole();
@@ -62,14 +62,14 @@ it('adds a task at the end of the list', function () {
 it('requires a title', function () {
     loggedIn(userWithRole(Role::Admin));
 
-    $this->post(route('admin.tasks.store', $this->position), ['title' => ' '])->assertSessionHasErrors('title');
+    $this->post(route('admin.tasks.store', $this->position), ['parameters' => statusParameters(), 'title' => ' '])->assertSessionHasErrors('title');
     expect(Task::count())->toBe(3);
 });
 
 it('edits and deactivates a task', function () {
     loggedIn(userWithRole(Role::Admin));
 
-    $this->put(route('admin.tasks.update', $this->second), ['title' => 'Read and reply email', 'is_active' => '0'])->assertRedirect(route('admin.tasks.show', $this->position));
+    $this->put(route('admin.tasks.update', $this->second), ['parameters' => statusParameters(), 'title' => 'Read and reply email', 'is_active' => '0'])->assertRedirect(route('admin.tasks.show', $this->position));
 
     expect($this->second->fresh())->title->toBe('Read and reply email')->is_active->toBeFalse();
 });
@@ -97,10 +97,10 @@ it('only changes checklists created afterwards, and keeps history when a task is
     $before = makeChecklist($staff, $this->position, CarbonImmutable::yesterday());
     loggedIn(userWithRole(Role::Admin));
 
-    $this->put(route('admin.tasks.update', $this->first), ['title' => 'Diubah', 'is_active' => '0']);
-    $this->put(route('admin.tasks.update', $this->second), ['title' => 'Read email', 'is_active' => '1', 'standard' => 'Standar baru']);
+    $this->put(route('admin.tasks.update', $this->first), ['parameters' => statusParameters(), 'title' => 'Diubah', 'is_active' => '0']);
+    $this->put(route('admin.tasks.update', $this->second), ['parameters' => statusParameters(), 'title' => 'Read email', 'is_active' => '1', 'standard' => 'Standar baru']);
     $this->delete(route('admin.tasks.destroy', $this->third))->assertRedirect();
-    $this->post(route('admin.tasks.store', $this->position), ['title' => 'Tugas baru']);
+    $this->post(route('admin.tasks.store', $this->position), ['parameters' => statusParameters(), 'title' => 'Tugas baru']);
 
     $after = makeChecklist($staff, $this->position, CarbonImmutable::today());
     expect(Checklist::find($before->id)->items->pluck('title')->all())->toBe(['Take handover', 'Read email', 'Check lobby'])
