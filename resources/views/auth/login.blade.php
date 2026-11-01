@@ -21,6 +21,7 @@
             <div class="pointer-events-none absolute inset-y-0 right-0 hidden w-1/4 opacity-90 lg:block" style="background-image: url('{{ asset('images/pola-seigaiha.svg') }}'); background-size: 120px 60px; -webkit-mask-image: linear-gradient(to right, transparent, #000 60%); mask-image: linear-gradient(to right, transparent, #000 60%)"></div>
 
             <div class="card relative -mt-8 w-full max-w-sm p-7 lg:mt-0">
+                <img src="{{ asset('images/icon-checklist.svg') }}" alt="Checklist Kerjaan" class="mb-4 h-12 w-12 rounded-[22%]">
                 <p class="eyebrow"><span class="h-px w-6 bg-gold-500"></span>{{ __('Selamat datang') }}</p>
                 <h1 class="mt-2 text-4xl text-slate-900">{{ __('Masuk') }}</h1>
                 <p class="mt-1 text-sm text-slate-500">éL Hotel &amp; Resort Bali Sanur</p>

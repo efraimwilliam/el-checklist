@@ -6,7 +6,9 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="theme-color" content="#1b1511">
     <title>{{ isset($title) ? $title.' · ' : '' }}{{ config('app.name') }}</title>
-    <link rel="icon" href="{{ asset('favicon.ico') }}">
+    <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
+    <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
+    <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
     <script>
         window.__i18n = @json(\App\Support\Translations::forJs());
         window.t = (text) => (window.__i18n && window.__i18n[text]) || text;
@@ -25,7 +27,7 @@
         <div class="gold-rule h-[3px]"></div>
         <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 pt-3 sm:px-6">
             <a href="{{ route('home') }}" class="flex min-w-0 items-center gap-3">
-                <img src="{{ asset('images/logo-el.png') }}" alt="éL" class="h-8 w-auto shrink-0">
+                <img src="{{ asset('images/icon-checklist.svg') }}" alt="Checklist" class="h-9 w-9 shrink-0 rounded-[22%]">
                 <span class="hidden h-8 w-px shrink-0 bg-white/20 sm:block"></span>
                 <span class="min-w-0 leading-tight">
                     <span class="block truncate text-base font-semibold text-gold-400">éL Hotel &amp; Resort Bali Sanur</span>
