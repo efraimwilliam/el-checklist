@@ -25,16 +25,19 @@
 
         <div>
             <label for="position_id" class="label">{{ __('Jabatan checklist (menentukan daftar tugas harian)') }}</label>
-            <select id="position_id" name="position_id" class="input">
-                <option value="">{{ __('— Tidak mengisi checklist —') }}</option>
+            <select id="position_id" class="input cursor-not-allowed bg-slate-50 text-slate-500" disabled aria-describedby="position-help">
+                <option value="">{{ __('— Belum diatur —') }}</option>
                 @foreach ($positions->groupBy(fn ($p) => $p->department->name) as $departmentName => $group)
                     <optgroup label="{{ $departmentName }}">
                         @foreach ($group as $position)
-                            <option value="{{ $position->id }}" @selected(old('position_id', $user?->position_id) == $position->id)>{{ $position->name }}</option>
+                            <option value="{{ $position->id }}" @selected($employee->checklist_position_id === $position->id)>{{ $position->name }}</option>
                         @endforeach
                     </optgroup>
                 @endforeach
             </select>
+            <p id="position-help" class="mt-1 text-xs text-slate-500">
+                {{ __('Jabatan checklist diatur di') }} <a href="{{ route('team.positions.edit') }}" class="font-semibold text-sky-700 hover:underline">{{ __('Tim → Jabatan') }}</a>.
+            </p>
         </div>
 
         <fieldset>

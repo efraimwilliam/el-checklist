@@ -69,7 +69,7 @@
                         @php
                             $hasAccess = (bool) $employee->user?->is_active;
                             $role = $hasAccess ? $employee->user->role->label() : '';
-                            $position = $employee->user?->position?->name ?? '';
+                            $position = ($employee->checklistPosition ?? $employee->user?->position)?->name ?? '';
                             $department = $employee->department?->name ?? '';
                         @endphp
                         <tr class="{{ $employee->is_active ? '' : 'text-slate-400' }}"

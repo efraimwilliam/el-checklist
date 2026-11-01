@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
-/** Administrator mengatur siapa yang boleh memakai aplikasi, perannya, jabatan checklist, dan departemen HOD. */
+/** Administrator mengatur siapa yang boleh memakai aplikasi, perannya, dan departemen HOD. Jabatan checklist diatur di Tim → Jabatan. */
 class AccessController extends Controller
 {
     public function index(): View
@@ -25,7 +25,7 @@ class AccessController extends Controller
         Gate::authorize('manage-access');
 
         // Semua pegawai dimuat sekali; cari, sortir, dan halaman dikerjakan di browser (tanpa memuat ulang).
-        $employees = Employee::with(['department', 'user.position', 'user.departments'])
+        $employees = Employee::with(['department', 'checklistPosition', 'user.position', 'user.departments'])
             ->orderByDesc('is_active')->orderBy('name')->get();
 
         return view('admin.access.index', [
@@ -39,7 +39,7 @@ class AccessController extends Controller
         Gate::authorize('manage-access');
 
         return view('admin.access.edit', [
-            'employee' => $employee->load(['department', 'user.departments']),
+            'employee' => $employee->load(['department', 'checklistPosition', 'user.departments']),
             'roles' => Role::cases(),
             'departments' => Department::orderBy('sort')->orderBy('name')->get(),
             'positions' => Position::with('department')->where('is_active', true)->orderBy('department_id')->orderBy('sort')->get(),
@@ -52,7 +52,6 @@ class AccessController extends Controller
         $data = $request->validate([
             'is_active' => ['boolean'],
             'role' => ['required', Rule::enum(Role::class)],
-            'position_id' => ['nullable', 'exists:positions,id'],
             'departments' => ['array'],
             'departments.*' => ['integer', 'exists:departments,id'],
         ]);
@@ -64,9 +63,8 @@ class AccessController extends Controller
             return back()->withErrors(['role' => __('Anda tidak bisa mencabut akses Administrator Anda sendiri.')]);
         }
 
-        $user = User::updateOrCreate(['employee_id' => $employee->id], [
-            'role' => $role, 'is_active' => $active, 'position_id' => $data['position_id'] ?? null,
-        ]);
+        // Jabatan checklist tidak diatur di sini (Tim → Jabatan), jadi tidak disentuh.
+        $user = User::updateOrCreate(['employee_id' => $employee->id], ['role' => $role, 'is_active' => $active]);
         // Departemen hanya berarti untuk HOD; peran lain dikosongkan supaya akses lama tidak tertinggal.
         $user->departments()->sync($role === Role::Hod ? ($data['departments'] ?? []) : []);
 
