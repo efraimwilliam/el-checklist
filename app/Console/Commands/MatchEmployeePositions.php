@@ -52,7 +52,8 @@ class MatchEmployeePositions extends Command
 
         if ($this->option('terapkan')) {
             foreach ($updates as $employeeId => $positionId) {
-                Employee::whereKey($employeeId)->update(['checklist_position_id' => $positionId]);
+                // Teks jabatan Absensi dicatat sebagai acuan: bila nanti berubah, pegawai ditandai "perlu dicek".
+                Employee::whereKey($employeeId)->update(['checklist_position_id' => $positionId, 'checklist_title' => Employee::whereKey($employeeId)->value('position_title')]);
             }
         }
 

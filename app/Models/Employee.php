@@ -13,11 +13,37 @@ class Employee extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['external_id', 'username', 'name', 'department_id', 'position_title', 'is_active', 'custom_tasks', 'checklist_position_id', 'synced_at'];
+    protected $fillable = ['external_id', 'username', 'name', 'department_id', 'position_title', 'is_active', 'custom_tasks', 'checklist_position_id', 'checklist_title', 'synced_at'];
 
     protected function casts(): array
     {
         return ['is_active' => 'boolean', 'custom_tasks' => 'boolean', 'synced_at' => 'datetime'];
+    }
+
+    /**
+     * Jabatan checklist yang perlu dicek HOD: jabatan di Absensi berubah sejak jabatan checklist dikonfirmasi,
+     * atau jabatan checklist-nya bukan dari departemen pegawai ini lagi (pindah departemen). Tidak mengubah apa pun.
+     *
+     * @return array{type: 'title', from: string, to: ?string}|array{type: 'department', position: string}|null
+     */
+    public function positionReview(): ?array
+    {
+        if (! $this->checklist_position_id) {
+            return null;
+        }
+
+        $position = $this->checklistPosition;
+        if ($position && $this->department_id && $position->department_id !== $this->department_id) {
+            return ['type' => 'department', 'position' => $position->name];
+        }
+
+        $from = trim((string) $this->checklist_title);
+        $to = trim((string) $this->position_title);
+        if ($from !== '' && mb_strtolower($from) !== mb_strtolower($to)) {
+            return ['type' => 'title', 'from' => $from, 'to' => $to !== '' ? $to : null];
+        }
+
+        return null;
     }
 
     public function department(): BelongsTo

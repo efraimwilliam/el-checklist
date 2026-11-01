@@ -669,5 +669,11 @@
     "Buka semua": "Open all",
     "Tutup semua": "Close all",
     "Jabatan checklist diatur di": "The checklist position is set in",
-    "Tim → Jabatan": "Team → Positions"
+    "Tim → Jabatan": "Team → Positions",
+    ":n staff perlu dicek|:n staff perlu dicek": ":n staff member needs review|:n staff members need review",
+    "Jabatan mereka di Absensi berubah (atau mereka pindah departemen) sejak jabatan checklist diatur. Daftar tugas tidak berubah sendiri: pilih jabatan yang benar lalu simpan, atau centang \"Jabatan checklist tetap benar\".": "Their position in the attendance system changed (or they moved department) since the checklist position was set. The task list does not change by itself: choose the correct position and save, or tick \"Checklist position is still correct\".",
+    "Perlu dicek: jabatan di Absensi berubah dari \":from\" menjadi \":to\".": "Needs review: the attendance position changed from \":from\" to \":to\".",
+    "Perlu dicek: jabatan checklist saat ini (:position) bukan dari departemen pegawai ini.": "Needs review: the current checklist position (:position) is not from this employee's department.",
+    "(kosong)": "(empty)",
+    "Jabatan checklist tetap benar": "Checklist position is still correct"
 }
