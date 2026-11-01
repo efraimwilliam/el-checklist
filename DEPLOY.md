@@ -443,60 +443,57 @@ sudo chmod 600 /var/backups/checklist/mysql-backup.cnf
 ```
 
 ### 11.2 Skrip backup
+Skrip ada di repo (`deploy/checklist-backup.sh`), bukan ditulis ulang di server. Pasang (dan pasang ulang setiap isinya berubah):
 ```bash
-sudo tee /usr/local/bin/checklist-backup.sh > /dev/null <<'EOF'
-#!/bin/bash
-# Backup harian Sistem Checklist. Catatan di backup.log.
-set -u
-APP=/var/www/checklist
-DIR=/var/backups/checklist
-KEEP_DAYS=30
-LOG=$DIR/backup.log
-TODAY=$(date +%F)
-PRIV=$APP/storage/app/private
-mkdir -p "$DIR/database" "$DIR/aplikasi"
-
-OUT=$DIR/database/checklist-$TODAY.sql
-if ! mysqldump --defaults-extra-file="$DIR/mysql-backup.cnf" --single-transaction --no-tablespaces --set-gtid-purged=OFF checklist > "$OUT.tmp" 2> "$DIR/mysqldump-error.txt"; then
-    rm -f "$OUT.tmp"
-    echo "$(date '+%F %T') GAGAL backup database: $(cat "$DIR/mysqldump-error.txt")" >> "$LOG"
-    exit 1
-fi
-mv -f "$OUT.tmp" "$OUT"; rm -f "$DIR/mysqldump-error.txt"
-
-for pair in checklist-photos:foto-bukti laporan:laporan; do
-    src=${pair%%:*}; dst=${pair##*:}
-    [ -d "$PRIV/$src" ] && rsync -a "$PRIV/$src/" "$DIR/$dst/"
-done
-cp -f "$APP/.env" "$DIR/aplikasi/.env"
-find "$DIR/database" -name '*.sql' -mtime +$KEEP_DAYS -delete
-echo "$(date '+%F %T') backup selesai: $OUT" >> "$LOG"
-
-# Salinan ke luar server: satu folder per baris di tujuan-backup.txt (mis. /mnt/backup-usb/checklist)
-if [ -f "$DIR/tujuan-backup.txt" ]; then
-    grep -v '^\s*#' "$DIR/tujuan-backup.txt" | while read -r dest; do
-        [ -z "$dest" ] && continue
-        if mkdir -p "$dest" && rsync -a --exclude 'mysql-backup.cnf' "$DIR/" "$dest/"; then
-            echo "$(date '+%F %T') salinan ke $dest selesai" >> "$LOG"
-        else
-            echo "$(date '+%F %T') GAGAL menyalin ke $dest" >> "$LOG"
-        fi
-    done
-fi
-EOF
-sudo chmod 750 /usr/local/bin/checklist-backup.sh
-sudo /usr/local/bin/checklist-backup.sh && tail -2 /var/backups/checklist/backup.log
+sudo install -m 750 /var/www/checklist/deploy/checklist-backup.sh /usr/local/bin/checklist-backup.sh
+sudo /usr/local/bin/checklist-backup.sh && sudo tail -2 /var/backups/checklist/backup.log
 ```
-Harus tampil `backup selesai: ...`. Foto yang sudah dihapus karena melewati masa simpan tetap ada di salinan backup (rsync tanpa `--delete`);
-hapus manual salinan lama bila ruang penuh.
+Harus tampil `backup selesai: ...`. (`sudo` diperlukan juga untuk membaca log: folder backup hanya boleh dibaca root.) Isi folder `/var/backups/checklist`:
+`database/` (satu `.sql` per hari, 30 hari), `foto-bukti/` dan `laporan/` (bila sudah ada), `aplikasi/.env` (salinan `.env`, **hanya di server ini**), dan `backup.log`.
+Foto yang sudah dihapus karena melewati masa simpan tetap ada di salinan backup (rsync tanpa `--delete`); hapus manual salinan lama bila ruang penuh.
 
-### 11.3 Jadwalkan, dan salinan ke luar server
+### 11.3 Jadwalkan
 ```bash
 echo '30 12 * * * root /usr/local/bin/checklist-backup.sh' | sudo tee /etc/cron.d/checklist-backup
 ```
-(12:30, setelah backup Absensi pukul 12:00 agar tidak bersamaan.) Untuk salinan luar server (wajib bila hanya satu hardisk), tulis folder tujuan di
-`/var/backups/checklist/tujuan-backup.txt`, mis. `/mnt/backup-usb/checklist`. **Backup VM utuh** dari Proxmox (mingguan, mode Snapshot, ke disk lain)
-tetap dianjurkan; satu VM yang sama mencakup Checklist.
+(12:30, setelah backup Absensi pukul 12:00 agar tidak bersamaan.) `checklist-update.sh` juga memanggil skrip ini sebelum migrasi. **Backup VM utuh** dari Proxmox (mingguan, mode Snapshot, ke disk lain) tetap dianjurkan.
+
+### 11.3a Salinan ke NAS (folder jaringan SMB)
+Contoh: NAS `172.16.88.131`, share `IT`, folder `Sistem/Backup DB Checklist` di dalamnya (alamat Windows: `\\172.16.88.131\IT\Sistem\Backup DB Checklist`).
+Yang disalin ke NAS: `database/`, `foto-bukti/`, `laporan/`. **`.env` tidak pernah disalin** (berisi password dan token). File `.sql` di NAS dibersihkan setelah 30 hari.
+
+1. Minta akun NAS khusus untuk backup ini (hak tulis hanya ke folder tersebut, bukan akun pribadi).
+2. Pasang klien SMB dan siapkan titik mount:
+```bash
+sudo apt install -y cifs-utils
+sudo mkdir -p /mnt/nas-it
+```
+3. Simpan kredensial (diketik sendiri di editor, jangan lewat chat), hanya terbaca root:
+```bash
+sudo nano /root/.smb-nas
+```
+isinya tiga baris `username=...`, `password=...`, dan (bila NAS memakai domain/workgroup) `domain=...`. Lalu:
+```bash
+sudo chmod 600 /root/.smb-nas
+```
+4. Uji mount manual (bila gagal dengan `vers=3.0`, coba `vers=2.1` atau `vers=3.1.1`):
+```bash
+sudo mount -t cifs //172.16.88.131/IT /mnt/nas-it -o credentials=/root/.smb-nas,vers=3.0,iocharset=utf8,uid=0,gid=0,file_mode=0640,dir_mode=0750
+sudo mkdir -p "/mnt/nas-it/Sistem/Backup DB Checklist" && sudo touch "/mnt/nas-it/Sistem/Backup DB Checklist/uji" && sudo rm "/mnt/nas-it/Sistem/Backup DB Checklist/uji" && echo "NAS bisa ditulisi"
+```
+Nama share (`IT`) belum pasti? Daftar share yang terlihat: `sudo apt install -y smbclient && smbclient -L //172.16.88.131 -U <akun-nas>`.
+5. Mount permanen tiap server menyala (`nofail` supaya server tetap naik walau NAS mati; `automount` memasangnya saat pertama dipakai):
+```bash
+sudo umount /mnt/nas-it
+echo '//172.16.88.131/IT /mnt/nas-it cifs credentials=/root/.smb-nas,vers=3.0,iocharset=utf8,uid=0,gid=0,file_mode=0640,dir_mode=0750,_netdev,nofail,x-systemd.automount,x-systemd.idle-timeout=60 0 0' | sudo tee -a /etc/fstab
+sudo systemctl daemon-reload && sudo mount -a && ls /mnt/nas-it
+```
+6. Daftarkan folder tujuan (satu folder per baris; nama folder boleh memuat spasi) lalu coba:
+```bash
+echo '/mnt/nas-it/Sistem/Backup DB Checklist' | sudo tee -a /var/backups/checklist/tujuan-backup.txt
+sudo /usr/local/bin/checklist-backup.sh && sudo tail -3 /var/backups/checklist/backup.log
+```
+Harus ada baris `salinan ke /mnt/nas-it/Sistem/Backup DB Checklist selesai` dan berkas `.sql` di NAS. Bila NAS belum ter-mount, skrip **menolak** menulis (supaya disk server tidak terisi diam-diam) dan mencatat `GAGAL menyalin ... belum ter-mount`; backup di server tetap jalan.
 
 ### 11.4 Memulihkan
 ```bash
