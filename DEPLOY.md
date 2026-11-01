@@ -526,8 +526,18 @@ php artisan test
 git add -A && git commit -m "..." && git push origin main
 ```
 
-**Di server:** skrip `deploy/checklist-update.sh` (ada di repo) mengerjakan semuanya: mode pemeliharaan, `git pull --ff-only`, `composer install`,
-`migrate --force`, `view:clear` + `optimize`, izin folder, reload PHP-FPM, lalu membuka aplikasi dan mengecek `/up`. Bila ada langkah yang gagal, aplikasi dibuka lagi.
+**Di server:** skrip `deploy/checklist-update.sh` (ada di repo) mengerjakan seluruh update:
+1. **Pemeriksaan awal** (sebelum aplikasi ditutup): repo bersih dan di sebuah cabang, `.env`, `composer`, dan layanan PHP-FPM ada; password `sudo` ditanyakan di awal. Hanya satu update berjalan pada satu waktu.
+2. **Backup database** lewat `/usr/local/bin/checklist-backup.sh` (bagian 11) bila terpasang. Bila backup gagal, update dibatalkan. Bila belum terpasang, skrip memperingatkan dan lanjut tanpa backup.
+3. Mode pemeliharaan, `git pull --ff-only`, `composer install`, `migrate --force`, `view:clear` + `optimize` + `queue:restart`, izin folder cache/log, reload PHP-FPM.
+4. Membuka aplikasi dan mengecek `/up`; bila jawabannya bukan 200, skrip keluar dengan kode 2 dan menunjuk log.
+
+**Bila gagal:**
+- *Sebelum kode berubah* (backup, `git pull`): aplikasi dibuka lagi, tidak ada yang berubah.
+- *Sesudah kode berubah* (composer, migrasi): aplikasi **sengaja dibiarkan dalam mode pemeliharaan**, karena kode baru dengan skema setengah jadi bisa merusak data.
+  Skrip mencetak dua pilihan: perbaiki lalu jalankan `checklist-update.sh --paksa`, atau kembali ke versi lama (`git reset --hard <commit-lama>`, lalu `composer install` dan `artisan up`).
+  Migrasi yang sempat jalan tidak dibatalkan otomatis; pulihkan dari backup (bagian 11.4) bila perlu.
+
 `artisan` selalu dijalankan sebagai `www-data`, jadi file cache tidak pernah jadi milik root.
 
 Pasang sekali (salin, bukan symlink, karena skrip tidak boleh berubah sendiri saat sedang berjalan):
