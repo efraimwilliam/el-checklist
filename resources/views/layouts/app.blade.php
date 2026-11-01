@@ -39,9 +39,9 @@
                 @endunless
                 <a href="{{ route('profile.edit') }}" title="{{ __('Profil saya') }}" class="flex items-center gap-2.5 rounded-full border border-white/10 bg-white/[0.06] py-1 pl-1 pr-3 transition hover:bg-white/10">
                     <span class="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-gold-400 to-gold-600 text-xs font-bold text-[#2a1d12]" aria-hidden="true">{{ $initials }}</span>
-                    <span class="hidden text-left leading-tight sm:block">
-                        <span class="block text-[13px] font-semibold">{{ $me->name() }}</span>
-                        <span class="block text-[11px] text-white/60">{{ $me->role->label() }}@if ($me->employee?->department) · {{ $me->employee->department->name }}@endif</span>
+                    <span class="hidden min-w-0 max-w-72 truncate text-left text-[13px] font-semibold leading-tight sm:block">
+                        {{ $me->name() }}
+                        <span class="font-normal text-white/60">· {{ $me->role->label() }}@if ($me->employee?->department) · {{ $me->employee->department->name }}@endif</span>
                     </span>
                 </a>
                 @if (\App\Support\PortalClient::viaPortal())
