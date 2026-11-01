@@ -678,5 +678,11 @@
     "Kolom \":column\" tidak ditemukan di baris judul. Unduh ulang berkas dari Kamus daftar tugas.": "Column \":column\" was not found in the header row. Download the file again from the Task catalog.",
     "Berkas tidak bisa dibaca. Pastikan berkasnya Excel (.xlsx) hasil unduhan Kamus daftar tugas.": "The file cannot be read. Make sure it is an Excel (.xlsx) file downloaded from the Task catalog.",
     "← Kamus daftar tugas": "← Task catalog",
-    "Kembali ke Dashboard Utama": "Back to Main Dashboard"
+    "Kembali ke Dashboard Utama": "Back to Main Dashboard",
+    "Memuat…": "Loading…",
+    "Gagal memuat. Coba lagi.": "Could not load. Please try again.",
+    "Pilih berkas Excel (.xlsx) dulu.": "Choose an Excel (.xlsx) file first.",
+    "Berkas tidak bisa diunggah. Coba lagi.": "The file could not be uploaded. Please try again.",
+    "Berkas harus berformat Excel (.xlsx).": "The file must be an Excel (.xlsx) file.",
+    "Ukuran berkas maksimal 5 MB.": "The file may be at most 5 MB."
 }

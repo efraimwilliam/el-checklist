@@ -6,10 +6,12 @@ use App\Reports\ExcelReport;
 use App\Tasks\InvalidTaskFile;
 use App\Tasks\TaskCatalogImport;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -31,9 +33,87 @@ class TaskCatalogImportController extends Controller
         ]]);
     }
 
-    public function create(Request $request): View
+    /** Halaman penuh, atau (permintaan fetch dari popup) hanya isi panelnya sebagai JSON. */
+    public function create(Request $request): View|JsonResponse
     {
         Gate::authorize('manage-team-tasks');
+
+        return $request->expectsJson() ? $this->panel($request) : view('team.import', $this->state($request));
+    }
+
+    public function preview(Request $request): RedirectResponse|JsonResponse
+    {
+        Gate::authorize('manage-team-tasks');
+        $rules = ['berkas' => ['required', 'file', 'extensions:xlsx', 'mimetypes:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/zip', 'max:5120']];
+        $names = ['berkas' => __('berkas')];
+        // Aplikasi tidak memuat terjemahan pesan validasi bawaan, jadi pesannya ditulis di sini.
+        $messages = [
+            'berkas.required' => __('Pilih berkas Excel (.xlsx) dulu.'),
+            'berkas.file' => __('Berkas tidak bisa diunggah. Coba lagi.'),
+            'berkas.uploaded' => __('Berkas tidak bisa diunggah. Coba lagi.'),
+            'berkas.extensions' => __('Berkas harus berformat Excel (.xlsx).'),
+            'berkas.mimetypes' => __('Berkas harus berformat Excel (.xlsx).'),
+            'berkas.max' => __('Ukuran berkas maksimal 5 MB.'),
+        ];
+
+        if ($request->expectsJson()) {
+            $validator = Validator::make($request->all(), $rules, $messages, $names);
+            if ($validator->fails()) {
+                return $this->panel($request, $validator->errors()->first('berkas'), 422);
+            }
+            $data = $validator->validated();
+        } else {
+            $data = $request->validate($rules, $messages, $names);
+        }
+
+        $this->discard($request);
+        $path = $data['berkas']->storeAs('task-imports', Str::uuid().'.xlsx', 'local');
+        $request->session()->put(self::SESSION, [
+            'path' => Storage::disk('local')->path($path),
+            'name' => $data['berkas']->getClientOriginalName(),
+            'user' => $request->user()->id,
+        ]);
+
+        return $request->expectsJson() ? $this->panel($request) : redirect()->route('team.catalog.import');
+    }
+
+    public function apply(Request $request): RedirectResponse|JsonResponse
+    {
+        Gate::authorize('manage-team-tasks');
+        $pending = $this->pending($request);
+        if (! $pending) {
+            return $this->failed($request, __('Unggah berkas dulu sebelum menyimpan.'));
+        }
+
+        try {
+            $result = (new TaskCatalogImport($request->user()))->apply($pending['path']);
+        } catch (InvalidTaskFile $e) {
+            return $this->failed($request, $e->getMessage());
+        }
+
+        $this->discard($request);
+        $status = __(':created tugas ditambahkan, :updated tugas diperbarui dari Excel.', ['created' => $result['created'], 'updated' => $result['updated']]);
+
+        if ($request->expectsJson()) {
+            $request->session()->flash('status', $status);
+
+            return response()->json(['redirect' => route('team.catalog')]);
+        }
+
+        return redirect()->route('team.catalog')->with('status', $status);
+    }
+
+    public function cancel(Request $request): RedirectResponse|JsonResponse
+    {
+        Gate::authorize('manage-team-tasks');
+        $this->discard($request);
+
+        return $request->expectsJson() ? $this->panel($request) : redirect()->route('team.catalog.import');
+    }
+
+    /** @return array{plan: ?array, error: ?string, file: ?string} */
+    private function state(Request $request): array
+    {
         $pending = $this->pending($request);
         $plan = null;
         $error = null;
@@ -48,53 +128,20 @@ class TaskCatalogImportController extends Controller
             }
         }
 
-        return view('team.import', ['plan' => $plan, 'error' => $error, 'file' => $pending['name'] ?? null]);
+        return ['plan' => $plan, 'error' => $error, 'file' => $pending['name'] ?? null];
     }
 
-    public function preview(Request $request): RedirectResponse
+    /** Isi panel impor untuk popup. */
+    private function panel(Request $request, ?string $uploadError = null, int $status = 200): JsonResponse
     {
-        Gate::authorize('manage-team-tasks');
-        $data = $request->validate(['berkas' => ['required', 'file', 'extensions:xlsx', 'mimetypes:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/zip', 'max:5120']], [], ['berkas' => __('berkas')]);
-
-        $this->discard($request);
-        $path = $data['berkas']->storeAs('task-imports', Str::uuid().'.xlsx', 'local');
-        $request->session()->put(self::SESSION, [
-            'path' => Storage::disk('local')->path($path),
-            'name' => $data['berkas']->getClientOriginalName(),
-            'user' => $request->user()->id,
-        ]);
-
-        return redirect()->route('team.catalog.import');
+        return response()->json(['html' => view('team.partials.import-panel', [...$this->state($request), 'uploadError' => $uploadError])->render()], $status);
     }
 
-    public function apply(Request $request): RedirectResponse
+    private function failed(Request $request, string $message): RedirectResponse|JsonResponse
     {
-        Gate::authorize('manage-team-tasks');
-        $pending = $this->pending($request);
-        if (! $pending) {
-            return redirect()->route('team.catalog.import')->withErrors(['berkas' => __('Unggah berkas dulu sebelum menyimpan.')]);
-        }
-
-        try {
-            $result = (new TaskCatalogImport($request->user()))->apply($pending['path']);
-        } catch (InvalidTaskFile $e) {
-            return redirect()->route('team.catalog.import')->withErrors(['berkas' => $e->getMessage()]);
-        }
-
-        $this->discard($request);
-
-        return redirect()->route('team.catalog')->with('status', __(':created tugas ditambahkan, :updated tugas diperbarui dari Excel.', [
-            'created' => $result['created'],
-            'updated' => $result['updated'],
-        ]));
-    }
-
-    public function cancel(Request $request): RedirectResponse
-    {
-        Gate::authorize('manage-team-tasks');
-        $this->discard($request);
-
-        return redirect()->route('team.catalog.import');
+        return $request->expectsJson()
+            ? $this->panel($request, $message, 422)
+            : redirect()->route('team.catalog.import')->withErrors(['berkas' => $message]);
     }
 
     /** @return array{path: string, name: string, user: int}|null  Hanya berkas milik pengguna yang sedang login. */

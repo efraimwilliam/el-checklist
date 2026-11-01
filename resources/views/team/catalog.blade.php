@@ -12,7 +12,8 @@
                 <a href="{{ route('team.catalog.export') }}" class="btn-secondary !w-11 !px-0" aria-label="{{ __('Unduh Excel') }}" title="{{ __('Unduh Excel') }}">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
                 </a>
-                <a href="{{ route('team.catalog.import') }}" class="btn-secondary !w-11 !px-0" aria-label="{{ __('Impor Excel') }}" title="{{ __('Impor Excel') }}">
+                {{-- Membuka popup impor di halaman ini; tautan tetap ke halaman penuh bila JavaScript mati. --}}
+                <a href="{{ route('team.catalog.import') }}" class="btn-secondary !w-11 !px-0" aria-label="{{ __('Impor Excel') }}" title="{{ __('Impor Excel') }}" data-import-open>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg>
                 </a>
             @endcan
@@ -364,4 +365,61 @@
             })();
         </script>
     @endif
+
+    @can('manage-team-tasks')
+        <dialog id="import-dialog" aria-labelledby="import-dialog-title" class="m-auto w-[min(56rem,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl backdrop:bg-[#2a1d12]/50">
+            <div class="flex max-h-[92vh] flex-col">
+                <div class="flex items-start justify-between gap-3 border-b border-slate-100 px-6 pb-4 pt-6">
+                    <div>
+                        <h2 id="import-dialog-title" class="font-display text-2xl text-slate-900">{{ __('Impor kamus daftar tugas') }}</h2>
+                        <p class="text-sm text-slate-500">{{ __('Unduh daftar dari Excel, ubah isinya, lalu unggah lagi. Periksa dulu sebelum disimpan.') }}</p>
+                    </div>
+                    <button type="button" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-2xl leading-none text-slate-500 hover:bg-[#f6efdf] hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-500" aria-label="{{ __('Tutup') }}" data-close-import-dialog>{{ __('×') }}</button>
+                </div>
+                <div class="overflow-y-auto px-6 pb-6 pt-4" data-import-body aria-live="polite">
+                    <p class="text-sm text-slate-500">{{ __('Memuat…') }}</p>
+                </div>
+            </div>
+        </dialog>
+
+        <script>
+            (() => {
+                const dialog = document.getElementById('import-dialog');
+                const body = dialog.querySelector('[data-import-body]');
+                const panelUrl = @json(route('team.catalog.import'));
+
+                // Setiap langkah (buka, periksa berkas, simpan, batalkan) menjawab JSON: isi panel baru, atau alamat tujuan sesudah tersimpan.
+                const load = async (url, options = {}) => {
+                    body.setAttribute('aria-busy', 'true');
+                    body.querySelectorAll('button').forEach((button) => (button.disabled = true));
+                    try {
+                        const response = await fetch(url, { credentials: 'same-origin', headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, ...options });
+                        if (response.status === 401 || response.status === 419) return window.location.reload();
+                        const data = await response.json();
+                        if (data.redirect) return (window.location.href = data.redirect);
+                        body.innerHTML = data.html;
+                    } catch (error) {
+                        body.innerHTML = `<p class="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">${window.t('Gagal memuat. Coba lagi.')}</p>`;
+                    } finally {
+                        body.removeAttribute('aria-busy');
+                    }
+                };
+
+                document.querySelectorAll('[data-import-open]').forEach((trigger) => trigger.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    dialog.showModal();
+                    load(panelUrl);
+                }));
+                dialog.querySelectorAll('[data-close-import-dialog]').forEach((button) => button.addEventListener('click', () => dialog.close()));
+                dialog.addEventListener('click', (event) => { if (event.target === dialog) dialog.close(); });
+
+                body.addEventListener('submit', (event) => {
+                    const form = event.target.closest('[data-import-form]');
+                    if (!form) return;
+                    event.preventDefault();
+                    load(form.action, { method: 'POST', body: new FormData(form) });
+                });
+            })();
+        </script>
+    @endcan
 </x-app-layout>

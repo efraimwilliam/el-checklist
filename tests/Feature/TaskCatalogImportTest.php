@@ -13,7 +13,7 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 /** Berkas .xlsx dengan baris judul standar dan baris isi $rows. */
 function taskWorkbook(array $rows): string
 {
-    $book = new Spreadsheet();
+    $book = new Spreadsheet;
     $book->getActiveSheet()->fromArray([TaskCatalogImport::HEADERS, ...$rows], null, 'A1');
     ob_start();
     (new Xlsx($book))->save('php://output');
@@ -94,7 +94,7 @@ it('limits a HOD to positions in their own department', function () {
 
 it('refuses a file without the expected columns and keeps staff out', function () {
     loggedIn(userWithRole(Role::Hr));
-    $book = new Spreadsheet();
+    $book = new Spreadsheet;
     $book->getActiveSheet()->fromArray([['Nama', 'Catatan'], ['x', 'y']], null, 'A1');
     ob_start();
     (new Xlsx($book))->save('php://output');
@@ -104,4 +104,68 @@ it('refuses a file without the expected columns and keeps staff out', function (
     $this->post('/logout');
     loggedIn(userWithRole(Role::Staff));
     $this->get(route('team.catalog.export'))->assertForbidden();
+});
+
+it('opens the import as a popup on the catalog page, with the page link kept as a fallback', function () {
+    loggedIn(userWithRole(Role::Hr));
+
+    $html = $this->get(route('team.catalog'))->assertOk()->assertSee('id="import-dialog"', false)->assertSee('data-import-body', false)->getContent();
+
+    expect($html)->toMatch('/<a href="[^"]*\/tim\/daftar\/impor"[^>]*data-import-open>/');
+});
+
+it('runs the whole import inside the popup with JSON answers', function () {
+    loggedIn(userWithRole(Role::Hr));
+    $json = ['Accept' => 'application/json'];
+
+    // Buka: panel kosong berisi formulir unggah.
+    $this->getJson(route('team.catalog.import'))->assertOk()->assertJsonPath('html', fn ($html) => str_contains($html, 'name="berkas"') && str_contains($html, 'data-import-form'));
+
+    // Periksa berkas: pratinjau muncul di panel, belum ada yang disimpan.
+    $bytes = taskWorkbook([
+        [$this->sapaan->id, 'Front Office', 'GSA', 'Lobi', 'Sapa tamu dengan senyum', 'Senyum'],
+        [null, 'Front Office', 'GSA', 'Lobi', 'Antar koper', 'Dalam 5 menit'],
+    ]);
+    $this->post(route('team.catalog.import.preview'), ['berkas' => UploadedFile::fake()->createWithContent('daftar.xlsx', $bytes)], $json)
+        ->assertOk()->assertJsonPath('html', fn ($html) => str_contains($html, 'Tugas baru: 1') && str_contains($html, 'Antar koper') && str_contains($html, 'Simpan perubahan'));
+    expect(Task::where('title', 'Antar koper')->exists())->toBeFalse();
+
+    // Membuka lagi popup menampilkan pratinjau yang sama (berkas masih menunggu).
+    $this->getJson(route('team.catalog.import'))->assertJsonPath('html', fn ($html) => str_contains($html, 'Antar koper'));
+
+    // Simpan: JSON berisi alamat tujuan, dan pesan sukses menunggu di halaman Kamus.
+    $this->postJson(route('team.catalog.import.apply'))->assertOk()->assertJson(['redirect' => route('team.catalog')]);
+    expect(Task::where('title', 'Antar koper')->where('position_id', $this->gsa->id)->exists())->toBeTrue();
+    $this->get(route('team.catalog'))->assertSee('1 tugas ditambahkan, 1 tugas diperbarui dari Excel.');
+});
+
+it('reports popup problems in the panel with status 422 and lets the user cancel', function () {
+    loggedIn(userWithRole(Role::Hr));
+
+    // Berkas bukan Excel.
+    $this->post(route('team.catalog.import.preview'), ['berkas' => UploadedFile::fake()->createWithContent('catatan.txt', 'bukan excel')], ['Accept' => 'application/json'])
+        ->assertStatus(422)->assertJsonPath('html', fn ($html) => str_contains($html, 'Berkas harus berformat Excel (.xlsx).') && ! str_contains($html, 'validation.'));
+
+    // Tanpa berkas, dan pesan yang sama di halaman biasa (tanpa JSON).
+    $this->post(route('team.catalog.import.preview'), [], ['Accept' => 'application/json'])->assertStatus(422)
+        ->assertJsonPath('html', fn ($html) => str_contains($html, 'Pilih berkas Excel (.xlsx) dulu.'));
+    $this->from(route('team.catalog.import'))->post(route('team.catalog.import.preview'), ['berkas' => UploadedFile::fake()->createWithContent('catatan.txt', 'x')])
+        ->assertRedirect(route('team.catalog.import'))->assertSessionHasErrors(['berkas' => 'Berkas harus berformat Excel (.xlsx).']);
+
+    // Simpan tanpa berkas.
+    $this->postJson(route('team.catalog.import.apply'))->assertStatus(422)->assertJsonPath('html', fn ($html) => str_contains($html, 'Unggah berkas dulu sebelum menyimpan.'));
+
+    // Batalkan membuang berkas yang menunggu.
+    uploadTasks(taskWorkbook([[null, 'Front Office', 'GSA', 'Lobi', 'Antar koper', 'x']]));
+    $this->postJson(route('team.catalog.import.cancel'))->assertOk()->assertJsonPath('html', fn ($html) => ! str_contains($html, 'Antar koper'));
+    $this->postJson(route('team.catalog.import.apply'))->assertStatus(422);
+});
+
+it('keeps the import steps closed to people who cannot manage team tasks, in JSON too', function () {
+    loggedIn(userWithRole(Role::Staff));
+
+    $this->get(route('team.catalog'))->assertForbidden();
+    $this->getJson(route('team.catalog.import'))->assertForbidden();
+    $this->postJson(route('team.catalog.import.apply'))->assertForbidden();
+    $this->postJson(route('team.catalog.import.cancel'))->assertForbidden();
 });
