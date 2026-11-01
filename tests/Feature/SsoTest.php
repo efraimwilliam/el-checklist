@@ -361,3 +361,62 @@ it('keeps the system account when attendance sync runs', function () {
 
     expect($system->fresh()->is_active)->toBeTrue();
 });
+
+/** Portal (login SSO) dan Absensi (sinkron pegawai) dipalsukan bersamaan. */
+function portalAndAttendance(string $username, array $employees, ?int $attendanceStatus = 200): void
+{
+    Http::swap(new HttpFactory(app('events')));
+    Http::preventStrayRequests();
+    Http::fake([
+        'portal.test/oauth/token' => Http::response(['access_token' => 'token-portal']),
+        'portal.test/api/user' => Http::response(['id' => 77, 'username' => $username, 'name' => 'Pegawai Uji', 'email' => null]),
+        'attendance.test/api/v1/tasks/departments' => Http::response(['data' => []], $attendanceStatus),
+        'attendance.test/api/v1/tasks/employees' => Http::response(['data' => $employees], $attendanceStatus),
+        ATTENDANCE_LOGIN_PASSWORD => Http::response(['authenticated' => false, 'reason' => 'invalid_credentials']),
+    ]);
+}
+
+function absensiRow(string $username, bool $active = true): array
+{
+    return ['id' => 501, 'username' => $username, 'previous_usernames' => [], 'name' => 'Pegawai Uji', 'employee_number' => null, 'position' => 'Staf', 'department_id' => null, 'is_active' => $active, 'exit_reason' => null, 'exit_date' => null];
+}
+
+it('creates a Staff account for a Portal-granted employee found in fresh attendance data', function () {
+    ssoOn();
+    portalAndAttendance('budi', [absensiRow('budi')]);
+
+    ssoCallback()->assertRedirect(route('home'));
+
+    $user = User::where('sso_user_id', 77)->sole();
+    $this->assertAuthenticatedAs($user);
+    expect($user->role)->toBe(Role::Staff)->and($user->employee->username)->toBe('budi')->and($user->employee->external_id)->toBe(501);
+});
+
+it('refuses a Portal-granted employee who is inactive in attendance', function () {
+    ssoOn();
+    portalAndAttendance('budi', [absensiRow('budi', active: false)]);
+
+    ssoCallback()->assertRedirect(route('login'))->assertSessionHasErrors('username');
+
+    $this->assertGuest();
+    expect(User::count())->toBe(0);
+});
+
+it('refuses a Portal-granted username that attendance does not know', function () {
+    ssoOn();
+    portalAndAttendance('budi', [absensiRow('orang-lain')]);
+
+    ssoCallback()->assertRedirect(route('login'))->assertSessionHasErrors('username');
+
+    $this->assertGuest();
+});
+
+it('refuses instead of guessing when attendance cannot be reached', function () {
+    ssoOn();
+    portalAndAttendance('budi', [], attendanceStatus: 503);
+
+    ssoCallback()->assertRedirect(route('login'))->assertSessionHasErrors('username');
+
+    $this->assertGuest();
+    expect(User::count())->toBe(0);
+});

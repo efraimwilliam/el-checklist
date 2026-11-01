@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Attendance\EmployeeSyncService;
 use App\Audit\AuditLogger;
 use App\Enums\Role;
 use App\Http\Controllers\Controller;
@@ -101,7 +102,8 @@ class SsoController extends Controller
     {
         $user = User::where('sso_user_id', $profile['id'])->first()
             ?? User::whereNull('sso_user_id')->whereHas('employee', fn ($employees) => $employees->where('username', $profile['username']))->first()
-            ?? $this->systemUser($profile);
+            ?? $this->systemUser($profile)
+            ?? $this->attendanceUser($profile);
 
         if (! $user || ! $user->canUseApp()) {
             return null;
@@ -112,6 +114,34 @@ class SsoController extends Controller
         }
 
         return $user;
+    }
+
+    /**
+     * Portal sudah memberi akses Checklist, tapi akun Checklist belum ada: pegawai dicari di data Absensi terbaru.
+     * Belum ada di salinan lokal → sinkron dari Absensi dulu. Ditemukan dan aktif = akun Staff; sisanya ditolak.
+     */
+    private function attendanceUser(array $profile): ?User
+    {
+        $find = fn () => Employee::where('username', $profile['username'])->whereNotNull('external_id')->first();
+
+        $employee = $find();
+        if (! $employee) {
+            try {
+                app(EmployeeSyncService::class)->sync();
+            } catch (Throwable $e) {
+                report($e);
+
+                return null;
+            }
+            $employee = $find();
+        }
+
+        // Akun yang sudah ada (mis. terikat ke akun Portal lain) tidak boleh diambil lewat jalur ini.
+        if (! $employee || ! $employee->is_active || $employee->user()->exists()) {
+            return null;
+        }
+
+        return User::create(['employee_id' => $employee->id, 'role' => Role::Staff, 'is_active' => true]);
     }
 
     /**

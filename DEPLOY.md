@@ -562,7 +562,7 @@ dan jam server benar (token bertenggat).
 ### 13.1 Daftarkan Checklist di Portal
 Login Portal sebagai administrator → **Kelola → Sistem → Tambah**:
 - Nama `Checklist Kerjaan`, key `checklist`, alamat `https://checklist.elhotelresortsanur.my.id`.
-- **Mode login: Keduanya** dulu. Centang **login PIN** (`pin_login`) bila pegawai tanpa password dashboard harus masuk ke Portal dengan PIN absen.
+- Login PIN (`pin_login`) tidak diatur di sistem Checklist, tetapi di sistem **Sistem Absensi** (Kelola → Sistem → Sistem Absensi). Portal hanya mencoba PIN ke Absensi kalau opsi itu aktif.
 - Simpan, lalu salin **Client ID** dan **Client Secret** yang tampil (secret hanya tampil sekali; bisa dibuat ulang lewat "rahasia baru").
 - Beri hak akses tiap pengguna: **Kelola → Pengguna → Assign sistem → Checklist Kerjaan**.
 
