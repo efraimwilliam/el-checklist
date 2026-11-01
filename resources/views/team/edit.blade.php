@@ -35,7 +35,10 @@
 
     <div class="card mb-4 p-4">
         <label for="task-search" class="label">{{ __('Cari tugas') }}</label>
-        <input id="task-search" type="search" placeholder="{{ __('Ketik nama tugas') }}" class="input" data-task-search>
+        <div class="flex flex-wrap items-center gap-3">
+            <input id="task-search" type="search" placeholder="{{ __('Ketik nama tugas') }}" class="input min-w-0 flex-1" data-task-search>
+            <button type="button" class="btn-secondary shrink-0" data-groups-toggle>{{ __('Buka semua') }}</button>
+        </div>
     </div>
 
     <form id="team-tasks" method="POST" action="{{ route('team.tasks.update', $member) }}" class="pb-24">
@@ -43,11 +46,15 @@
         @method('PUT')
 
         @forelse ($groups as $group)
-            <section class="card mb-4 overflow-hidden" data-group>
-                <header class="flex items-center justify-between gap-3 border-b border-slate-100 bg-[#fbf6ea] px-4 py-3">
+            {{-- Kartu per jabatan tertutup; klik judulnya untuk membuka daftar tugas. Isian tetap ikut tersimpan walau tertutup. --}}
+            <details class="group card mb-4 overflow-hidden" data-group>
+                <summary class="flex cursor-pointer list-none select-none items-center justify-between gap-3 border-slate-100 bg-[#fbf6ea] px-4 py-3 group-open:border-b [&::-webkit-details-marker]:hidden">
                     <h2 class="font-display text-xl text-slate-900">{{ $group->name }}</h2>
-                    <span class="text-sm tabular-nums text-slate-500" data-group-count></span>
-                </header>
+                    <span class="flex shrink-0 items-center gap-3">
+                        <span class="text-sm tabular-nums text-slate-500" data-group-count></span>
+                        <svg class="h-5 w-5 text-slate-500 transition group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                    </span>
+                </summary>
 
                 @foreach ($group->tasks->groupBy(fn ($task) => $task->section ?: __('Tanpa jenis')) as $section => $tasks)
                     <div class="px-4 pb-2 pt-3" data-section>
@@ -67,7 +74,7 @@
                         </ul>
                     </div>
                 @endforeach
-            </section>
+            </details>
         @empty
             <p class="card p-6 text-sm text-slate-500">{{ __('Jabatan di departemen ini belum punya tugas aktif.') }}</p>
         @endforelse
@@ -96,6 +103,7 @@
             const form = document.getElementById('team-tasks');
             const search = document.querySelector('[data-task-search]');
             const boxesIn = (node) => [...node.querySelectorAll('input[name="tasks[]"]')];
+            const wasOpen = new WeakMap();
 
             const refresh = () => {
                 const all = boxesIn(form);
@@ -103,7 +111,12 @@
                 form.querySelectorAll('[data-chosen]').forEach((node) => (node.textContent = chosen));
                 form.querySelectorAll('[data-group]').forEach((group) => {
                     const boxes = boxesIn(group);
-                    group.querySelector('[data-group-count]').textContent = `${boxes.filter((box) => box.checked).length} / ${boxes.length} dipilih`;
+                    const picked = boxes.filter((box) => box.checked).length;
+                    const count = group.querySelector('[data-group-count]');
+                    count.textContent = `${picked} / ${boxes.length} dipilih`;
+                    count.classList.toggle('font-semibold', picked > 0);
+                    count.classList.toggle('text-slate-900', picked > 0);
+                    count.classList.toggle('text-slate-500', picked === 0);
                 });
                 form.querySelectorAll('[data-section]').forEach((section) => {
                     const boxes = boxesIn(section);
@@ -130,12 +143,34 @@
                 form.querySelectorAll('[data-section]').forEach((section) => {
                     section.hidden = [...section.querySelectorAll('[data-task]')].every((row) => row.hidden);
                 });
+                // Saat mencari, kartu yang cocok terbuka sendiri; setelah pencarian dikosongkan, kembali seperti semula.
                 form.querySelectorAll('[data-group]').forEach((group) => {
                     group.hidden = [...group.querySelectorAll('[data-section]')].every((section) => section.hidden);
+                    if (query !== '') {
+                        if (!wasOpen.has(group)) wasOpen.set(group, group.open);
+                        group.open = !group.hidden;
+                    } else if (wasOpen.has(group)) {
+                        group.open = wasOpen.get(group);
+                        wasOpen.delete(group);
+                    }
                 });
             });
 
+            // Buka semua / Tutup semua untuk kartu yang sedang tampil; teksnya mengikuti keadaan kartu.
+            const toggleAll = document.querySelector('[data-groups-toggle]');
+            const visibleGroups = () => [...form.querySelectorAll('[data-group]')].filter((group) => !group.hidden);
+            const syncToggleAll = () => {
+                if (toggleAll) toggleAll.textContent = window.t(visibleGroups().every((group) => group.open) ? 'Tutup semua' : 'Buka semua');
+            };
+            toggleAll?.addEventListener('click', () => {
+                const open = visibleGroups().some((group) => !group.open);
+                visibleGroups().forEach((group) => (group.open = open));
+                syncToggleAll();
+            });
+            form.addEventListener('toggle', syncToggleAll, true);
+
             refresh();
+            syncToggleAll();
         })();
     </script>
 </x-app-layout>

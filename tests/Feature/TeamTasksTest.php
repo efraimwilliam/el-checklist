@@ -169,3 +169,18 @@ it('lists every task once, so the browser can sort, search and page without relo
     $html = $this->get(route('team.catalog'))->assertOk()->assertSee('Handover shift')->getContent();
     expect(substr_count($html, '<tr data-catalog-row'))->toBe(34);
 });
+
+it('shows one collapsed card per position and still submits tasks of collapsed cards', function () {
+    loggedIn($this->hod);
+
+    $html = $this->get(route('team.tasks.edit', $this->staff))->assertOk()->assertSee('Buka semua')->getContent();
+
+    // GSA dan Duty Manager: dua kartu <details> tanpa atribut open.
+    expect(substr_count($html, '<details class="group card'))->toBe(2)
+        ->and($html)->not->toMatch('/<details[^>]*\sopen[\s>]/')
+        ->and($html)->toContain('Check-in tamu');
+
+    // Kartu tertutup tetap ikut terkirim (input di dalam <details> tidak dinonaktifkan).
+    $this->put(route('team.tasks.update', $this->staff), ['tasks' => [$this->gsaTasks[0]->id]])->assertRedirect(route('team.index'));
+    expect($this->staff->fresh()->assignedTasks->pluck('id')->all())->toBe([$this->gsaTasks[0]->id]);
+});
