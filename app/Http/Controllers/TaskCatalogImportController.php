@@ -44,7 +44,7 @@ class TaskCatalogImportController extends Controller
             } catch (InvalidTaskFile $e) {
                 $error = $e->getMessage();
             } catch (\Throwable) {
-                $error = __('Berkas tidak bisa dibaca. Pastikan berkasnya Excel (.xlsx) hasil unduhan Daftar tugas.');
+                $error = __('Berkas tidak bisa dibaca. Pastikan berkasnya Excel (.xlsx) hasil unduhan Kamus daftar tugas.');
             }
         }
 

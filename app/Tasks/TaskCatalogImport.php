@@ -51,7 +51,7 @@ final class TaskCatalogImport
 
         foreach (self::REQUIRED as $column) {
             if (! in_array($this->key($column), $header, true)) {
-                throw new InvalidTaskFile(__('Kolom ":column" tidak ditemukan di baris judul. Unduh ulang berkas dari Daftar tugas.', ['column' => $column]));
+                throw new InvalidTaskFile(__('Kolom ":column" tidak ditemukan di baris judul. Unduh ulang berkas dari Kamus daftar tugas.', ['column' => $column]));
             }
         }
 

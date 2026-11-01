@@ -1,7 +1,7 @@
-<x-app-layout title="{{ __('Daftar tugas') }}">
+<x-app-layout title="{{ __('Kamus daftar tugas') }}">
     <div class="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
-            <h1 class="text-3xl text-slate-900">{{ __('Daftar tugas') }}</h1>
+            <h1 class="text-3xl text-slate-900">{{ __('Kamus daftar tugas') }}</h1>
             <p class="text-sm text-slate-500">{{ __('Semua tugas aktif tiap jabatan. Urutkan dengan mengetuk judul kolom.') }}</p>
         </div>
         <div class="flex flex-wrap gap-2">

@@ -45,7 +45,11 @@
                     </span>
                 </a>
                 @if (\App\Support\PortalClient::viaPortal())
-                    <a href="{{ \App\Support\PortalClient::homeUrl() }}" class="hidden rounded-full border border-white/10 px-3 py-1.5 text-xs text-white/70 transition hover:bg-white/10 hover:text-white sm:block">{{ __('Dashboard Utama') }}</a>
+                    {{-- Kembali ke beranda Portal (pilihan sistem lain); ikon panah kiri menandakan keluar dari aplikasi ini. Di layar kecil hanya ikon. --}}
+                    <a href="{{ \App\Support\PortalClient::homeUrl() }}" title="{{ __('Kembali ke Dashboard Utama') }}" class="inline-flex items-center gap-1.5 rounded-full border border-white/10 px-2.5 py-2 text-xs text-white/70 transition hover:bg-white/10 hover:text-white sm:px-3 sm:py-1.5">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+                        <span class="sr-only sm:not-sr-only">{{ __('Dashboard Utama') }}</span>
+                    </a>
                 @endif
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
@@ -86,11 +90,11 @@
                         <div class="invisible absolute left-0 top-full z-30 w-60 pt-1 opacity-0 transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
                             <div class="rounded-2xl bg-[#fffdf9] p-2 shadow-xl ring-1 ring-black/5">
                                 @can('manage-team-tasks')
-                                    <a href="{{ route('team.index') }}" class="{{ $menuItem(request()->routeIs('team.index', 'team.tasks.*', 'team.positions.*')) }}">{{ __('Atur tugas') }}<span class="text-slate-400">›</span></a>
-                                    <a href="{{ route('team.catalog') }}" class="{{ $menuItem(request()->routeIs('team.catalog')) }}">{{ __('Daftar checklist') }}<span class="text-slate-400">›</span></a>
+                                    <a href="{{ route('team.index') }}" class="{{ $menuItem(request()->routeIs('team.index', 'team.tasks.*', 'team.positions.*')) }}">{{ __('Atur tugas pegawai') }}<span class="text-slate-400">›</span></a>
+                                    <a href="{{ route('team.catalog') }}" class="{{ $menuItem(request()->routeIs('team.catalog')) }}">{{ __('Kamus daftar tugas') }}<span class="text-slate-400">›</span></a>
                                 @endcan
                                 @can('manage-tasks')
-                                    <a href="{{ route('admin.tasks.index') }}" class="{{ $menuItem(request()->routeIs('admin.tasks.*', 'admin.positions.*')) }}">{{ __('Kelola tugas') }}<span class="text-slate-400">›</span></a>
+                                    <a href="{{ route('admin.tasks.index') }}" class="{{ $menuItem(request()->routeIs('admin.tasks.*', 'admin.positions.*')) }}">{{ __('Jabatan dan tugas') }}<span class="text-slate-400">›</span></a>
                                 @endcan
                             </div>
                         </div>

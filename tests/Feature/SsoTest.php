@@ -300,7 +300,8 @@ it('shows the main dashboard link in the header only for portal sessions', funct
     fakePortal();
     $user = ssoUser();
 
-    viaPortalSession($user)->get(route('dashboard'))->assertOk()->assertSee(PORTAL.'/?beranda=1', false);
+    viaPortalSession($user)->get(route('dashboard'))->assertOk()->assertSee(PORTAL.'/?beranda=1', false)
+        ->assertSee('title="Kembali ke Dashboard Utama"', false)->assertSee('<path d="M19 12H5"/>', false)->assertSee('Dashboard Utama');
 
     $this->flushSession();
     $this->actingAs($user)->withSession(['auth.logged_in_at' => now()->timestamp])->get(route('dashboard'))->assertOk()->assertDontSee('beranda=1', false);

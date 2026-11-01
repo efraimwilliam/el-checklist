@@ -5,7 +5,7 @@
         $initials = collect(explode(' ', $member->name))->filter()->take(2)->map(fn ($word) => mb_substr($word, 0, 1))->implode('');
     @endphp
 
-    <a href="{{ route('team.index') }}" class="text-sm font-semibold text-sky-700 hover:underline">{{ __('← Atur tugas') }}</a>
+    <a href="{{ route('team.index') }}" class="text-sm font-semibold text-sky-700 hover:underline">{{ __('← Atur tugas pegawai') }}</a>
     @can('manage-tasks')
         <a href="{{ route('team.account.edit', $member) }}" class="ml-4 text-sm font-semibold text-sky-700 hover:underline">{{ __('Ubah akun Sistem Absensi') }}</a>
     @endcan

@@ -1,8 +1,8 @@
-<x-app-layout title="{{ __('Atur tugas') }}">
+<x-app-layout title="{{ __('Atur tugas pegawai') }}">
     <div class="mb-6">
-        <h1 class="text-3xl text-slate-900">{{ __('Atur tugas') }}</h1>
+        <h1 class="text-3xl text-slate-900">{{ __('Atur tugas pegawai') }}</h1>
         <p class="text-sm text-slate-500">Pilih tugas apa saja yang masuk checklist tiap pegawai. Perubahan berlaku untuk checklist yang dibuat sesudahnya.
-            Daftar tugas tiap jabatan ada di menu Daftar tugas.</p>
+            Daftar tugas tiap jabatan ada di menu Kamus daftar tugas.</p>
         <p class="mt-2 text-sm text-slate-500">Data pegawai dari Absensi; tidak perlu punya akun.
             <a href="{{ route('team.positions.edit') }}" class="font-semibold text-sky-700 hover:underline">{{ __('Atur jabatan checklist tiap staff') }}</a> {{ __('dipakai saat checklist dibuatkan sekaligus.') }}</p>
     </div>

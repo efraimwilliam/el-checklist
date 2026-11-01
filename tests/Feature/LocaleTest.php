@@ -6,7 +6,7 @@ it('switches the interface between Indonesian and English and remembers the choi
     loggedIn(userWithRole(Role::Hod));
 
     $this->get(route('locale.update', 'en'))->assertRedirect();
-    $this->get(route('fill.create'))->assertOk()->assertSee('Fill checklist')->assertSee('Log out')->assertSee('Task list');
+    $this->get(route('fill.create'))->assertOk()->assertSee('Fill checklist')->assertSee('Log out')->assertSee('Task catalog');
 
     $this->get(route('locale.update', 'id'))->assertRedirect();
     $this->get(route('fill.create'))->assertOk()->assertSee('Isi checklist')->assertSee('Keluar');

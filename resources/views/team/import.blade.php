@@ -1,6 +1,6 @@
-<x-app-layout :title="__('Impor Daftar tugas')">
-    <a href="{{ route('team.catalog') }}" class="text-sm font-semibold text-sky-700 hover:underline">{{ __('← Daftar tugas') }}</a>
-    <h1 class="mb-1 mt-2 text-3xl text-slate-900">{{ __('Impor Daftar tugas') }}</h1>
+<x-app-layout :title="__('Impor kamus daftar tugas')">
+    <a href="{{ route('team.catalog') }}" class="text-sm font-semibold text-sky-700 hover:underline">{{ __('← Kamus daftar tugas') }}</a>
+    <h1 class="mb-1 mt-2 text-3xl text-slate-900">{{ __('Impor kamus daftar tugas') }}</h1>
     <p class="mb-5 text-sm text-slate-500">{{ __('Unduh daftar dari Excel, ubah isinya, lalu unggah lagi. Periksa dulu sebelum disimpan.') }}</p>
 
     <div class="card mb-4 space-y-3 p-5">
@@ -15,7 +15,7 @@
         @error('berkas')<p class="text-sm text-rose-700">{{ $message }}</p>@enderror
         <ul class="list-disc space-y-1 pl-5 text-sm text-slate-600">
             <li>{{ __('Kolom ID diisi dari unduhan. Kosongkan untuk tugas baru (Departemen dan Jabatan harus sudah ada).') }}</li>
-            <li>{{ __('Tugas yang dihapus dari berkas tidak ikut dihapus; hapus lewat Kelola tugas.') }}</li>
+            <li>{{ __('Tugas yang dihapus dari berkas tidak ikut dihapus; hapus lewat Jabatan dan tugas.') }}</li>
         </ul>
     </div>
 

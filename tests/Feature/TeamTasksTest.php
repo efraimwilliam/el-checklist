@@ -136,7 +136,7 @@ it('lets the HOD add a task only to positions of their own department', function
     $this->post(route('team.tasks.store'), ['position' => $this->gsa->id, 'parameters' => statusParameters(), 'title' => 'Cek minibar', 'section' => 'Operasional'])
         ->assertRedirect(route('team.catalog').'#jabatan-'.$this->gsa->id);
     expect($this->gsa->tasks()->where('title', 'Cek minibar')->where('section', 'Operasional')->exists())->toBeTrue();
-    $this->get(route('team.catalog'))->assertOk()->assertSee('Cek minibar')->assertSee('Daftar tugas');
+    $this->get(route('team.catalog'))->assertOk()->assertSee('Cek minibar')->assertSee('Kamus daftar tugas');
     $this->get(route('team.index'))->assertOk()->assertDontSee('Cek minibar');
 
     $this->post(route('team.tasks.store'), ['position' => $this->gsa->id, 'parameters' => statusParameters(), 'title' => ''])->assertSessionHasErrors('title');

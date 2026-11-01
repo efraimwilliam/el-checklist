@@ -1,4 +1,4 @@
-<x-app-layout title="{{ __('Kelola tugas') }}">
+<x-app-layout title="{{ __('Jabatan dan tugas') }}">
     @php
         $positionCount = $departments->sum(fn ($department) => $department->positions->count());
         $activeTasks = $departments->sum(fn ($department) => $department->positions->sum('active_tasks_count'));
@@ -6,7 +6,7 @@
 
     <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div class="min-w-0">
-            <p class="eyebrow"><span class="h-px w-6 bg-gold-500"></span>{{ __('Kelola tugas') }}</p>
+            <p class="eyebrow"><span class="h-px w-6 bg-gold-500"></span>{{ __('Jabatan dan tugas') }}</p>
             <h1 class="mt-1 text-3xl text-slate-900">{{ __('Jabatan dan tugasnya') }}</h1>
             <p class="mt-1 max-w-2xl text-sm text-slate-500">{{ __('Pilih jabatan untuk mengubah daftar tugasnya. Perubahan berlaku untuk checklist yang dibuat sesudahnya; checklist yang sudah ada tidak berubah.') }}</p>
         </div>
