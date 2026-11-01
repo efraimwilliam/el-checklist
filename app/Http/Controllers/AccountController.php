@@ -4,9 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Attendance\AttendanceApiService;
 use App\Attendance\AttendanceUnavailable;
+use App\Audit\AuditLogger;
 use App\Models\Employee;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\View\View;
 
 /**
@@ -17,12 +21,60 @@ class AccountController extends Controller
 {
     public function editOwn(Request $request): View
     {
+        if ($request->user()->hasLocalPassword()) {
+            return view('account.local', ['user' => $request->user()]);
+        }
+
         return $this->form($request->user()->employee, self: true);
     }
 
     public function updateOwn(Request $request, AttendanceApiService $api): RedirectResponse
     {
+        if ($request->user()->hasLocalPassword()) {
+            return $this->saveLocalPassword($request);
+        }
+
         return $this->save($request, $request->user()->employee, $api, self: true);
+    }
+
+    /**
+     * Password akun sistem yang disimpan di Checklist (checklist:admin-lokal). Tidak menghubungi Absensi.
+     * Password saat ini wajib; 5 kali salah → terkunci 15 menit (sama seperti login).
+     */
+    private function saveLocalPassword(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+        $key = 'local-password|'.$user->id;
+
+        $data = $request->validate([
+            'current_password' => ['required', 'string', 'max:255'],
+            'password' => ['required', 'string', 'min:8', 'max:255', 'confirmed'],
+        ], [], [
+            'current_password' => __('password saat ini'),
+            'password' => __('password baru'),
+        ]);
+
+        if (RateLimiter::tooManyAttempts($key, 5)) {
+            return back()->withErrors(['current_password' => __('Terlalu banyak percobaan salah. Coba lagi dalam :n menit.', ['n' => (int) ceil(RateLimiter::availableIn($key) / 60)])]);
+        }
+
+        if (! Hash::check($data['current_password'], $user->password)) {
+            RateLimiter::hit($key, 900);
+
+            return back()->withErrors(['current_password' => __('Password saat ini salah.')]);
+        }
+
+        if (Hash::check($data['password'], $user->password)) {
+            return back()->withErrors(['password' => __('Password baru harus berbeda dari yang lama.')]);
+        }
+
+        RateLimiter::clear($key);
+        $user->forceFill(['password' => Hash::make($data['password'])])->save();
+        // Sesi lain pada akun ini dikeluarkan; sesi yang sedang dipakai tetap masuk.
+        DB::table('sessions')->where('user_id', $user->id)->where('id', '!=', $request->session()->getId())->delete();
+        AuditLogger::record('password.changed', 'User', $user->id, $user->name());
+
+        return redirect()->route('profile.edit')->with('status', __('Password Checklist sudah diganti.'));
     }
 
     /** HR / Administrator saja (gate manage-tasks); Absensi tetap memeriksa batas kewenangannya sendiri. */

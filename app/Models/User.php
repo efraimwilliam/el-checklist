@@ -55,6 +55,12 @@ class User extends Authenticatable
         return '';
     }
 
+    /** Akun sistem dengan password Checklist sendiri (bukan pegawai absensi). Password-nya diubah di Profil, tidak lewat Absensi. */
+    public function hasLocalPassword(): bool
+    {
+        return filled($this->password) && $this->employee?->external_id === null;
+    }
+
     /** Akun aktif dan pegawainya masih aktif di Sistem Absensi. */
     public function canUseApp(): bool
     {

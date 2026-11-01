@@ -655,5 +655,15 @@
     "Akun Anda tidak punya akses ke Checklist Kerjaan di portal.": "Your account has no access to Checklist Kerjaan in the portal.",
     "Akun portal \":username\" belum terdaftar sebagai pengguna aktif Checklist Kerjaan. Hubungi HR / Administrator.": "Portal account \":username\" is not registered as an active Checklist Kerjaan user. Contact HR / Administrator.",
     "Sesi berakhir karena tidak ada aktivitas. Silakan masuk lagi lewat portal.": "Your session ended due to inactivity. Please sign in again through the portal.",
-    "Sesi portal Anda sudah berakhir. Silakan masuk lagi lewat portal.": "Your portal session has ended. Please sign in again through the portal."
+    "Sesi portal Anda sudah berakhir. Silakan masuk lagi lewat portal.": "Your portal session has ended. Please sign in again through the portal.",
+    "Akun sistem": "System account",
+    "Username :username · password khusus Checklist": "Username :username · Checklist-only password",
+    "Password ini hanya untuk Checklist. Tidak mengubah Sistem Absensi maupun Portal.": "This password is for Checklist only. It does not change the attendance system or the Portal.",
+    "Password saat ini": "Current password",
+    "Ulangi password baru": "Repeat new password",
+    "Minimal 8 karakter.": "At least 8 characters.",
+    "Simpan password": "Save password",
+    "Password saat ini salah.": "Current password is incorrect.",
+    "Password Checklist sudah diganti.": "Checklist password changed.",
+    "password saat ini": "current password"
 }
