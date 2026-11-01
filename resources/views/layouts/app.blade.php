@@ -11,7 +11,7 @@
         window.__i18n = @json(\App\Support\Translations::forJs());
         window.t = (text) => (window.__i18n && window.__i18n[text]) || text;
     </script>
-    @vite(['resources/css/app.css', 'resources/js/date-picker.js', 'resources/js/photo-viewer.js'])
+    @vite(['resources/css/app.css', 'resources/js/date-picker.js', 'resources/js/photo-viewer.js', 'resources/js/password-toggle.js'])
 </head>
 <body class="min-h-screen bg-white text-slate-800 antialiased">
 @auth

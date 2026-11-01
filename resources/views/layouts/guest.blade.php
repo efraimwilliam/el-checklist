@@ -7,7 +7,10 @@
     <meta name="theme-color" content="#1b1511">
     <title>{{ isset($title) ? $title.' · ' : '' }}{{ config('app.name') }}</title>
     <link rel="icon" href="{{ asset('favicon.ico') }}">
-    @vite(['resources/css/app.css'])
+    <script>
+        window.__i18n = @json(\App\Support\Translations::forJs());
+    </script>
+    @vite(['resources/css/app.css', 'resources/js/password-toggle.js'])
 </head>
 <body class="min-h-screen bg-white text-slate-800 antialiased">
 {{ $slot }}

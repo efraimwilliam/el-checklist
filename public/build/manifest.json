@@ -32,7 +32,7 @@
     "src": "node_modules/@fontsource/inter/files/inter-latin-700-normal.woff2"
   },
   "resources/css/app.css": {
-    "file": "assets/app-CZGvaGgI.css",
+    "file": "assets/app-DfT62k4y.css",
     "name": "app",
     "names": [
       "app.css"
@@ -60,6 +60,12 @@
     "file": "assets/date-picker--ljdxVwv.js",
     "name": "date-picker",
     "src": "resources/js/date-picker.js",
+    "isEntry": true
+  },
+  "resources/js/password-toggle.js": {
+    "file": "assets/password-toggle-WQpctKeP.js",
+    "name": "password-toggle",
+    "src": "resources/js/password-toggle.js",
     "isEntry": true
   },
   "resources/js/photo-viewer.js": {
