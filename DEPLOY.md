@@ -525,26 +525,22 @@ npm run build                       # bila CSS/JS/view berubah
 php artisan test
 git add -A && git commit -m "..." && git push origin main
 ```
-**Di server** (pengganti `update.bat`):
+
+**Di server:** skrip `deploy/checklist-update.sh` (ada di repo) mengerjakan semuanya: mode pemeliharaan, `git pull --ff-only`, `composer install`,
+`migrate --force`, `view:clear` + `optimize`, izin folder, reload PHP-FPM, lalu membuka aplikasi dan mengecek `/up`. Bila ada langkah yang gagal, aplikasi dibuka lagi.
+`artisan` selalu dijalankan sebagai `www-data`, jadi file cache tidak pernah jadi milik root.
+
+Pasang sekali (salin, bukan symlink, karena skrip tidak boleh berubah sendiri saat sedang berjalan):
 ```bash
-sudo tee /usr/local/bin/checklist-update.sh > /dev/null <<'EOF'
-#!/bin/bash
-# Update Sistem Checklist ke versi terbaru dari GitHub. Selama update pengunjung melihat halaman pemeliharaan.
-set -e
-cd /var/www/checklist
-php artisan down --render="errors::503" --retry=15 --refresh=15
-trap 'php artisan up; echo "=== Update GAGAL. Baca pesan error di atas. ==="' ERR
-git pull
-composer install --no-dev --optimize-autoloader --no-interaction
-php artisan migrate --force
-php artisan optimize
-sudo systemctl reload php8.4-fpm
-php artisan up
-echo "=== Update selesai ==="
-EOF
-sudo chmod 755 /usr/local/bin/checklist-update.sh
+sudo install -m 755 /var/www/checklist/deploy/checklist-update.sh /usr/local/bin/checklist-update.sh
 ```
-Cara pakai: `checklist-update.sh`. Setelah update, cek **Kesehatan sistem** (migrasi, jadwal, error 24 jam).
+Pakai (sebagai akun biasa, **tanpa sudo** di depannya):
+```bash
+checklist-update.sh            # update; berhenti bila kode sudah versi terbaru
+checklist-update.sh --paksa    # tetap jalankan migrasi dan cache walau tidak ada kode baru
+```
+Update dibatalkan bila ada perubahan lokal yang belum di-commit di `/var/www/checklist`. Bila isi `deploy/checklist-update.sh` sendiri berubah,
+salin ulang dengan perintah `install` di atas. Setelah update, cek **Kesehatan sistem** (migrasi, jadwal, error 24 jam).
 
 ---
 
