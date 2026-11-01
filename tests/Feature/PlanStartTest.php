@@ -71,3 +71,26 @@ it('ignores tasks from another department', function () {
 
     expect(Checklist::sole()->items)->toHaveCount(0);
 });
+
+it('offers the assign popup for today too, with a confirm button', function () {
+    loggedIn($this->hod);
+    fakeSchedules([[$this->budi, 'work', 'P']]);
+
+    $this->get(route('fill.assign', ['date' => CarbonImmutable::today()->toDateString()]))->assertOk()
+        ->assertSee('data-plan-open="'.$this->budi->id.'"', false)
+        ->assertSee('Assign')->assertSee('Konfirmasi')->assertSee('Ubah tugas');
+});
+
+it('returns to the assign page after confirming a checklist for today', function () {
+    loggedIn($this->hod);
+    $today = CarbonImmutable::today()->toDateString();
+
+    $this->post(route('fill.plan.start'), [
+        'employee' => $this->budi->id,
+        'position' => $this->gsa->id,
+        'date' => $today,
+        'tasks' => [$this->sapa->id],
+    ])->assertRedirect(route('fill.assign', ['date' => $today, 'department' => $this->fo->id]));
+
+    expect(Checklist::sole()->date->toDateString())->toBe($today);
+});

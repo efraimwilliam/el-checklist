@@ -132,9 +132,9 @@ class FillController extends Controller
             ->latest('date')->latest('id')->limit(60)->get()->reject(fn (Checklist $c) => $c->isComplete())
             ->reject(fn (Checklist $c) => ! $staffMode && $c->department_id === $department?->id && $c->date->isSameDay($date))->take(30));
 
-        // Popup "Mulai" di tanggal selain hari ini: tugas bawaan pegawai (Atur tugas) dan jabatan lain di departemen yang sama.
+        // Popup "Assign": tugas bawaan pegawai (Atur tugas) dan jabatan lain di departemen yang sama.
         $planData = [];
-        if ($mode === 'assign' && $department && ! $date->isSameDay($today)) {
+        if ($mode === 'assign' && $department) {
             $deptPositions = Position::where('department_id', $department->id)->where('is_active', true)
                 ->with(['tasks' => fn ($q) => $q->where('is_active', true)->orderBy('sort')->orderBy('id')])
                 ->orderBy('sort')->orderBy('name')->get()->filter(fn (Position $p) => $p->tasks->isNotEmpty())->values();

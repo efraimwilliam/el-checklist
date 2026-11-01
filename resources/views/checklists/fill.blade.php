@@ -192,9 +192,9 @@
                                     {{ match ($row['state']) { 'empty' => __('Isi'), 'partial' => __('Lanjutkan'), default => __('Lihat') } }}
                                 </a>
                             @elseif ($row['state'] === 'noschedule')
-                                <button type="button" disabled class="btn-secondary !px-4 !py-1.5" title="{{ __('Jadwal belum diisi di Absensi') }}">{{ __('Mulai') }}</button>
-                            @elseif ($row['canStart'] && $mode === 'assign' && ! $date->isSameDay($today))
-                                <button type="button" class="btn-primary !px-4 !py-1.5" data-plan-open="{{ $e->id }}">{{ __('Mulai') }}</button>
+                                <button type="button" disabled class="btn-secondary !px-4 !py-1.5" title="{{ __('Jadwal belum diisi di Absensi') }}">{{ $mode === 'assign' ? __('Assign') : __('Mulai') }}</button>
+                            @elseif ($row['canStart'] && $mode === 'assign')
+                                <button type="button" class="btn-primary !px-4 !py-1.5" data-plan-open="{{ $e->id }}">{{ __('Assign') }}</button>
                             @elseif ($row['canStart'])
                                 <form method="POST" action="{{ route('fill.start') }}">
                                     @csrf
@@ -360,7 +360,7 @@
         </div>
     @endif
 
-    @if ($mode === 'assign' && ! $date->isSameDay($today))
+    @if ($mode === 'assign')
         <dialog id="plan-dialog" aria-labelledby="plan-title" class="m-auto w-[min(34rem,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl backdrop:bg-[#2a1d12]/50">
             <form method="POST" action="{{ route('fill.plan.start') }}" class="space-y-4 p-6">
                 @csrf
@@ -379,7 +379,8 @@
                     <p class="mt-1 text-xs text-slate-500">{{ __('Ganti jabatan untuk tugas yang berbeda hari ini. Tugas bawaan dicentang.') }}</p>
                 </div>
                 <div>
-                    <p class="label">{{ __('Tugas') }}</p>
+                    <p class="label">{{ __('Ubah tugas') }}</p>
+                    <p class="mb-2 text-xs text-slate-500">{{ __('Centang tugas yang akan dikerjakan. Hapus centang untuk tugas yang tidak perlu.') }}</p>
                     <ul class="max-h-[40vh] space-y-2 overflow-y-auto" data-plan-tasks></ul>
                 </div>
                 <details class="group rounded-xl border border-slate-200 bg-[#fbf9f4] p-3" data-plan-more>
@@ -393,7 +394,7 @@
                 </details>
                 <div class="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
                     <button type="button" class="btn-secondary" data-plan-close>{{ __('Batal') }}</button>
-                    <button class="btn-primary">{{ __('Buat checklist') }}</button>
+                    <button class="btn-primary">{{ __('Konfirmasi') }}</button>
                 </div>
             </form>
         </dialog>
