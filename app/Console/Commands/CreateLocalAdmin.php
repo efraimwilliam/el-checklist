@@ -29,8 +29,8 @@ class CreateLocalAdmin extends Command
             return self::FAILURE;
         }
 
-        $password = $this->secret('Password baru (minimal 12 karakter)');
-        if (mb_strlen((string) $password) < 12) {
+        $password = $this->secret('Password baru (minimal 8 karakter)');
+        if (mb_strlen((string) $password) < 8) {
             $this->error('Password terlalu pendek.');
 
             return self::FAILURE;

@@ -87,9 +87,9 @@ it('does not let the command take over a real attendance employee', function () 
     expect($employee->fresh()->user)->toBeNull();
 });
 
-it('creates the system admin from the command with a confirmed password of at least 12 characters', function () {
+it('creates the system admin from the command with a confirmed password of at least 8 characters', function () {
     $this->artisan('checklist:admin-lokal', ['username' => 'admin'])
-        ->expectsQuestion('Password baru (minimal 12 karakter)', LOCAL_PASSWORD)
+        ->expectsQuestion('Password baru (minimal 8 karakter)', LOCAL_PASSWORD)
         ->expectsQuestion('Ulangi password', LOCAL_PASSWORD)
         ->assertSuccessful();
 
@@ -98,6 +98,6 @@ it('creates the system admin from the command with a confirmed password of at le
         ->and(Hash::check(LOCAL_PASSWORD, $user->password))->toBeTrue();
 
     $this->artisan('checklist:admin-lokal', ['username' => 'admin'])
-        ->expectsQuestion('Password baru (minimal 12 karakter)', 'pendek')
+        ->expectsQuestion('Password baru (minimal 8 karakter)', 'pendek')
         ->assertFailed();
 });

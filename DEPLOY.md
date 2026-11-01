@@ -619,7 +619,7 @@ Untuk akun sistem (mis. `admin`) yang harus bisa masuk saat SSO dimatikan:
 ```bash
 cd /var/www/checklist && sudo -u www-data php artisan checklist:admin-lokal admin
 ```
-Password diminta di terminal (minimal 12 karakter, diulang untuk konfirmasi). Jalankan lagi untuk mengganti password. Setelah itu, di Portal
+Password diminta di terminal (minimal 8 karakter, diulang untuk konfirmasi). Jalankan lagi untuk mengganti password. Setelah itu, di Portal
 ubah mode Checklist ke **Keduanya** atau **Login sendiri**; di halaman login masuk dengan `admin` dan password tadi.
 Akun ini tidak ikut sinkronisasi pegawai, dan login-nya tidak pernah ke Absensi.
 
