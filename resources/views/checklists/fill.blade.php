@@ -1,4 +1,4 @@
-<x-app-layout title="{{ __('Isi checklist') }}">
+<x-app-layout title="{{ $staffMode ? __('Checklist saya') : ($mode === 'assign' ? __('Atur checklist harian') : __('Isi checklist')) }}">
     <div class="mb-4">
         <h1 class="text-3xl text-slate-900">{{ $staffMode ? __('Checklist saya') : ($mode === 'assign' ? __('Atur checklist harian') : __('Isi checklist harian')) }}</h1>
         @unless ($staffMode)
@@ -60,8 +60,6 @@
             @endunless
             <noscript><button class="btn-secondary">{{ __('Tampilkan') }}</button></noscript>
         </form>
-
-        @error('assign') <p class="mb-4 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{{ $message }}</p> @enderror
 
         @if ($summary)
             <div class="card mb-4 border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
