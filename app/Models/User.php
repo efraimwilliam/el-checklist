@@ -18,8 +18,10 @@ class User extends Authenticatable
 
     protected $fillable = ['employee_id', 'role', 'position_id', 'is_active', 'last_login_at'];
 
-    // Tidak ada kolom password / remember_token.
+    // Tidak ada kolom remember_token. Password hanya ada untuk akun sistem (lihat checklist:admin-lokal).
     protected $rememberTokenName = '';
+
+    protected $hidden = ['password'];
 
     protected function casts(): array
     {

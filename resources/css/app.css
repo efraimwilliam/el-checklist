@@ -190,11 +190,11 @@
     [data-view='card'] .cl-seg input:checked + span { border-color: transparent; }
 
     .cl-segments { display: flex; gap: 3px; }
-    .cl-segments button { flex: 1; height: 0.5rem; border-radius: 9999px; background: var(--color-slate-200); }
-    .cl-segments button[data-status='done'] { background: #2a5c43; }
-    .cl-segments button[data-status='ongoing'] { background: #9a7410; }
-    .cl-segments button[data-status='pending'] { background: #b23a24; }
-    .cl-segments button[aria-current='true'] { outline: 2px solid var(--color-gold-500); outline-offset: 1px; }
+    .cl-segments span { flex: 1; height: 0.5rem; border-radius: 9999px; background: var(--color-slate-200); }
+    .cl-segments span[data-status='done'] { background: #2a5c43; }
+    .cl-segments span[data-status='ongoing'] { background: #9a7410; }
+    .cl-segments span[data-status='pending'] { background: #b23a24; }
+    .cl-segments span[aria-current='true'] { outline: 2px solid var(--color-gold-500); outline-offset: 1px; }
     .cl-chip { width: 2.25rem; height: 2.25rem; border-radius: 9999px; border: 1px solid var(--color-slate-300); background: #fff; font-size: 0.8125rem; font-weight: 600; color: var(--color-rose-600); }
     .cl-chip[data-status='done'] { background: #2a5c43; border-color: #2a5c43; color: #fff; }
     .cl-chip[data-status='ongoing'] { background: #9a7410; border-color: #9a7410; color: #fff; }

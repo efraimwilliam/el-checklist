@@ -2,16 +2,19 @@
 
 namespace App\Http\Controllers\Auth;
 
-use App\Audit\AuditLogger;
 use App\Attendance\AttendanceApiService;
 use App\Attendance\AuthOutcome;
 use App\Attendance\AuthResult;
+use App\Audit\AuditLogger;
 use App\Http\Controllers\Controller;
 use App\Models\Department;
 use App\Models\Employee;
+use App\Models\User;
+use App\Support\PortalClient;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\View\View;
@@ -27,13 +30,22 @@ class AttendanceLoginController extends Controller
 
     public const FAILURE_DECAY = 900;
 
-    public function show(): View
+    public function show(Request $request): View|RedirectResponse
     {
+        // Mode "wajib SSO": langsung ke portal, kecuali ada pesan yang perlu dibaca dulu.
+        if (PortalClient::requiresPortal() && ! $request->session()->has('errors')) {
+            return redirect()->route('sso.login');
+        }
+
         return view('auth.login');
     }
 
     public function store(Request $request, AttendanceApiService $api): RedirectResponse
     {
+        if (! PortalClient::allowsPasswordLogin()) {
+            return $this->failed(__('Silakan masuk lewat portal.'));
+        }
+
         $data = $request->validate([
             'username' => ['required', 'string', 'max:100'],
             'pin' => ['required', 'string', 'max:255'], // PIN atau password dashboard
@@ -45,6 +57,18 @@ class AttendanceLoginController extends Controller
             $this->log($request, $username, 'throttled');
 
             return $this->failed(__('Terlalu banyak percobaan login. Coba lagi dalam :n menit.', ['n' => (int) ceil(RateLimiter::availableIn($key) / 60)]));
+        }
+
+        // Akun sistem dengan password Checklist sendiri (checklist:admin-lokal): tidak ke Absensi.
+        if ($account = $this->passwordAccount($username)) {
+            if (! Hash::check($data['pin'], $account->password)) {
+                RateLimiter::hit($key, self::FAILURE_DECAY);
+                $this->log($request, $username, 'invalid_credentials');
+
+                return $this->failed(__('Username atau PIN/password tidak sesuai.'));
+            }
+
+            return $this->signIn($request, $account, $username, $key);
         }
 
         $result = $this->authenticateSecret($api, $username, $data['pin']);
@@ -61,7 +85,26 @@ class AttendanceLoginController extends Controller
 
         $employee = $this->resolveEmployee($result->employee);
         $user = $employee->user;
-        if (! $user || ! $user->canUseApp()) {
+        if (! $user) {
+            $this->log($request, $username, 'no_access');
+
+            return $this->failed(__('Anda belum memiliki akses ke aplikasi ini. Hubungi HR / Administrator.'));
+        }
+
+        return $this->signIn($request, $user, $username, $key);
+    }
+
+    /** Akun sistem yang punya password di Checklist (bukan pegawai absensi). */
+    private function passwordAccount(string $username): ?User
+    {
+        return User::whereNotNull('password')
+            ->whereHas('employee', fn ($employees) => $employees->where('username', $username)->whereNull('external_id'))
+            ->first();
+    }
+
+    private function signIn(Request $request, User $user, string $username, string $key): RedirectResponse
+    {
+        if (! $user->canUseApp()) {
             $this->log($request, $username, 'no_access');
 
             return $this->failed(__('Anda belum memiliki akses ke aplikasi ini. Hubungi HR / Administrator.'));
@@ -80,11 +123,13 @@ class AttendanceLoginController extends Controller
     public function destroy(Request $request): RedirectResponse
     {
         AuditLogger::record('logout');
+        $viaPortal = PortalClient::viaPortal();
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route('login');
+        // Masuk lewat portal = keluar dari portal dan semua sistem.
+        return $viaPortal ? redirect()->away(PortalClient::logoutUrl()) : redirect()->route('login');
     }
 
     /**

@@ -44,7 +44,8 @@ class EmployeeSyncService
                 ])->save();
             }
 
-            $deactivated = Employee::where('is_active', true)->whereNotIn('external_id', array_column($employees, 'id'))->update(['is_active' => false]);
+            // Akun tanpa external_id (akun sistem dari SSO) bukan pegawai absensi dan tidak ikut dinonaktifkan.
+            $deactivated = Employee::where('is_active', true)->whereNotNull('external_id')->whereNotIn('external_id', array_column($employees, 'id'))->update(['is_active' => false]);
 
             return ['departments' => count($departmentIds), 'employees' => count($employees), 'deactivated' => $deactivated];
         });

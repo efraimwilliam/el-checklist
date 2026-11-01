@@ -521,21 +521,18 @@ if (root) {
 
     slides.forEach((slide, index) => {
         const final = slide.matches('[data-final]');
-        const segment = document.createElement('button');
-        segment.type = 'button';
+        // Segmen hanya indikator status (tidak bisa diketuk); pindah tugas lewat panah, geser, atau daftar nomor.
+        const segment = document.createElement('span');
+        segment.setAttribute('role', 'img');
         segment.setAttribute('aria-label', final ? 'Ringkasan' : `Tugas ${index + 1}`);
-        segment.addEventListener('click', () => goTo(index));
         segments.append(segment);
         if (!final) {
             const chip = document.createElement('button');
             chip.type = 'button';
             chip.className = 'cl-chip';
             chip.textContent = String(index + 1);
-            chip.addEventListener('click', () => {
-                jump.classList.add('hidden');
-                jumpToggle.setAttribute('aria-expanded', 'false');
-                goTo(index);
-            });
+            // Daftar tetap terbuka sampai tombol grid ditekan lagi.
+            chip.addEventListener('click', () => goTo(index));
             chips[index] = chip;
             jumpList.append(chip);
         }

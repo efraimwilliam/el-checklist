@@ -21,7 +21,7 @@ use Illuminate\Support\Str;
 class AuditObserver
 {
     /** Kolom yang tidak perlu dicatat sebagai perubahan. */
-    private const IGNORED = ['updated_at', 'created_at', 'last_login_at', 'last_synced_at', 'remember_token'];
+    private const IGNORED = ['updated_at', 'created_at', 'last_login_at', 'last_synced_at', 'remember_token', 'password'];
 
     public const MODELS = [
         Checklist::class, ChecklistItem::class, ChecklistItemPhoto::class, ChecklistExtraTask::class,

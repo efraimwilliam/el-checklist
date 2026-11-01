@@ -642,5 +642,16 @@
     "Hanya untuk dilihat": "View only",
     "Besok": "Tomorrow",
     "Lihat detail": "View details",
-    "Atur checklist": "Set checklists"
+    "Atur checklist": "Set checklists",
+    "Masuk lewat Portal": "Sign in with Portal",
+    "atau dengan username dan PIN": "or with username and PIN",
+    "Dashboard Utama": "Main Dashboard",
+    "Silakan masuk lewat portal.": "Please sign in through the portal.",
+    "Login lewat portal dibatalkan.": "Portal sign-in was cancelled.",
+    "Sesi login sudah kedaluwarsa. Silakan coba lagi.": "The sign-in session expired. Please try again.",
+    "Portal tidak dapat dihubungi. Coba lagi beberapa saat lagi.": "The portal cannot be reached. Please try again shortly.",
+    "Akun Anda tidak punya akses ke Checklist Kerjaan di portal.": "Your account has no access to Checklist Kerjaan in the portal.",
+    "Akun portal \":username\" belum terdaftar sebagai pengguna aktif Checklist Kerjaan. Hubungi HR / Administrator.": "Portal account \":username\" is not registered as an active Checklist Kerjaan user. Contact HR / Administrator.",
+    "Sesi berakhir karena tidak ada aktivitas. Silakan masuk lagi lewat portal.": "Your session ended due to inactivity. Please sign in again through the portal.",
+    "Sesi portal Anda sudah berakhir. Silakan masuk lagi lewat portal.": "Your portal session has ended. Please sign in again through the portal."
 }

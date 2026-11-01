@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\TaskController;
 use App\Http\Controllers\Auth\AttendanceLoginController;
+use App\Http\Controllers\Auth\SsoController;
 use App\Http\Controllers\BulkAssignController;
 use App\Http\Controllers\ChecklistController;
 use App\Http\Controllers\ChecklistItemController;
@@ -21,16 +22,22 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TeamPositionController;
 use App\Http\Controllers\TeamTaskController;
 use App\Http\Middleware\EnsureActiveSession;
+use App\Http\Middleware\VerifySsoSession;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/bahasa/{locale}', [LocaleController::class, 'update'])->where('locale', 'id|en')->name('locale.update');
+
+// Portal SSO: login sekali untuk semua sistem (aktif bila SSO_CLIENT_ID diisi).
+Route::get('/sso/login', [SsoController::class, 'redirect'])->middleware('throttle:30,1')->name('sso.login');
+Route::get('/sso/callback', [SsoController::class, 'callback'])->middleware('throttle:30,1')->name('sso.callback');
+Route::get('/sso/logout', [SsoController::class, 'logout'])->name('sso.logout');
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AttendanceLoginController::class, 'show'])->name('login');
     Route::post('/login', [AttendanceLoginController::class, 'store'])->middleware('throttle:login');
 });
 
-Route::middleware(['auth', EnsureActiveSession::class])->group(function () {
+Route::middleware(['auth', EnsureActiveSession::class, VerifySsoSession::class])->group(function () {
     Route::post('/logout', [AttendanceLoginController::class, 'destroy'])->name('logout');
     Route::get('/', HomeController::class)->name('home');
     Route::get('/dashboard', DashboardController::class)->name('dashboard');

@@ -1,6 +1,6 @@
 <x-app-layout title="{{ __('Isi checklist') }}">
     <div class="mb-4">
-        <h1 class="text-3xl text-slate-900">{{ $staffMode ? __('Checklist saya') : __('Isi checklist harian') }}</h1>
+        <h1 class="text-3xl text-slate-900">{{ $staffMode ? __('Checklist saya') : ($mode === 'assign' ? __('Atur checklist harian') : __('Isi checklist harian')) }}</h1>
         @unless ($staffMode)
             <p class="mt-0.5 font-medium text-gold-700">{{ $date->translatedFormat('l, d F Y') }}</p>
         @endunless

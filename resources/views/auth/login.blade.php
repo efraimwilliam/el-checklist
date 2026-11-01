@@ -26,6 +26,16 @@
                 <p class="mt-1 text-sm text-slate-500">éL Hotel &amp; Resort Bali Sanur</p>
 
                 <div class="mb-4 flex justify-end"><x-language-switch tone="light" /></div>
+            @if (\App\Support\PortalClient::enabled())
+                <a href="{{ route('sso.login') }}" class="btn-primary mt-6 block w-full text-center">{{ __('Masuk lewat Portal') }}</a>
+                @error('username')
+                    <p class="mt-4 rounded-xl bg-rose-50 px-3.5 py-2.5 text-sm text-rose-700">{{ $message }}</p>
+                @enderror
+            @endif
+            @if (\App\Support\PortalClient::allowsPasswordLogin())
+            @if (\App\Support\PortalClient::enabled())
+                <p class="mt-5 text-center text-xs uppercase tracking-wider text-slate-400">{{ __('atau dengan username dan PIN') }}</p>
+            @endif
             <form method="POST" action="{{ url('/login') }}" class="mt-6 space-y-4">
                     @csrf
                     <div>
@@ -36,13 +46,18 @@
                         <label for="pin" class="label">{{ __('PIN atau password') }}</label>
                         <input id="pin" name="pin" type="password" required autocomplete="current-password" maxlength="255" class="input">
                     </div>
-                    @error('username')
-                        <p class="rounded-xl bg-rose-50 px-3.5 py-2.5 text-sm text-rose-700">{{ $message }}</p>
-                    @enderror
+                    @if (! \App\Support\PortalClient::enabled())
+                        @error('username')
+                            <p class="rounded-xl bg-rose-50 px-3.5 py-2.5 text-sm text-rose-700">{{ $message }}</p>
+                        @enderror
+                    @endif
                     <button class="btn-primary w-full">{{ __('Masuk') }}</button>
                 </form>
+            @endif
 
+                @if (\App\Support\PortalClient::allowsPasswordLogin())
                 <p class="mt-5 text-center text-xs text-slate-500">{{ __('Username dan PIN sama dengan aplikasi absensi. HOD, HR, dan Administrator bisa memakai password dashboard absensi.') }}<br>{{ __('Lupa PIN? Buat atau reset di aplikasi absensi.') }}</p>
+                @endif
             </div>
         </section>
     </div>
