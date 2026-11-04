@@ -25,14 +25,28 @@
 
     <div class="card overflow-hidden">
         <div class="border-b border-slate-100 p-4">
-            @if (auth()->user()->role->seesAllDepartments())
-            <div class="mb-3 flex flex-wrap gap-2" role="group" aria-label="{{ __('Pilih departemen') }}">
-                <button type="button" class="rounded-full border px-3.5 py-1.5 text-sm font-semibold transition aria-[pressed=true]:border-ink aria-[pressed=true]:bg-ink aria-[pressed=true]:text-white aria-[pressed=false]:border-slate-300 aria-[pressed=false]:bg-white aria-[pressed=false]:text-slate-700 hover:border-gold-500" data-dept-filter="" aria-pressed="true">{{ __('Semua departemen') }}</button>
-                @foreach ($catalog->filter(fn ($department) => $department->positions->isNotEmpty()) as $department)
-                    <button type="button" class="rounded-full border px-3.5 py-1.5 text-sm font-semibold transition aria-[pressed=true]:border-ink aria-[pressed=true]:bg-ink aria-[pressed=true]:text-white aria-[pressed=false]:border-slate-300 aria-[pressed=false]:bg-white aria-[pressed=false]:text-slate-700 hover:border-gold-500" data-dept-filter="{{ $department->name }}" aria-pressed="false">{{ $department->name }}</button>
-                @endforeach
+            <div class="mb-3 grid gap-3 sm:grid-cols-2">
+                <div>
+                    <label for="catalog-department" class="label">{{ __('Departemen') }}</label>
+                    <select id="catalog-department" class="input" data-dept-select>
+                        <option value="">{{ __('Semua departemen') }}</option>
+                        @foreach ($catalog->filter(fn ($department) => $department->positions->isNotEmpty()) as $department)
+                            <option value="{{ $department->id }}">{{ $department->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label for="catalog-position" class="label">{{ __('Jabatan') }}</label>
+                    <select id="catalog-position" class="input" data-position-select>
+                        <option value="">{{ __('Semua jabatan') }}</option>
+                        @foreach ($catalog as $department)
+                            @foreach ($department->positions as $option)
+                                <option value="{{ $option->id }}" data-department="{{ $department->id }}">{{ $option->name }}</option>
+                            @endforeach
+                        @endforeach
+                    </select>
+                </div>
             </div>
-            @endif
             <label for="catalog-search" class="label">{{ __('Cari tugas') }}</label>
             <input id="catalog-search" type="search" placeholder="{{ __('Nama tugas, jabatan, jenis, atau departemen') }}" class="input" data-catalog-search>
         </div>
@@ -57,7 +71,9 @@
                     @foreach ($tasks as $task)
                         <tr data-catalog-row
                             data-department="{{ $task->position->department->name }}"
+                            data-department-id="{{ $task->position->department_id }}"
                             data-position="{{ $task->position->name }}"
+                            data-position-id="{{ $task->position_id }}"
                             data-section="{{ $task->section ?? '' }}"
                             data-title="{{ $task->title }}"
                             data-search="{{ mb_strtolower(implode(' ', array_filter([$task->position->department->name, $task->position->name, $task->section, $task->title, $task->standard]))) }}">
@@ -69,7 +85,7 @@
                             <td class="whitespace-nowrap px-4 py-2 text-right">
                                 <button type="button" class="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:bg-[#f6efdf] hover:text-gold-700"
                                     data-edit-task data-id="{{ $task->id }}" data-url="{{ route('team.catalog.tasks.update', $task) }}"
-                                    data-title="{{ $task->title }}" data-section="{{ $task->section }}" data-standard="{{ $task->standard }}" data-position="{{ $task->position->name }}" data-parameters="{{ json_encode($task->parameters->map(fn ($p) => $p->only(['name', 'type', 'unit', 'min_value', 'max_value', 'options', 'normal_option']))->values()) }}"
+                                    data-title="{{ $task->title }}" data-section="{{ $task->section }}" data-standard="{{ $task->standard }}" data-position="{{ $task->position->name }}" data-position-id="{{ $task->position_id }}" data-parameters="{{ json_encode($task->parameters->map(fn ($p) => $p->only(['name', 'type', 'unit', 'min_value', 'max_value', 'options', 'normal_option']))->values()) }}"
                                     aria-label="{{ __('Ubah tugas') }}" title="{{ __('Ubah tugas') }}">
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
                                 </button>
@@ -186,6 +202,21 @@
                 </div>
 
                 <div>
+                    <label for="edit-position" class="label">{{ __('Jabatan') }}</label>
+                    <select id="edit-position" name="position" required class="input">
+                        @foreach ($catalog as $department)
+                            @if ($department->positions->isNotEmpty())
+                                <optgroup label="{{ $department->name }}">
+                                    @foreach ($department->positions as $option)
+                                        <option value="{{ $option->id }}" @selected((string) ($errors->editTask->any() ? old('position') : '') === (string) $option->id)>{{ $option->name }}</option>
+                                    @endforeach
+                                </optgroup>
+                            @endif
+                        @endforeach
+                    </select>
+                </div>
+
+                <div>
                     <label for="edit-title" class="label">{{ __('Nama tugas') }}</label>
                     <input id="edit-title" name="title" value="{{ $errors->editTask->any() ? old('title') : '' }}" required maxlength="500" class="input" autofocus>
                 </div>
@@ -240,8 +271,11 @@
             const pager = document.querySelector('[data-catalog-pager]');
             const empty = document.querySelector('[data-catalog-empty]');
             const headers = [...document.querySelectorAll('[data-sort-th]')];
-            const deptButtons = [...document.querySelectorAll('[data-dept-filter]')];
+            const deptSelect = document.querySelector('[data-dept-select]');
+            const positionSelect = document.querySelector('[data-position-select]');
+            const positionOptions = [...positionSelect.querySelectorAll('option[data-department]')];
             let department = '';
+            let position = '';
             let sortKey = 'department';
             let direction = 1;
             let page = 1;
@@ -270,7 +304,7 @@
 
             const render = () => {
                 const query = search.value.trim().toLowerCase();
-                const matched = rows.filter((row) => (department === '' || row.dataset.department === department) && (query === '' || row.dataset.search.includes(query)));
+                const matched = rows.filter((row) => (department === '' || row.dataset.departmentId === department) && (position === '' || row.dataset.positionId === position) && (query === '' || row.dataset.search.includes(query)));
                 const size = Number(perPage.value);
                 const pages = Math.max(1, Math.ceil(matched.length / size));
                 page = Math.min(page, pages);
@@ -300,12 +334,16 @@
                 });
             };
 
-            deptButtons.forEach((button) => button.addEventListener('click', () => {
-                department = button.dataset.deptFilter;
-                deptButtons.forEach((other) => other.setAttribute('aria-pressed', String(other === button)));
+            // Jabatan mengikuti departemen yang dipilih; ganti departemen mengosongkan pilihan jabatan yang tidak cocok.
+            deptSelect.addEventListener('change', () => {
+                department = deptSelect.value;
+                positionOptions.forEach((option) => { option.hidden = department !== '' && option.dataset.department !== department; });
+                if (position !== '' && positionSelect.querySelector(`option[value="${position}"]`)?.hidden) position = '';
+                positionSelect.value = position;
                 page = 1;
                 render();
-            }));
+            });
+            positionSelect.addEventListener('change', () => { position = positionSelect.value; page = 1; render(); });
             search.addEventListener('input', () => { page = 1; render(); });
             perPage.addEventListener('change', () => { page = 1; render(); });
             headers.forEach((th) => th.querySelector('[data-sort]').addEventListener('click', () => {
@@ -335,6 +373,7 @@
                     document.getElementById('edit-task-id').value = button.dataset.id;
                     document.getElementById('edit-task-position').textContent = button.dataset.position;
                     if (!keepOld) {
+                        document.getElementById('edit-position').value = button.dataset.positionId;
                         document.getElementById('edit-title').value = button.dataset.title;
                         document.getElementById('edit-section').value = button.dataset.section;
                         document.getElementById('edit-standard').value = button.dataset.standard;

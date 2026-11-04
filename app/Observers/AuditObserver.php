@@ -9,6 +9,17 @@ use App\Models\ChecklistItem;
 use App\Models\ChecklistItemPhoto;
 use App\Models\Department;
 use App\Models\Employee;
+use App\Models\ChronologyReport;
+use App\Models\ChronologyReportEntry;
+use App\Models\ChronologyReportGuest;
+use App\Models\FloorPlan;
+use App\Models\FloorPlanArea;
+use App\Models\IssueFollowup;
+use App\Models\RoomIssuePhoto;
+use App\Models\RoomIssueUpdate;
+use App\Models\RoomIssue;
+use App\Models\IssueCategory;
+use App\Models\Room;
 use App\Models\Position;
 use App\Models\ReportNote;
 use App\Models\Setting;
@@ -25,7 +36,7 @@ class AuditObserver
 
     public const MODELS = [
         Checklist::class, ChecklistItem::class, ChecklistItemPhoto::class, ChecklistExtraTask::class,
-        Department::class, Employee::class, Position::class, Task::class, User::class, Setting::class, ReportNote::class,
+        Department::class, Employee::class, Position::class, Task::class, User::class, Setting::class, ReportNote::class, IssueFollowup::class, Room::class, IssueCategory::class, RoomIssue::class, RoomIssueUpdate::class, RoomIssuePhoto::class, FloorPlan::class, FloorPlanArea::class, ChronologyReport::class, ChronologyReportGuest::class, ChronologyReportEntry::class,
     ];
 
     public function created(Model $model): void

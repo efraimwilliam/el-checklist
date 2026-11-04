@@ -234,6 +234,60 @@
             <p class="py-4 text-center text-sm text-slate-500">{{ __('Belum ada checklist dalam periode ini.') }}</p>
         @endif
     </section>
+
+    {{-- Chronology Report: laporan kejadian tamu yang dibuat dalam periode (yang boleh dilihat pengguna ini). --}}
+    <section class="card mt-6 p-5">
+        <div class="mb-4 flex flex-wrap items-end justify-between gap-2">
+            <div>
+                <h2 class="font-display text-xl text-slate-900">{{ __('Chronology Report') }}</h2>
+                <p class="text-sm text-slate-500">{{ __('Laporan kejadian tamu yang dibuat dalam periode.') }}</p>
+            </div>
+            <a href="{{ route('chronology.index') }}" class="text-sm font-semibold text-sky-700 hover:underline">{{ __('Buka Chronology Report') }} &rsaquo;</a>
+        </div>
+
+        @if ($chronology['total'] > 0)
+            <div class="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <div class="rounded-xl bg-slate-50 p-4"><p class="text-xs uppercase tracking-wide text-slate-500">{{ __('Laporan') }}</p><p class="mt-1 font-display text-2xl tabular-nums text-slate-900">{{ $chronology['total'] }}</p><p class="text-xs text-slate-500">{{ $chronology['final'] }} {{ __('final') }} · {{ $chronology['draft'] }} {{ __('draft') }}</p></div>
+                <div class="rounded-xl bg-slate-50 p-4"><p class="text-xs uppercase tracking-wide text-slate-500">{{ __('Tamu') }}</p><p class="mt-1 font-display text-2xl tabular-nums text-slate-900">{{ $chronology['uniqueGuests'] }}</p><p class="text-xs text-slate-500">{{ $chronology['guests'] }} {{ __('entri tamu') }}</p></div>
+                <div class="rounded-xl bg-slate-50 p-4"><p class="text-xs uppercase tracking-wide text-slate-500">{{ __('Rata-rata poin') }}</p><p class="mt-1 font-display text-2xl tabular-nums text-slate-900">{{ $chronology['entriesAverage'] !== null ? number_format($chronology['entriesAverage'], 1, ',', '.') : '—' }}</p><p class="text-xs text-slate-500">{{ __('per laporan') }}</p></div>
+                <div class="rounded-xl bg-slate-50 p-4"><p class="text-xs uppercase tracking-wide text-slate-500">{{ __('Terkait kendala kamar') }}</p><p class="mt-1 font-display text-2xl tabular-nums text-slate-900">{{ $chronology['linkedIssues'] }}</p><p class="text-xs text-slate-500">{{ __('laporan') }}</p></div>
+            </div>
+
+            <div class="grid gap-6 lg:grid-cols-3">
+                @foreach ([['sources', __('Sumber booking')], ['nationalities', __('Kewarganegaraan')], ['rooms', __('Kamar tamu')]] as [$key, $label])
+                    <div>
+                        <h3 class="mb-2 text-sm font-semibold text-slate-700">{{ $label }}</h3>
+                        @forelse ($chronology[$key] as $item)
+                            @php $share = $chronology['total'] ? round($item['count'] / $chronology['total'] * 100) : 0; @endphp
+                            <div class="mb-2">
+                                <div class="flex justify-between gap-2 text-sm"><span class="truncate text-slate-800">{{ $item['label'] }}</span><span class="tabular-nums text-slate-500">{{ $item['count'] }}</span></div>
+                                <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100"><div class="h-full rounded-full bg-gold-500" style="width: {{ $share }}%"></div></div>
+                            </div>
+                        @empty
+                            <p class="text-sm text-slate-500">{{ __('Belum ada data.') }}</p>
+                        @endforelse
+                    </div>
+                @endforeach
+            </div>
+
+            <div class="mt-6">
+                <h3 class="mb-2 text-sm font-semibold text-slate-700">{{ __('Laporan terbaru') }}</h3>
+                <ul class="divide-y divide-slate-100">
+                    @foreach ($chronology['recent'] as $item)
+                        <li class="flex flex-wrap items-center justify-between gap-2 py-2.5 text-sm">
+                            <a href="{{ route('chronology.show', $item['id']) }}" class="min-w-0 font-medium text-slate-900 hover:underline">{{ $item['guest'] }}@if ($item['room']) <span class="font-normal text-slate-500">· {{ __('Kamar') }} {{ $item['room'] }}</span>@endif</a>
+                            <span class="flex items-center gap-3 text-xs text-slate-500">
+                                <span>{{ $item['author'] }} · {{ $item['date'] }}</span>
+                                <span class="{{ $item['status'] === 'final' ? 'pill-done' : 'pill-ongoing' }}">{{ $item['status'] === 'final' ? __('Final') : __('Draft') }}</span>
+                            </span>
+                        </li>
+                    @endforeach
+                </ul>
+            </div>
+        @else
+            <p class="py-4 text-center text-sm text-slate-500">{{ __('Belum ada Chronology Report dalam periode ini.') }}</p>
+        @endif
+    </section>
     </div>
 
     <script>

@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Checklists\ChecklistPhotoService;
 use App\Checklists\ChecklistSettings;
 use App\Health\SystemHealth;
+use App\Rooms\RoomIssuePhotoService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Console\Command;
 
@@ -15,7 +16,7 @@ class PruneChecklistPhotos extends Command
 
     protected $description = 'Hapus foto checklist yang melewati masa simpan';
 
-    public function handle(ChecklistSettings $settings, ChecklistPhotoService $photos): int
+    public function handle(ChecklistSettings $settings, ChecklistPhotoService $photos, RoomIssuePhotoService $roomPhotos): int
     {
         $days = $settings->photoRetentionDays();
         if ($days === 0) {
@@ -23,7 +24,7 @@ class PruneChecklistPhotos extends Command
 
             return self::SUCCESS;
         }
-        $deleted = $photos->prune($days);
+        $deleted = $photos->prune($days) + $roomPhotos->prune($days); // foto checklist dan foto kendala kamar
         Cache::forever(SystemHealth::PHOTO_PRUNE_CACHE, ['at' => now()->toIso8601String(), 'deleted' => $deleted]);
         $this->info("Foto dihapus (lebih dari {$days} hari): {$deleted}.");
 

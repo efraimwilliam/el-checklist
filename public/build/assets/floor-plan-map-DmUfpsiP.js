@@ -1,0 +1,1 @@
+var e=[1,1.5,2,3,4];document.querySelectorAll(`[data-plan-map]`).forEach(t=>{let n=t.querySelector(`[data-stage]`),r=1;t.querySelectorAll(`[data-zoom]`).forEach(t=>t.addEventListener(`click`,()=>{let i=e.indexOf(r);t.dataset.zoom===`fit`&&(r=1),t.dataset.zoom===`in`&&(r=e[Math.min(e.length-1,i+1)]),t.dataset.zoom===`out`&&(r=e[Math.max(0,i-1)]),n.style.width=`${r*100}%`}))});

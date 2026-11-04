@@ -94,11 +94,15 @@ class TeamTaskController extends Controller
         $task->loadMissing('position');
         abort_unless($task->position->is_active && $request->user()->canAccessDepartment($task->position->department_id), 403);
 
-        $data = $request->validateWithBag('editTask', $this->taskRules());
-        $task->update($this->taskFields($data));
+        $data = $request->validateWithBag('editTask', ['position' => ['required', 'integer', 'exists:positions,id']] + $this->taskRules());
+        $position = Position::findOrFail($data['position']);
+        abort_unless($position->is_active && $request->user()->canAccessDepartment($position->department_id), 403);
+
+        // Pindah jabatan hanya ke jabatan aktif yang masih boleh diakses; checklist lama tetap memakai salinan isinya.
+        $task->update($this->taskFields($data) + ['position_id' => $position->id]);
         TaskParameters::sync($task, TaskParameters::rows($data, 'editTask'));
 
-        return redirect()->route('team.catalog')->withFragment('jabatan-'.$task->position_id)->with('status', __('Tugas diperbarui.'));
+        return redirect()->route('team.catalog')->withFragment('jabatan-'.$position->id)->with('status', __('Tugas diperbarui.'));
     }
 
     /** Hapus tugas dari Daftar tugas. Checklist yang sudah dibuat menyalin isi tugas, jadi riwayatnya tidak berubah. */

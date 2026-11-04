@@ -138,7 +138,7 @@ class ReportService
         return ChecklistItem::with('checklist.employee', 'checklist.department')
             ->whereHas('checklist', fn ($q) => $q->whereIn('department_id', $ids)->whereBetween('date', $range))
             ->where('status', \App\Enums\ItemStatus::Pending)->whereNotNull('note')->where('note', '!=', '')
-            ->orderByDesc('id')->limit(30)->get()
+            ->orderByDesc('id')->limit(10)->get()
             ->map(fn (ChecklistItem $item) => [
                 'title' => $item->title,
                 'note' => $item->note,
@@ -160,7 +160,7 @@ class ReportService
                 'checklists' => (int) $r->checklists,
                 'score' => $r->items ? (int) round($r->done / $r->items * 100) : null,
                 'pending' => (int) $r->pending,
-            ])->sortBy(fn (array $row) => $row['score'] ?? 101)->values()->all();
+            ])->sortBy(fn (array $row) => $row['score'] ?? 101)->take(10)->values()->all();
     }
 
     /** Skor per staff: 10 terendah (minimal satu checklist), beserta jumlah staff yang dinilai. */
@@ -186,7 +186,7 @@ class ReportService
             ->where(fn ($q) => $q->whereNull('i.status')->orWhere('i.status', 'pending'))
             ->groupBy('c.employee_id', 'i.title')
             ->selectRaw('c.employee_id, i.title, count(*) as times, sum(i.status is null) as blank')
-            ->having('times', '>=', 2)->orderByDesc('times')->limit(15)->get();
+            ->having('times', '>=', 2)->orderByDesc('times')->limit(10)->get();
         $names = Employee::whereIn('id', $rows->pluck('employee_id'))->pluck('name', 'id');
 
         return $rows->map(fn ($r) => [

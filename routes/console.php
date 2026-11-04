@@ -24,3 +24,6 @@ Schedule::command('audit:prune')->dailyAt('03:40');
 
 // Denyut penjadwal: halaman Kesehatan sistem memastikan "schedule:run" masih berjalan tiap menit.
 Schedule::call(fn () => Cache::forever(SystemHealth::SCHEDULER_CACHE, now()->toIso8601String()))->everyMinute()->name('scheduler-heartbeat');
+
+// Ringkasan harian untuk laporan bulanan (menghitung ulang 7 hari terakhir).
+Schedule::command('laporan:snapshot')->dailyAt('03:50')->withoutOverlapping();

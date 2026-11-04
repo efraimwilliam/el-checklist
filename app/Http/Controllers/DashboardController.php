@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Chronology\ChronologyInsight;
 use App\Checklists\DashboardService;
 use App\Support\DateRange;
 use Carbon\CarbonImmutable;
@@ -17,11 +18,14 @@ class DashboardController extends Controller
     private const DEFAULT_DAYS = 1;
     private const MAX_DAYS = 92;
 
-    public function __invoke(Request $request, DashboardService $dashboard): View
+    public function __invoke(Request $request, DashboardService $dashboard, ChronologyInsight $chronology): View
     {
         Gate::authorize('view-checklists');
         [$from, $to] = DateRange::fromRequest($request, self::DEFAULT_DAYS, self::MAX_DAYS);
 
-        return view('dashboard', $dashboard->build($request->user(), $from, $to) + ['today' => CarbonImmutable::today()]);
+        return view('dashboard', $dashboard->build($request->user(), $from, $to) + [
+            'today' => CarbonImmutable::today(),
+            'chronology' => $chronology->build($request->user(), $from, $to),
+        ]);
     }
 }

@@ -68,7 +68,7 @@ it('returns to the default tasks of the position on reset', function () {
     $this->delete(route('team.tasks.reset', $this->staff))->assertRedirect(route('team.index'));
 
     expect($this->staff->fresh()->custom_tasks)->toBeFalse()->and($this->staff->assignedTasks()->count())->toBe(0)
-        ->and(app(ChecklistService::class)->tasksFor($this->staff->fresh(), $this->gsa)->pluck('title')->all())->toBe(['Check-in tamu', 'Check-out tamu', 'Handover shift']);
+        ->and(app(ChecklistService::class)->tasksFor($this->staff->fresh(), $this->gsa)->pluck('title')->all())->toBe(['Check-in tamu', 'Check-out tamu', 'Handover shift', 'Review laporan harian']);
 });
 
 it('skips assigned tasks that were deactivated or deleted later', function () {
@@ -148,16 +148,16 @@ it('lets the HOD add a task only to positions of their own department', function
 it('lets the HOD edit and delete tasks of their own department from the catalog', function () {
     loggedIn($this->hod);
 
-    $this->put(route('team.catalog.tasks.update', $this->dmTask), ['parameters' => statusParameters(), 'title' => 'Review laporan harian (revisi)', 'section' => 'Operasional', 'standard' => 'Sebelum 08.00'])
+    $this->put(route('team.catalog.tasks.update', $this->dmTask), ['position' => $this->dm->id, 'parameters' => statusParameters(), 'title' => 'Review laporan harian (revisi)', 'section' => 'Operasional', 'standard' => 'Sebelum 08.00'])
         ->assertRedirect(route('team.catalog').'#jabatan-'.$this->dm->id);
     expect($this->dmTask->fresh())->title->toBe('Review laporan harian (revisi)')->section->toBe('Operasional')->standard->toBe('Sebelum 08.00');
-    $this->put(route('team.catalog.tasks.update', $this->dmTask), ['parameters' => statusParameters(), 'title' => ''])->assertSessionHasErrorsIn('editTask', 'title');
+    $this->put(route('team.catalog.tasks.update', $this->dmTask), ['position' => $this->dm->id, 'parameters' => statusParameters(), 'title' => ''])->assertSessionHasErrorsIn('editTask', 'title');
 
     $this->delete(route('team.catalog.tasks.destroy', $this->dmTask))->assertRedirect(route('team.catalog').'#jabatan-'.$this->dm->id);
     expect(Task::find($this->dmTask->id))->toBeNull();
 
     $other = Task::factory()->for(Position::factory()->for(Department::factory()->create())->create())->create();
-    $this->put(route('team.catalog.tasks.update', $other), ['parameters' => statusParameters(), 'title' => 'Tidak boleh'])->assertForbidden();
+    $this->put(route('team.catalog.tasks.update', $other), ['position' => $other->position_id, 'parameters' => statusParameters(), 'title' => 'Tidak boleh'])->assertForbidden();
     $this->delete(route('team.catalog.tasks.destroy', $other))->assertForbidden();
     expect($other->fresh()->title)->not->toBe('Tidak boleh');
 });
