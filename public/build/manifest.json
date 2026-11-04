@@ -31,8 +31,27 @@
     "file": "assets/inter-latin-700-normal-Yt3aPRUw.woff2",
     "src": "node_modules/@fontsource/inter/files/inter-latin-700-normal.woff2"
   },
+  "node_modules/pdfjs-dist/build/pdf.mjs": {
+    "file": "assets/pdf-D9w_HAjp.js",
+    "name": "pdf",
+    "src": "node_modules/pdfjs-dist/build/pdf.mjs",
+    "isDynamicEntry": true
+  },
+  "node_modules/pdfjs-dist/build/pdf.worker.min.mjs": {
+    "file": "assets/pdf.worker.min-CIqJB0yW.mjs",
+    "src": "node_modules/pdfjs-dist/build/pdf.worker.min.mjs"
+  },
+  "node_modules/pdfjs-dist/build/pdf.worker.min.mjs?url": {
+    "file": "assets/pdf.worker.min-CkXQemVB.js",
+    "name": "pdf.worker.min",
+    "src": "node_modules/pdfjs-dist/build/pdf.worker.min.mjs?url",
+    "isDynamicEntry": true,
+    "assets": [
+      "assets/pdf.worker.min-CIqJB0yW.mjs"
+    ]
+  },
   "resources/css/app.css": {
-    "file": "assets/app-CR7w2w02.css",
+    "file": "assets/app-B0dBdblh.css",
     "name": "app",
     "names": [
       "app.css"
@@ -56,11 +75,39 @@
     "src": "resources/js/checklist.js",
     "isEntry": true
   },
+  "resources/js/chronology-form.js": {
+    "file": "assets/chronology-form-Psduxn9L.js",
+    "name": "chronology-form",
+    "src": "resources/js/chronology-form.js",
+    "isEntry": true
+  },
   "resources/js/date-picker.js": {
     "file": "assets/date-picker--ljdxVwv.js",
     "name": "date-picker",
     "src": "resources/js/date-picker.js",
     "isEntry": true
+  },
+  "resources/js/floor-plan-editor.js": {
+    "file": "assets/floor-plan-editor-r49D-11L.js",
+    "name": "floor-plan-editor",
+    "src": "resources/js/floor-plan-editor.js",
+    "isEntry": true
+  },
+  "resources/js/floor-plan-map.js": {
+    "file": "assets/floor-plan-map-DmUfpsiP.js",
+    "name": "floor-plan-map",
+    "src": "resources/js/floor-plan-map.js",
+    "isEntry": true
+  },
+  "resources/js/floor-plan-upload.js": {
+    "file": "assets/floor-plan-upload-BL-owijX.js",
+    "name": "floor-plan-upload",
+    "src": "resources/js/floor-plan-upload.js",
+    "isEntry": true,
+    "dynamicImports": [
+      "node_modules/pdfjs-dist/build/pdf.mjs",
+      "node_modules/pdfjs-dist/build/pdf.worker.min.mjs?url"
+    ]
   },
   "resources/js/password-toggle.js": {
     "file": "assets/password-toggle-WQpctKeP.js",

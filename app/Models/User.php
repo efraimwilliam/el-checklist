@@ -67,6 +67,31 @@ class User extends Authenticatable
         return $this->is_active && $this->employee?->is_active;
     }
 
+    /**
+     * Departemen yang menangani kendala kamar untuk pengguna ini: departemennya sendiri, ditambah departemen yang dipegang HOD.
+     *
+     * @return list<int>
+     */
+    public function issueDepartmentIds(): array
+    {
+        $ids = $this->role === Role::Hod ? $this->departments->pluck('id')->all() : [];
+        if ($own = $this->checklistDepartmentId()) {
+            $ids[] = $own;
+        }
+
+        return array_values(array_unique($ids));
+    }
+
+    /** Kendala kamar berstatus baru yang ditugaskan ke departemen pengguna ini (penanda di menu Kendala kamar). */
+    public function newRoomIssueCount(): int
+    {
+        return once(function () {
+            $ids = $this->issueDepartmentIds();
+
+            return $ids === [] ? 0 : \App\Models\RoomIssue::where('status', \App\Models\RoomIssue::STATUS_NEW)->whereIn('assigned_department_id', $ids)->count();
+        });
+    }
+
     public function isAdmin(): bool
     {
         return $this->role === Role::Admin;

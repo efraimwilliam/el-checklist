@@ -23,6 +23,109 @@
         <button class="btn-secondary">{{ __('Simpan jabatan') }}</button>
     </form>
 
+    @if ($catalog->isNotEmpty())
+        @php $byDepartment = $catalog->groupBy(fn ($task) => $task->position->department->name); @endphp
+        <details class="card mb-6 p-4" @if ($position->tasks->isEmpty()) open @endif>
+            <summary class="cursor-pointer font-display text-xl">{{ __('Ambil tugas dari kamus') }} <span class="text-sm font-normal text-slate-500">({{ __('tugas dari jabatan lain, disalin ke sini') }})</span></summary>
+            <form method="POST" action="{{ route('admin.tasks.import-catalog', $position) }}" class="mt-4 space-y-3" data-catalog-form>
+                @csrf
+                <div class="grid gap-3 sm:grid-cols-2">
+                    <div>
+                        <label for="catalog-pick-department" class="label">{{ __('Departemen') }}</label>
+                        <select id="catalog-pick-department" class="input" data-pick-department>
+                            <option value="">{{ __('Pilih departemen') }}</option>
+                            @foreach ($byDepartment as $departmentName => $tasks)
+                                <option value="{{ $tasks->first()->position->department_id }}">{{ $departmentName }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label for="catalog-pick-position" class="label">{{ __('Jabatan') }}</label>
+                        <select id="catalog-pick-position" class="input" data-pick-position disabled>
+                            <option value="">{{ __('Pilih jabatan') }}</option>
+                            @foreach ($byDepartment as $departmentName => $tasks)
+                                @foreach ($tasks->groupBy('position_id') as $positionId => $positionTasks)
+                                    <option value="{{ $positionId }}" data-department-id="{{ $positionTasks->first()->position->department_id }}" hidden>{{ $positionTasks->first()->position->name }}</option>
+                                @endforeach
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <p class="text-sm text-slate-500" data-pick-hint>{{ __('Pilih departemen lalu jabatan untuk melihat daftar tugasnya.') }}</p>
+                    <button type="button" class="btn-secondary" data-pick-all hidden>{{ __('Pilih semua') }}</button>
+                </div>
+
+                <div class="max-h-96 space-y-1 overflow-y-auto pr-1">
+                    @foreach ($byDepartment as $departmentName => $tasks)
+                        @foreach ($tasks->groupBy('position_id') as $positionId => $positionTasks)
+                            <div class="space-y-1" data-pick-list data-department-id="{{ $positionTasks->first()->position->department_id }}" data-position-id="{{ $positionId }}" hidden>
+                                @foreach ($positionTasks as $task)
+                                    <label class="flex items-start gap-2 rounded-lg px-2 py-1 text-sm hover:bg-[#f6efdf]">
+                                        <input type="checkbox" name="tasks[]" value="{{ $task->id }}" class="mt-1">
+                                        <span>{{ $task->title }}@if ($task->section) <span class="text-xs text-slate-500">· {{ $task->section }}</span>@endif</span>
+                                    </label>
+                                @endforeach
+                            </div>
+                        @endforeach
+                    @endforeach
+                </div>
+
+                <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
+                    <p class="text-xs text-slate-500">{{ __('Tugas yang judulnya sudah ada di jabatan ini dilewati. Salinannya bisa diubah tanpa mengubah tugas asalnya.') }}</p>
+                    <button class="btn-primary">{{ __('Tambahkan yang dipilih') }}</button>
+                </div>
+            </form>
+        </details>
+        <script>
+            (() => {
+                const form = document.querySelector('[data-catalog-form]');
+                const department = form.querySelector('[data-pick-department]');
+                const position = form.querySelector('[data-pick-position]');
+                const hint = form.querySelector('[data-pick-hint]');
+                const lists = [...form.querySelectorAll('[data-pick-list]')];
+                const options = [...position.querySelectorAll('option[data-department-id]')];
+                const selectAll = form.querySelector('[data-pick-all]');
+                const visibleBoxes = () => [...form.querySelectorAll('[data-pick-list]:not([hidden]) input[type="checkbox"]')];
+                const refreshSelectAll = () => {
+                    const boxes = visibleBoxes();
+                    const allChecked = boxes.length > 0 && boxes.every((box) => box.checked);
+                    selectAll.hidden = boxes.length === 0;
+                    selectAll.textContent = allChecked ? @json(__('Kosongkan pilihan')) : @json(__('Pilih semua'));
+                };
+
+                // Pilihan departemen membuka daftar jabatannya; pilihan jabatan menampilkan tugasnya. Centang yang sudah dibuat tetap terkirim.
+                const showList = () => {
+                    lists.forEach((list) => {
+                        list.hidden = !(list.dataset.departmentId === department.value && list.dataset.positionId === position.value);
+                    });
+                    hint.hidden = position.value !== '';
+                    refreshSelectAll();
+                };
+
+                // Pilih semua hanya untuk tugas jabatan yang sedang tampil; pilihan jabatan lain tetap.
+                selectAll.addEventListener('click', () => {
+                    const boxes = visibleBoxes();
+                    const check = !boxes.every((box) => box.checked);
+                    boxes.forEach((box) => { box.checked = check; });
+                    refreshSelectAll();
+                });
+                form.addEventListener('change', (event) => {
+                    if (event.target.matches('input[type="checkbox"]')) refreshSelectAll();
+                });
+
+                department.addEventListener('change', () => {
+                    options.forEach((option) => { option.hidden = option.dataset.departmentId !== department.value; });
+                    position.value = '';
+                    position.disabled = department.value === '';
+                    showList();
+                });
+                position.addEventListener('change', showList);
+            })();
+        </script>
+    @endif
+
     <div class="mb-2 flex flex-wrap items-center justify-between gap-3">
         <h2 class="font-display text-xl">Daftar tugas ({{ $position->tasks->where('is_active', true)->count() }} aktif)</h2>
         <div class="flex items-center gap-3">

@@ -27,15 +27,17 @@ use Illuminate\Validation\ValidationException;
 class ChecklistService
 {
     /**
-     * Tugas aktif untuk checklist baru: semua tugas jabatan (bawaan), atau hanya yang dipilih HOD untuk pegawai ini
-     * (boleh dari jabatan lain di departemen yang sama), tugas jabatan yang dipilih lebih dulu.
+     * Tugas aktif untuk checklist baru: semua tugas departemen (bawaan; satu daftar untuk semua jabatan di departemen itu),
+     * atau hanya yang dipilih HOD untuk pegawai ini (boleh dari jabatan lain di departemen yang sama),
+     * tugas jabatan yang dipilih lebih dulu.
      *
      * @return Collection<int, Task>
      */
     public function tasksFor(Employee $employee, Position $position): Collection
     {
         if (! $employee->custom_tasks) {
-            return $position->tasks()->where('is_active', true)->with('parameters')->get();
+            // Tugas jabatan pegawai ini lebih dulu, lalu tugas jabatan lain di departemen yang sama.
+            return $this->departmentTasks($position->department_id)->sortBy(fn (Task $task) => $task->position_id === $position->id ? 0 : 1)->values();
         }
 
         return Task::query()->select('tasks.*')
@@ -266,20 +268,11 @@ class ChecklistService
             }
 
             $present = $checklist->items()->pluck('task_id');
-            $sort = (int) $checklist->items()->max('sort');
             foreach ($wanted as $taskId) {
                 if ($present->contains($taskId)) {
                     continue;
                 }
-                $task = $defaults[$taskId];
-                $item = $checklist->items()->create([
-                    'task_id' => $task->id,
-                    'section' => $task->section,
-                    'title' => $task->title,
-                    'standard' => $task->standard,
-                    'sort' => ++$sort,
-                ]);
-                $item->parameters()->createMany($this->snapshotParameters($task));
+                $this->addItem($checklist, $defaults[$taskId]);
                 $added++;
             }
         });
@@ -290,6 +283,43 @@ class ChecklistService
         }
 
         return ['added' => $added, 'removed' => $removed, 'kept' => $kept];
+    }
+
+    /**
+     * Menambahkan tugas departemen yang belum ada pada checklist yang belum direview (satu daftar per departemen).
+     * Isian yang sudah ada tidak diubah; tugas baru ditambahkan di akhir. Mengembalikan jumlah tugas yang ditambahkan.
+     */
+    public function addDepartmentTasks(Checklist $checklist): int
+    {
+        $checklist->loadMissing(['employee', 'items']);
+        if ($checklist->employee->custom_tasks) {
+            return 0;
+        }
+
+        $present = $checklist->items->pluck('task_id');
+        $missing = $this->departmentTasks($checklist->department_id)->reject(fn (Task $task) => $present->contains($task->id))->values();
+        if ($missing->isEmpty()) {
+            return 0;
+        }
+
+        DB::transaction(fn () => $missing->each(fn (Task $task) => $this->addItem($checklist, $task)));
+        AuditLogger::record('checklist.tugas', 'Checklist', $checklist->id, $checklist->employee->name.' · '.$checklist->position_name, ['ditambah' => $missing->count(), 'sebab' => 'satu daftar departemen']);
+
+        return $missing->count();
+    }
+
+    /** Satu tugas disalin ke checklist beserta parameternya, di akhir urutan. */
+    private function addItem(Checklist $checklist, Task $task): void
+    {
+        $sort = (int) $checklist->items()->max('sort');
+        $item = $checklist->items()->create([
+            'task_id' => $task->id,
+            'section' => $task->section,
+            'title' => $task->title,
+            'standard' => $task->standard,
+            'sort' => $sort + 1,
+        ]);
+        $item->parameters()->createMany($this->snapshotParameters($task));
     }
 
     /** Ada satu pun tugas yang sudah diisi pada checklist ini. */

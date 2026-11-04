@@ -66,7 +66,7 @@ it('creates an empty checklist when started, and opens the same one when started
         ->and($checklist)->employee_id->toBe($this->budi->id)->department_id->toBe($this->fo->id)->position_name->toBe('GSA')
         ->checked_by->toBe($this->hod->name())->filled_by->toBe($this->hod->id)
         ->and($checklist->status)->toBe(ChecklistStatus::Saved)
-        ->and($checklist->items->pluck('title')->all())->toBe(['Check-in tamu', 'Check-out tamu', 'Handover shift'])
+        ->and($checklist->items->pluck('title')->all())->toBe(['Check-in tamu', 'Check-out tamu', 'Handover shift', 'Review laporan harian'])
         ->and($checklist->items->pluck('status')->filter()->count())->toBe(0)
         ->and($checklist->isComplete())->toBeFalse();
 });
@@ -85,11 +85,11 @@ it('shows the work page with cards, the list toggle and the tasks', function () 
 it('saves each task as soon as it is chosen, and reports progress', function () {
     loggedIn($this->hod);
     $checklist = startedChecklist();
-    [$a, $b, $c] = $checklist->items;
+    [$a, $b, $c, $d] = $checklist->items;
     $url = fn ($item) => route('checklists.items.update', [$checklist, $item]);
 
     $this->patchJson($url($a), ['status' => 'done'])->assertOk()
-        ->assertJsonPath('progress.filled', 1)->assertJsonPath('progress.total', 3)->assertJsonPath('progress.complete', false)->assertJsonPath('items.'.$a->id.'.status', 'done');
+        ->assertJsonPath('progress.filled', 1)->assertJsonPath('progress.total', 4)->assertJsonPath('progress.complete', false)->assertJsonPath('items.'.$a->id.'.status', 'done');
     expect($a->fresh()->status->value)->toBe('done')->and($b->fresh()->status)->toBeNull();
 
     $this->patchJson($url($b), ['status' => 'ongoing', 'note' => ' Menunggu tamu '])->assertOk();
@@ -98,10 +98,12 @@ it('saves each task as soon as it is chosen, and reports progress', function () 
     // Pending tanpa alasan tetap tersimpan, hanya membuat checklist belum lengkap.
     $this->patchJson($url($c), ['status' => 'pending'])->assertOk()->assertJsonPath('progress.complete', false)->assertJsonPath('progress.missing_reasons', 1);
     $this->patchJson($url($c), ['status' => 'pending', 'note' => 'Menunggu barang dari store'])->assertOk()
-        ->assertJsonPath('progress.complete', true)->assertJsonPath('progress.score', 33);
+        ->assertJsonPath('progress.complete', false)->assertJsonPath('progress.score', 25);
+    $this->patchJson($url($d), ['status' => 'done'])->assertOk()
+        ->assertJsonPath('progress.complete', true)->assertJsonPath('progress.score', 50);
 
     // Status bisa dikosongkan lagi.
-    $this->patchJson($url($a), ['status' => null])->assertOk()->assertJsonPath('progress.filled', 2);
+    $this->patchJson($url($a), ['status' => null])->assertOk()->assertJsonPath('progress.filled', 3);
     expect($a->fresh()->status)->toBeNull()->and($checklist->fresh()->filled_by)->toBe($this->hod->id);
 });
 
@@ -187,12 +189,12 @@ it('shows the team board for the day and offers to continue unfinished checklist
     $checklist->items[0]->update(['status' => 'done']);
 
     // Hari ini: di papan tim, tidak diulang di "Lanjutkan checklist".
-    $this->get(route('fill.create'))->assertSee('Front Office')->assertSee('Budi Santoso')->assertSee('Belum lengkap')->assertSee('1 / 3 terisi')
+    $this->get(route('fill.create'))->assertSee('Front Office')->assertSee('Budi Santoso')->assertSee('Belum lengkap')->assertSee('1 / 4 terisi')
         ->assertSee('Lanjutkan')->assertSee(route('checklists.fill', $checklist))->assertDontSee('Lanjutkan checklist');
 
     // Kemarin: papan hari ini kosong untuk staff itu, checklist lamanya muncul di "Lanjutkan checklist".
     $checklist->update(['date' => today()->subDay()]);
-    $this->get(route('fill.create'))->assertSee('Lanjutkan checklist')->assertSee('1 / 3 terisi')->assertSee('Belum dibuat');
+    $this->get(route('fill.create'))->assertSee('Lanjutkan checklist')->assertSee('1 / 4 terisi')->assertSee('Belum dibuat');
 
     $checklist->items()->update(['status' => 'done']);
     $this->get(route('fill.create'))->assertDontSee('Lanjutkan checklist');
@@ -254,6 +256,7 @@ it('lets HR and administrators work in any department', function (Role $role) {
 
 it('uses the tasks chosen for the staff member, but only for new checklists', function () {
     $old = makeChecklist($this->budi, $this->gsa, $this->today->subDay());
+    $oldCount = $old->items->count();
     $this->budi->assignedTasks()->sync([$this->tasks[2]->id, $this->dmTask->id]);
     $this->budi->update(['custom_tasks' => true]);
     loggedIn($this->hod);
@@ -262,7 +265,7 @@ it('uses the tasks chosen for the staff member, but only for new checklists', fu
 
     // Tugas jabatan yang dipilih (GSA) lebih dulu, lalu tugas jabatan lain.
     expect(Checklist::latest('id')->first()->items->pluck('title')->all())->toBe(['Handover shift', 'Review laporan harian'])
-        ->and(Checklist::find($old->id)->items->count())->toBe(3);
+        ->and(Checklist::find($old->id)->items->count())->toBe($oldCount);
 });
 
 it('locks a reviewed checklist for the HOD: no autosave, and the work page sends them to the result', function () {

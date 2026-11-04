@@ -37,7 +37,10 @@ class TaskController extends Controller
     {
         Gate::authorize('manage-tasks');
 
-        return view('admin.tasks.show', ['position' => $position->load(['department', 'tasks'])]);
+        return view('admin.tasks.show', [
+            'position' => $position->load(['department', 'tasks']),
+            'catalog' => $this->catalog($position),
+        ]);
     }
 
     public function storePosition(Request $request): RedirectResponse
@@ -81,6 +84,62 @@ class TaskController extends Controller
         $position->delete();
 
         return redirect()->route('admin.tasks.index')->with('status', __('Jabatan ":name" dihapus.', ['name' => $name]));
+    }
+
+    /**
+     * Salin tugas yang dipilih dari kamus (jabatan lain, di departemen mana pun) ke jabatan ini.
+     * Tugas yang judulnya sudah ada di jabatan ini dilewati. Isi, standar, dan parameternya ikut disalin.
+     */
+    public function importFromCatalog(Request $request, Position $position): RedirectResponse
+    {
+        Gate::authorize('manage-tasks');
+        $data = $request->validate([
+            'tasks' => ['required', 'array', 'min:1', 'max:300'],
+            'tasks.*' => ['integer', 'exists:tasks,id'],
+        ], ['tasks.required' => __('Pilih minimal satu tugas dari kamus.')]);
+
+        $sources = Task::with('parameters')->whereIn('id', $data['tasks'])->orderBy('id')->get();
+        $titles = $position->tasks()->pluck('title')->map(fn (string $title) => mb_strtolower($title))->all();
+        $sort = (int) $position->tasks()->max('sort');
+        $added = 0;
+        $skipped = 0;
+
+        foreach ($sources as $source) {
+            if (in_array(mb_strtolower($source->title), $titles, true)) {
+                $skipped++;
+
+                continue;
+            }
+            $task = $position->tasks()->create([
+                'section' => $source->section,
+                'title' => $source->title,
+                'standard' => $source->standard,
+                'remarks' => $source->remarks,
+                'sort' => ++$sort,
+            ]);
+            TaskParameters::sync($task, $source->parameters->map(fn ($p) => $p->only(['name', 'type', 'unit', 'min_value', 'max_value', 'options', 'normal_option']))->values()->all());
+            $titles[] = mb_strtolower($source->title);
+            $added++;
+        }
+
+        $message = __(':count tugas ditambahkan dari kamus.', ['count' => $added]);
+        if ($skipped) {
+            $message .= ' '.__(':count sudah ada di jabatan ini dan dilewati.', ['count' => $skipped]);
+        }
+
+        return redirect()->route('admin.tasks.show', $position)->with('status', $message);
+    }
+
+    /** Tugas aktif dari semua jabatan aktif (kecuali jabatan ini), untuk dipilih ke jabatan baru. */
+    private function catalog(Position $position)
+    {
+        return Task::with('position.department')
+            ->where('tasks.is_active', true)->where('tasks.position_id', '!=', $position->id)
+            ->whereHas('position', fn ($q) => $q->where('is_active', true)->whereHas('department', fn ($d) => $d->where('is_active', true)))
+            ->join('positions', 'positions.id', '=', 'tasks.position_id')
+            ->join('departments', 'departments.id', '=', 'positions.department_id')
+            ->orderBy('departments.sort')->orderBy('departments.name')->orderBy('positions.name')->orderBy('tasks.sort')
+            ->select('tasks.*')->get();
     }
 
     public function storeTask(Request $request, Position $position): RedirectResponse

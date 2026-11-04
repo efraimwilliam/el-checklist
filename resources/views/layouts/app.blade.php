@@ -21,7 +21,7 @@
     @php($initials = collect(explode(' ', $me->name()))->filter()->take(2)->map(fn ($word) => mb_strtoupper(mb_substr($word, 0, 1)))->implode(''))
     @php($navLink = fn (bool $active) => 'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-t-xl px-3.5 py-2.5 transition '.($active ? 'bg-white/[0.07] font-semibold text-gold-400 shadow-[inset_0_-3px_0_#c9a24f]' : 'text-white/70 hover:bg-white/[0.05] hover:text-white'))
     @php($menuItem = fn (bool $active) => 'flex items-center justify-between gap-6 rounded-lg px-2.5 py-2 text-slate-800 hover:bg-amber-50 '.($active ? 'bg-amber-50 font-semibold' : ''))
-    @php($teamActive = request()->routeIs('team.*', 'admin.tasks.*', 'admin.positions.*'))
+    @php($teamActive = request()->routeIs('team.*', 'admin.tasks.*', 'admin.positions.*', 'admin.rooms.*', 'admin.categories.*'))
     @php($accessActive = request()->routeIs('admin.access.*', 'admin.sync', 'admin.settings.*'))
     <header class="bg-ink text-white print:hidden">
         <div class="gold-rule h-[3px]"></div>
@@ -73,16 +73,34 @@
                             <button type="button" aria-haspopup="true" class="{{ $navLink(request()->routeIs('fill.*', 'checklists.today', 'checklists.tasks.*', 'checklists.fill')) }}">{{ __('Checklist') }} <span class="text-[10px] opacity-70" aria-hidden="true">▾</span></button>
                             <div class="invisible absolute left-0 top-full z-30 w-60 pt-1 opacity-0 transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
                                 <div class="rounded-2xl bg-[#fffdf9] p-2 shadow-xl ring-1 ring-black/5">
-                                    <a href="{{ route('fill.assign') }}" class="{{ $menuItem(request()->routeIs('fill.assign', 'checklists.tasks.*')) }}">{{ __('Atur checklist') }}<span class="text-slate-400">›</span></a>
-                                    <a href="{{ route('fill.create') }}" class="{{ $menuItem(request()->routeIs('fill.create', 'checklists.today', 'checklists.fill')) }}">{{ __('Isi checklist') }}<span class="text-slate-400">›</span></a>
+                                    <a href="{{ route('fill.assign') }}" class="{{ $menuItem(request()->routeIs('fill.assign', 'checklists.tasks.*')) }}">{{ __('Atur checklist') }}</a>
+                                    <a href="{{ route('fill.create') }}" class="{{ $menuItem(request()->routeIs('fill.create', 'checklists.today', 'checklists.fill')) }}">{{ __('Isi checklist') }}</a>
                                 </div>
                             </div>
                         </div>
                     @endif
                 @endcan
-                <a href="{{ route('checklists.index') }}" class="{{ $navLink(request()->routeIs('checklists.index', 'checklists.show')) }}">{{ __('Riwayat') }}</a>
+                @can('room-issues')
+                    @php($newIssues = auth()->user()->newRoomIssueCount())
+                    <a href="{{ route('kamar.issues.index') }}" class="{{ $navLink(request()->routeIs('kamar.*')) }}" @if ($newIssues) aria-label="{{ __('Kendala kamar') }}, {{ $newIssues }} {{ __('baru untuk departemen Anda') }}" @endif>{{ __('Kendala kamar') }}@if ($newIssues) <span class="ml-1.5 inline-flex min-w-5 items-center justify-center rounded-full bg-rose-600 px-1.5 text-[11px] font-semibold leading-5 text-white" title="{{ $newIssues }} {{ __('baru untuk departemen Anda') }}">{{ $newIssues > 99 ? '99+' : $newIssues }}</span>@endif</a>
+                @endcan
+                @can('chronology-reports')
+                    <a href="{{ route('chronology.index') }}" class="{{ $navLink(request()->routeIs('chronology.*')) }}">Chronology Report</a>
+                @endcan
                 @can('view-checklists')
-                    <a href="{{ route('laporan.index') }}" class="{{ $navLink(request()->routeIs('laporan.*')) }}">{{ __('Laporan') }}</a>
+                    <div class="group relative flex shrink-0">
+                        <button type="button" aria-haspopup="true" class="{{ $navLink(request()->routeIs('laporan.*')) }}">{{ __('Laporan') }} <span class="text-[10px] opacity-70" aria-hidden="true">▾</span></button>
+                        <div class="invisible absolute left-0 top-full z-30 w-60 pt-1 opacity-0 transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+                            <div class="rounded-2xl bg-[#fffdf9] p-2 shadow-xl ring-1 ring-black/5">
+                                <a href="{{ route('laporan.index') }}" class="{{ $menuItem(request()->routeIs('laporan.index')) }}">{{ __('Ringkasan') }}</a>
+                                <a href="{{ route('laporan.issues') }}" class="{{ $menuItem(request()->routeIs('laporan.issues', 'laporan.task', 'laporan.followup')) }}">{{ __('Masalah & Pending') }}</a>
+                                <a href="{{ route('laporan.parameters') }}" class="{{ $menuItem(request()->routeIs('laporan.parameters')) }}">{{ __('Parameter') }}</a>
+                                <a href="{{ route('laporan.monthly') }}" class="{{ $menuItem(request()->routeIs('laporan.monthly')) }}">{{ __('Bulanan') }}</a>
+                                <a href="{{ route('laporan.rooms') }}" class="{{ $menuItem(request()->routeIs('laporan.rooms', 'laporan.room')) }}">{{ __('Peta kamar') }}</a>
+                                <a href="{{ route('laporan.data') }}" class="{{ $menuItem(request()->routeIs('laporan.data', 'laporan.data.export')) }}">{{ __('Data') }}</a>
+                            </div>
+                        </div>
+                    </div>
                 @endcan
                 @canany(['manage-team-tasks', 'manage-tasks'])
                     <div class="group relative flex shrink-0">
@@ -90,11 +108,23 @@
                         <div class="invisible absolute left-0 top-full z-30 w-60 pt-1 opacity-0 transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
                             <div class="rounded-2xl bg-[#fffdf9] p-2 shadow-xl ring-1 ring-black/5">
                                 @can('manage-team-tasks')
-                                    <a href="{{ route('team.index') }}" class="{{ $menuItem(request()->routeIs('team.index', 'team.tasks.*', 'team.positions.*')) }}">{{ __('Atur tugas pegawai') }}<span class="text-slate-400">›</span></a>
-                                    <a href="{{ route('team.catalog') }}" class="{{ $menuItem(request()->routeIs('team.catalog')) }}">{{ __('Kamus daftar tugas') }}<span class="text-slate-400">›</span></a>
+                                    <a href="{{ route('team.index') }}" class="{{ $menuItem(request()->routeIs('team.index', 'team.tasks.*', 'team.positions.*')) }}">{{ __('Atur tugas pegawai') }}</a>
+                                    <a href="{{ route('team.catalog') }}" class="{{ $menuItem(request()->routeIs('team.catalog')) }}">{{ __('Kamus daftar tugas') }}</a>
                                 @endcan
                                 @can('manage-tasks')
-                                    <a href="{{ route('admin.tasks.index') }}" class="{{ $menuItem(request()->routeIs('admin.tasks.*', 'admin.positions.*')) }}">{{ __('Jabatan dan tugas') }}<span class="text-slate-400">›</span></a>
+                                    <a href="{{ route('admin.tasks.index') }}" class="{{ $menuItem(request()->routeIs('admin.tasks.*', 'admin.positions.*')) }}">{{ __('Jabatan dan tugas') }}</a>
+                                    {{-- Data kamar: submenu yang terbuka saat diarahkan kursor (di layar kecil tampil menjorok di bawahnya). --}}
+                                    @php($roomsTab = request()->routeIs('admin.rooms.index') ? (request('tab') === 'kategori' ? 'kategori' : (request('tab') === 'denah' ? 'denah' : 'kamar')) : (request()->routeIs('admin.plans.*') ? 'denah' : null))
+                                    <div class="group/sub relative">
+                                        <a href="{{ route('admin.rooms.index') }}" class="{{ $menuItem(request()->routeIs('admin.rooms.*', 'admin.categories.*', 'admin.plans.*')) }}" aria-haspopup="true">{{ __('Data kamar') }}<span class="text-slate-400">›</span></a>
+                                        <div class="mt-1 space-y-0.5 pl-3 sm:invisible sm:absolute sm:left-full sm:top-0 sm:z-40 sm:mt-0 sm:w-56 sm:pl-1.5 sm:opacity-0 sm:transition sm:group-hover/sub:visible sm:group-hover/sub:opacity-100 sm:group-focus-within/sub:visible sm:group-focus-within/sub:opacity-100">
+                                            <div class="rounded-2xl bg-[#fffdf9] p-2 shadow-xl ring-1 ring-black/5">
+                                                <a href="{{ route('admin.rooms.index', ['tab' => 'kamar']) }}" class="{{ $menuItem($roomsTab === 'kamar' || request()->routeIs('admin.rooms.import')) }}">{{ __('Kamar') }}</a>
+                                                <a href="{{ route('admin.rooms.index', ['tab' => 'kategori']) }}" class="{{ $menuItem($roomsTab === 'kategori') }}">{{ __('Kategori kendala') }}</a>
+                                                <a href="{{ route('admin.rooms.index', ['tab' => 'denah']) }}" class="{{ $menuItem($roomsTab === 'denah') }}">{{ __('Denah') }}</a>
+                                            </div>
+                                        </div>
+                                    </div>
                                 @endcan
                             </div>
                         </div>
@@ -106,13 +136,14 @@
                         <div class="invisible absolute left-0 top-full z-30 w-60 pt-1 opacity-0 transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
                             <div class="rounded-2xl bg-[#fffdf9] p-2 shadow-xl ring-1 ring-black/5">
                                 @can('manage-access')
-                                    <a href="{{ route('admin.access.index') }}" class="{{ $menuItem(request()->routeIs('admin.access.*', 'admin.sync')) }}">{{ __('Akses pengguna') }}<span class="text-slate-400">›</span></a>
+                                    <a href="{{ route('admin.access.index') }}" class="{{ $menuItem(request()->routeIs('admin.access.*', 'admin.sync')) }}">{{ __('Akses pengguna') }}</a>
                                 @endcan
-                                <a href="{{ route('admin.settings.edit') }}" class="{{ $menuItem(request()->routeIs('admin.settings.*')) }}">{{ __('Pengaturan') }}<span class="text-slate-400">›</span></a>
+                                <a href="{{ route('admin.settings.edit') }}" class="{{ $menuItem(request()->routeIs('admin.settings.*')) }}">{{ __('Pengaturan') }}</a>
                             </div>
                         </div>
                     </div>
                 @endcanany
+                <a href="{{ route('checklists.index') }}" class="{{ $navLink(request()->routeIs('checklists.index', 'checklists.show')) }}">{{ __('Riwayat') }}</a>
             </nav>
         </div>
     </header>

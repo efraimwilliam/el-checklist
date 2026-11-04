@@ -55,6 +55,11 @@ class AttendanceApiService
             return $this->fail($timedOut ? AuthOutcome::Timeout : AuthOutcome::Unavailable, ['error' => $e::class]);
         }
 
+        // 422 = Absensi menolak isian (mis. PIN lebih dari 6 karakter): bukan gangguan, jadi dihitung sebagai salah kredensial.
+        if ($response->status() === 422) {
+            return new AuthResult(AuthOutcome::InvalidCredentials);
+        }
+
         if (! $response->ok()) {
             return $this->fail(AuthOutcome::Unavailable, ['status' => $response->status()]);
         }

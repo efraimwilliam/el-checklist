@@ -66,6 +66,33 @@ final class ExcelReport
     }
 
     /**
+     * Lembar isian tugas: satu baris per isian (hasil DataExplorer).
+     *
+     * @return array{title: string, headers: list<string>, rows: list<list<mixed>>, formats: array<string, string>}
+     */
+    public static function itemSheet(iterable $items, string $title = 'Data tugas'): array
+    {
+        $labels = ['done' => 'Done', 'ongoing' => 'Ongoing', 'pending' => 'Pending'];
+        $rows = [];
+        foreach ($items as $r) {
+            $rows[] = [
+                ExcelDate::dateTimeToExcel(Date::parse($r->date)),
+                $r->department, $r->employee, $r->position, $r->title,
+                $labels[$r->status] ?? __('Belum diisi'),
+                $r->note ?? '', $r->params ?? '', (int) $r->photos,
+                \App\Enums\ChecklistStatus::from($r->review)->label(),
+            ];
+        }
+
+        return [
+            'title' => $title,
+            'headers' => ['Tanggal', 'Departemen', __('Staff'), 'Jabatan', 'Tugas', 'Status', 'Catatan', 'Nilai parameter', 'Foto', __('Status review')],
+            'rows' => $rows,
+            'formats' => ['A' => 'dd mmm yyyy'],
+        ];
+    }
+
+    /**
      * @param  list<string>  $headers
      * @param  list<list<mixed>>  $rows
      * @param  array<string, string>  $formats  kolom => format angka

@@ -129,3 +129,73 @@ it('exports the Riwayat list to Excel with the same filters as the page', functi
     expect($text)->toContain('Budi Santoso')->not->toContain('Sari Dewi');
     unlink($path);
 });
+
+it('ranks problem tasks, lists chronic pending and explores task data within allowed departments', function () {
+    foreach (range(0, 3) as $back) {
+        $checklist = makeChecklist($this->budi, $this->gsa, $this->today->subDays($back), null);
+        $checklist->items()->orderBy('sort')->get()->each(fn ($item, $i) => $item->update(
+            $i === 0 ? ['status' => 'pending', 'note' => "AC rusak {$back}"] : ['status' => 'done']
+        ));
+    }
+    $hkPosition = Position::factory()->for($this->hk)->create(['name' => 'Room Attendant']);
+    Task::factory()->for($hkPosition)->create(['title' => 'Bersihkan balkon']);
+    makeChecklist($this->sari, $hkPosition, $this->today, 'pending');
+
+    reportLogin($this->hod);
+    $this->get(route('laporan.issues', $this->range))->assertOk()
+        ->assertSee('Pending berulang')->assertSee('Budi Santoso')->assertSee('AC rusak 0')
+        ->assertDontSee('Bersihkan balkon')->assertDontSee('Sari Dewi');
+
+    $first = Task::where('title', 'Check-in tamu')->value('title');
+    $this->get(route('laporan.task', $this->range + ['department_id' => $this->fo->id, 'title' => $first]))
+        ->assertOk()->assertSee('Budi Santoso')->assertSee('AC rusak 3');
+    $this->get(route('laporan.task', $this->range + ['department_id' => $this->hk->id, 'title' => 'Bersihkan balkon']))->assertNotFound();
+
+    $this->get(route('laporan.data', $this->range + ['status' => 'pending', 'q' => 'AC rusak']))->assertOk()
+        ->assertSee('4 isian tugas')->assertSee('AC rusak 2');
+    // departemen lain diabaikan, tetap hanya Front Office
+    $this->get(route('laporan.data', $this->range + ['department_id' => $this->hk->id]))->assertOk()->assertDontSee('Sari Dewi');
+
+    $response = $this->get(route('laporan.data.export', $this->range + ['status' => 'pending']))->assertOk()
+        ->assertHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    $path = tempnam(sys_get_temp_dir(), 'data').'.xlsx';
+    file_put_contents($path, $response->streamedContent());
+    $text = collect(IOFactory::load($path)->getActiveSheet()->toArray())->flatten()->implode(' ');
+    expect($text)->toContain('AC rusak 1')->not->toContain('Sari Dewi');
+    unlink($path);
+});
+
+it('closes the data tabs to staff', function () {
+    reportLogin(User::factory()->role(Role::Staff)->create());
+    $this->get(route('laporan.issues'))->assertForbidden();
+    $this->get(route('laporan.data'))->assertForbidden();
+    $this->get(route('laporan.data.export'))->assertForbidden();
+});
+
+it('lets a HOD record follow-up on a pending item and auto-resolves it when done later', function () {
+    $old = makeChecklist($this->budi, $this->gsa, $this->today->subDays(3), 'pending');
+    $item = $old->items()->orderBy('sort')->first();
+    $later = makeChecklist($this->budi, $this->gsa, $this->today->subDay(), 'done');
+
+    reportLogin($this->hod);
+    $page = $this->get(route('laporan.issues', $this->range))->assertOk();
+    $page->assertSee('Masalah terbuka');
+    expect($page->getContent())->not->toContain(route('laporan.followup', $item->id));
+
+    $later->items()->where('title', $item->title)->update(['status' => 'pending']);
+    $this->get(route('laporan.issues', $this->range))->assertSee(route('laporan.followup', $item->id));
+
+    $this->post(route('laporan.followup', $item->id), ['status' => 'handling', 'note' => 'Teknisi dipanggil'])->assertRedirect();
+    expect(\App\Models\IssueFollowup::where('checklist_item_id', $item->id)->value('status'))->toBe('handling');
+    $this->get(route('laporan.issues', $this->range))->assertSee('Teknisi dipanggil')->assertSee('Ditangani');
+
+    $this->post(route('laporan.followup', $item->id), ['status' => 'bogus'])->assertSessionHasErrors('status');
+    $ra = Position::factory()->for($this->hk)->create(['name' => 'RA']);
+    Task::factory()->for($ra)->create(['title' => 'Sapu lorong']);
+    $hkItem = makeChecklist($this->sari, $ra, $this->today, 'pending')->items()->first();
+    $this->post(route('laporan.followup', $hkItem->id), ['status' => 'resolved'])->assertForbidden();
+
+    $this->post('/logout');
+    reportLogin(User::factory()->role(Role::Gm)->create());
+    $this->post(route('laporan.followup', $item->id), ['status' => 'resolved'])->assertForbidden();
+});
