@@ -452,6 +452,36 @@
                 dialog.querySelectorAll('[data-close-import-dialog]').forEach((button) => button.addEventListener('click', () => dialog.close()));
                 dialog.addEventListener('click', (event) => { if (event.target === dialog) dialog.close(); });
 
+                // Seret berkas ke area putus-putus: berkas dipasang ke input lalu langsung diperiksa.
+                const showName = (zone, file) => { zone.querySelector('[data-dropzone-name]').textContent = file ? file.name : ''; };
+                body.addEventListener('dragover', (event) => {
+                    const zone = event.target.closest('[data-dropzone]');
+                    if (!zone) return;
+                    event.preventDefault();
+                    zone.classList.add('border-gold-500', 'bg-[#f6efdf]');
+                });
+                body.addEventListener('dragleave', (event) => {
+                    const zone = event.target.closest('[data-dropzone]');
+                    if (zone) zone.classList.remove('border-gold-500', 'bg-[#f6efdf]');
+                });
+                body.addEventListener('drop', (event) => {
+                    const zone = event.target.closest('[data-dropzone]');
+                    if (!zone) return;
+                    event.preventDefault();
+                    zone.classList.remove('border-gold-500', 'bg-[#f6efdf]');
+                    const file = event.dataTransfer.files[0];
+                    if (!file) return;
+                    const input = zone.querySelector('input[type=file]');
+                    const transfer = new DataTransfer();
+                    transfer.items.add(file);
+                    input.files = transfer.files;
+                    showName(zone, file);
+                    zone.closest('[data-import-form]').requestSubmit();
+                });
+                body.addEventListener('change', (event) => {
+                    if (event.target.matches('[data-dropzone] input[type=file]')) showName(event.target.closest('[data-dropzone]'), event.target.files[0]);
+                });
+
                 body.addEventListener('submit', (event) => {
                     const form = event.target.closest('[data-import-form]');
                     if (!form) return;
