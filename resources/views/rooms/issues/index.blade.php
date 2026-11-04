@@ -10,9 +10,12 @@
             <h1 class="text-3xl text-slate-900">{{ __('Kendala kamar') }}</h1>
             <p class="text-sm text-slate-500">{{ __('Catat laporan kamar, teruskan ke departemen yang menangani, lalu catat pekerjaannya sampai selesai.') }}</p>
         </div>
-        @if ($rooms->isNotEmpty())
-            <button type="button" class="btn-primary" data-open-issue-dialog>{{ __('+ Catat kendala') }}</button>
-        @endif
+        <div class="flex flex-col items-end gap-1">
+            <button type="button" class="btn-primary" data-open-issue-dialog @disabled($rooms->isEmpty())>{{ __('+ Catat kendala') }}</button>
+            @if ($rooms->isEmpty())
+                <p class="text-xs text-slate-500">{{ __('Isi Data kamar dulu sebelum mencatat kendala.') }}</p>
+            @endif
+        </div>
     </div>
 
     @if ($rooms->isEmpty())
