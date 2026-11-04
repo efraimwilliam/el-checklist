@@ -3,13 +3,17 @@
     $uploadError = $uploadError ?? $errors->first('berkas');
 @endphp
 <div class="card mb-4 space-y-3 p-5">
-    <form method="POST" action="{{ route('team.catalog.import.preview') }}" enctype="multipart/form-data" class="flex flex-wrap items-end gap-3" data-import-form>
+    <form method="POST" action="{{ route('team.catalog.import.preview') }}" enctype="multipart/form-data" class="space-y-3" data-import-form>
         @csrf
-        <div>
-            <label for="berkas" class="label">{{ __('Berkas Excel (.xlsx)') }}</label>
-            <input id="berkas" name="berkas" type="file" accept=".xlsx" required class="input">
+        <label for="berkas" class="flex cursor-pointer flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-gold-300 bg-[#fbf7ee] px-6 py-8 text-center transition hover:bg-[#f6efdf]" data-dropzone>
+            <span class="font-semibold text-slate-800">{{ __('Seret berkas Excel ke sini') }}</span>
+            <span class="text-sm text-slate-500">{{ __('atau klik untuk memilih (.xlsx)') }}</span>
+            <span class="text-sm font-medium text-slate-700" data-dropzone-name></span>
+            <input id="berkas" name="berkas" type="file" accept=".xlsx" required class="sr-only">
+        </label>
+        <div class="flex justify-end">
+            <button class="btn-primary">{{ __('Periksa berkas') }}</button>
         </div>
-        <button class="btn-primary">{{ __('Periksa berkas') }}</button>
     </form>
     @if ($uploadError)<p class="text-sm text-rose-700">{{ $uploadError }}</p>@endif
     <ul class="list-disc space-y-1 pl-5 text-sm text-slate-600">
