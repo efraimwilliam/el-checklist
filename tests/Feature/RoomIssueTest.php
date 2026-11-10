@@ -4,6 +4,7 @@ use App\Enums\Role;
 use App\Models\Department;
 use App\Models\Employee;
 use App\Models\IssueCategory;
+use App\Models\Position;
 use App\Models\Room;
 use App\Models\RoomIssue;
 use App\Models\User;
@@ -146,14 +147,14 @@ it('flags new issues for the assigned department in the menu and on the list', f
 
     loggedIn($this->engStaff);
     $page = $this->get(route('kamar.issues.index'))->assertOk()
-        ->assertSee('2 baru untuk departemen Anda', false)->assertSee('kendala baru menunggu departemen Anda')->assertSee('Untuk departemen Anda');
+        ->assertSee('2 baru untuk Anda', false)->assertSee('kendala baru menunggu Anda')->assertSee('Untuk departemen Anda');
     expect($this->engStaff->newRoomIssueCount())->toBe(2);
     $this->post('/logout');
 
     // Departemen lain dan pelapor tidak mendapat penanda.
     foreach ([$this->hkStaff, $this->foStaff] as $user) {
         loggedIn($user);
-        $this->get(route('kamar.issues.index'))->assertOk()->assertDontSee('baru untuk departemen Anda')->assertDontSee('menunggu departemen Anda');
+        $this->get(route('kamar.issues.index'))->assertOk()->assertDontSee('baru untuk Anda')->assertDontSee('menunggu Anda');
         $this->post('/logout');
     }
 
@@ -313,8 +314,8 @@ it('separates the track record into similar issues, own department work and othe
 
     loggedIn($this->engStaff);
     $html = $this->get(route('kamar.issues.show', $ac2))->assertOk()
-        ->assertSee('Track record kamar 305')->assertSee('Kendala sejenis')->assertSee('AC lama tidak dingin')->assertSee('Freon diisi')
-        ->assertSee('Pekerjaan departemen Anda di kamar ini')->assertSee('TV tidak menyala')
+        ->assertSee('Track record Kamar 305')->assertSee('Kendala sejenis')->assertSee('AC lama tidak dingin')->assertSee('Freon diisi')
+        ->assertSee('Pekerjaan departemen Anda di lokasi ini')->assertSee('TV tidak menyala')
         ->assertSee('Kendala departemen lain')->assertSee('Linen perlu diganti')->getContent();
 
     // Tidak tercampur: pekerjaan Engineering muncul sebelum kendala departemen lain, dan kendala yang sedang dibuka tidak masuk daftar.
@@ -358,12 +359,12 @@ it('shows the claimer only the track record of their own department, collapsed b
     reportIssue($this, null, ['description' => 'Linen perlu diganti', 'assigned_department_id' => $this->hk->id]);
 
     loggedIn($this->engStaff);
-    $this->get(route('kamar.issues.show', $ac))->assertOk()->assertSee('Track record kamar 305')->assertSee('Linen perlu diganti');
+    $this->get(route('kamar.issues.show', $ac))->assertOk()->assertSee('Track record Kamar 305')->assertSee('Linen perlu diganti');
 
     $this->post(route('kamar.issues.claim', $ac))->assertRedirect();
     $html = $this->get(route('kamar.issues.show', $ac))->assertOk()
         ->assertDontSee('Kendala sejenis')->assertDontSee('Linen perlu diganti')->assertSee('Status pekerjaan')
-        ->assertSee('Track record kamar 305')->assertSee('Engineering')->assertSee('Kompresor diganti')->getContent();
+        ->assertSee('Track record Kamar 305')->assertSee('Engineering')->assertSee('Kompresor diganti')->getContent();
     // Kartu dilipat secara bawaan: <details> tanpa atribut open.
     expect($html)->toContain('<details class="card group mb-6 overflow-hidden">')->and($html)->not->toContain('<details class="card group mb-6 overflow-hidden" open');
     $this->post('/logout');
@@ -477,7 +478,7 @@ it('keeps the collapsed track record card for the claimer even when the departme
     loggedIn($this->engStaff);
     $this->post(route('kamar.issues.claim', $issue));
     $this->get(route('kamar.issues.show', $issue))->assertOk()
-        ->assertSee('Track record kamar 305')->assertSee('Belum ada track record sebelumnya di kamar ini.')->assertDontSee('Linen perlu diganti');
+        ->assertSee('Track record Kamar 305')->assertSee('Belum ada track record sebelumnya di lokasi ini.')->assertDontSee('Linen perlu diganti');
 });
 
 it('hides the filter form from Staff but keeps it for managers', function () {
@@ -509,7 +510,7 @@ it('builds a printable chronology report with ordered events, gaps and response 
     $html = $this->get(route('kamar.issues.show', $issue))->assertOk()->assertSee('Cetak riwayat')->assertSee('Buat Chronology Report')->assertSee(route('kamar.issues.chronology', $issue), false)->getContent();
 
     $html = $this->get(route('kamar.issues.chronology', $issue))->assertOk()
-        ->assertSee('Riwayat Penanganan Kendala Kamar')->assertSee('Cetak / simpan PDF')->assertSee('Kamar 305', false)->assertSee('Lampu kamar mandi mati')
+        ->assertSee('Riwayat Penanganan Kendala')->assertSee('Cetak / simpan PDF')->assertSee('Kamar 305', false)->assertSee('Lampu kamar mandi mati')
         ->assertSee('Menunggu suku cadang')->assertSee('AC normal kembali')->assertSee('Dibuat oleh')->getContent();
 
     // Urutan waktu, dan waktu respons 30 m, penanganan 4 j, total 4 j 30 m.
@@ -527,4 +528,107 @@ it('keeps the chronology report to people who may view the issue', function () {
 
     loggedIn($this->foStaff); // pelapor
     $this->get(route('kamar.issues.chronology', $issue))->assertOk()->assertSee('belum Done');
+});
+
+function staffWithPosition(Department $department, Position $position): User
+{
+    return User::factory()->role(Role::Staff)->create(['employee_id' => Employee::factory()->for($department)->create(['checklist_position_id' => $position->id])->id]);
+}
+
+it('logs an issue at a location other than a room', function () {
+    loggedIn($this->foStaff);
+
+    $this->post(route('kamar.issues.store'), ['place_type' => 'location', 'location' => 'Lobby', 'category_id' => $this->ac->id, 'source' => 'staff', 'priority' => 'biasa', 'description' => 'Lampu lobby redup'])
+        ->assertRedirect();
+
+    $issue = RoomIssue::firstOrFail();
+    expect($issue->room_id)->toBeNull()->and($issue->location)->toBe('Lobby')->and($issue->assigned_department_id)->toBe($this->eng->id)->and($issue->placeTitle())->toBe('Lobby');
+
+    $this->get(route('kamar.issues.index'))->assertOk()->assertSee('Lobby')->assertSee('Lokasi lain');
+    $this->get(route('kamar.issues.show', $issue))->assertOk()->assertSee('Lobby')->assertSee('Lampu lobby redup');
+    $this->get(route('kamar.place', ['nama' => 'Lobby']))->assertOk()->assertSee('Track record')->assertSee('Lampu lobby redup');
+    $this->get(route('kamar.issues.chronology', $issue))->assertOk()->assertSee('Lobby');
+
+    $this->post(route('kamar.issues.store'), ['place_type' => 'location', 'location' => '  ', 'source' => 'staff', 'priority' => 'biasa', 'description' => 'x'])->assertSessionHasErrors('location');
+    $this->post(route('kamar.issues.store'), ['place_type' => 'room', 'source' => 'staff', 'priority' => 'biasa', 'description' => 'x'])->assertSessionHasErrors('room_id');
+});
+
+it('treats the same location and category as one open issue, ignoring letter case', function () {
+    loggedIn($this->foStaff);
+    $payload = ['place_type' => 'location', 'location' => 'Lobby', 'category_id' => $this->ac->id, 'source' => 'staff', 'priority' => 'biasa', 'description' => 'AC lobby mati'];
+    $this->post(route('kamar.issues.store'), $payload)->assertRedirect();
+    $first = RoomIssue::firstOrFail();
+
+    $this->post(route('kamar.issues.store'), ['location' => 'lobby'] + $payload)->assertSessionHasErrors('duplicate');
+    $this->getJson(route('kamar.issues.duplicate', ['location' => 'LOBBY', 'category_id' => $this->ac->id]))->assertJsonPath('found', true)->assertJsonPath('id', $first->id);
+    $this->post(route('kamar.issues.store'), ['location' => 'lobby', 'merge_into' => $first->id, 'description' => 'Masih panas'] + $payload)->assertRedirect(route('kamar.issues.show', $first));
+
+    expect(RoomIssue::count())->toBe(1)->and($first->updates()->where('kind', 'laporan')->count())->toBe(1);
+});
+
+it('keeps issues at other locations out of the room map', function () {
+    reportIssue($this);
+    reportIssue($this, null, ['room_id' => null, 'location' => 'Lobby']);
+    $range = ['from' => now()->subDay()->toDateString(), 'to' => now()->toDateString()];
+
+    $report = app(\App\Reports\RoomReport::class)->build(userWithRole(Role::Admin), array_values($range));
+
+    expect($report['total'])->toBe(1);
+});
+
+it('forwards an issue to one position so only people with that position can take it', function () {
+    $position = Position::factory()->for($this->eng)->create(['name' => 'Chief Engineer']);
+    $holder = staffWithPosition($this->eng, $position);
+    $mate = staffOf($this->eng);
+    $hod = staffOf($this->eng, Role::Hod);
+    $hod->departments()->attach($this->eng->id);
+
+    loggedIn($this->foStaff);
+    $this->post(route('kamar.issues.store'), ['room_id' => $this->room->id, 'source' => 'tamu', 'priority' => 'biasa', 'description' => 'Genset bunyi', 'target_type' => 'position', 'assigned_position_id' => $position->id])->assertRedirect();
+    $issue = RoomIssue::firstOrFail();
+    expect($issue->assigned_position_id)->toBe($position->id)->and($issue->assigned_department_id)->toBe($this->eng->id)->and($issue->assigned_employee_id)->toBeNull();
+    $this->post('/logout');
+
+    loggedIn($mate); // satu departemen, jabatan lain: tidak melihat dan tidak bisa mengambil
+    $this->get(route('kamar.issues.index'))->assertOk()->assertDontSee('Genset bunyi');
+    $this->get(route('kamar.issues.show', $issue))->assertForbidden();
+    $this->post(route('kamar.issues.claim', $issue))->assertForbidden();
+    $this->post('/logout');
+
+    loggedIn($holder);
+    $this->get(route('kamar.issues.index'))->assertOk()->assertSee('Genset bunyi')->assertSee('Untuk jabatan Anda')->assertSee('Chief Engineer');
+    expect($holder->newRoomIssueCount())->toBe(1);
+    $this->post(route('kamar.issues.claim', $issue))->assertRedirect();
+    expect($issue->fresh()->claimed_by)->toBe($holder->id);
+    $this->post('/logout');
+
+    loggedIn($hod); // HOD memegang semua tujuan di departemennya
+    $this->get(route('kamar.issues.show', $issue))->assertOk();
+
+    $this->post(route('kamar.issues.store'), ['room_id' => $this->room->id, 'source' => 'tamu', 'priority' => 'biasa', 'description' => 'x', 'target_type' => 'position'])->assertSessionHasErrors('assigned_position_id');
+});
+
+it('forwards an issue to one employee who has an account', function () {
+    $target = staffOf($this->eng);
+    $mate = staffOf($this->eng);
+
+    loggedIn($this->foStaff);
+    $this->post(route('kamar.issues.store'), ['room_id' => $this->room->id, 'source' => 'tamu', 'priority' => 'mendesak', 'description' => 'Keran bocor', 'target_type' => 'employee', 'assigned_employee_id' => $target->employee_id])->assertRedirect();
+    $issue = RoomIssue::firstOrFail();
+    expect($issue->assigned_employee_id)->toBe($target->employee_id)->and($issue->assigned_department_id)->toBe($this->eng->id)->and($issue->targetLabel())->toContain($target->employee->name);
+
+    $withoutAccount = Employee::factory()->for($this->eng)->create();
+    $this->post(route('kamar.issues.store'), ['room_id' => $this->room->id, 'source' => 'tamu', 'priority' => 'biasa', 'description' => 'y', 'target_type' => 'employee', 'assigned_employee_id' => $withoutAccount->id])->assertSessionHasErrors('assigned_employee_id');
+    $this->post('/logout');
+
+    loggedIn($mate);
+    $this->get(route('kamar.issues.show', $issue))->assertForbidden();
+    $this->post(route('kamar.issues.claim', $issue))->assertForbidden();
+    $this->post('/logout');
+
+    loggedIn($target);
+    $this->get(route('kamar.issues.index'))->assertOk()->assertSee('Keran bocor')->assertSee('Untuk Anda');
+    expect($target->newRoomIssueCount())->toBe(1);
+    $this->post(route('kamar.issues.claim', $issue))->assertRedirect();
+    expect($issue->fresh()->claimed_by)->toBe($target->id);
 });

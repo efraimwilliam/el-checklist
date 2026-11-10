@@ -184,3 +184,26 @@ it('shows one collapsed card per position and still submits tasks of collapsed c
     $this->put(route('team.tasks.update', $this->staff), ['tasks' => [$this->gsaTasks[0]->id]])->assertRedirect(route('team.index'));
     expect($this->staff->fresh()->assignedTasks->pluck('id')->all())->toBe([$this->gsaTasks[0]->id]);
 });
+
+it('tells a HOD whose department has not been ticked in Akses pengguna what to do', function () {
+    loggedIn(userWithRole(Role::Hod));
+
+    foreach (['team.index', 'team.catalog', 'team.positions.edit'] as $route) {
+        $this->get(route($route))->assertOk()->assertSee('Departemen Anda belum diatur')->assertSee('Akses pengguna');
+    }
+});
+
+it('lets HR and Administrator assign tasks to themselves and fill their own checklist, but not the HOD assign their own tasks', function (Role $role, bool $allowed) {
+    $user = $role === Role::Hod ? $this->hod : userWithRole($role);
+    $own = $user->employee;
+    $own->update(['department_id' => $this->fo->id, 'checklist_position_id' => $this->gsa->id]);
+    loggedIn($user);
+    \Illuminate\Support\Facades\Http::fake(['attendance.test/api/v1/tasks/schedules*' => \Illuminate\Support\Facades\Http::response(['data' => []], 200)]);
+
+    $this->get(route('team.tasks.edit', $own))->assertStatus($allowed ? 200 : 403);
+
+    if ($allowed) {
+        $this->post(route('fill.start'), ['employee' => $own->id, 'position' => $this->gsa->id, 'date' => today()->toDateString()])->assertRedirect();
+        expect(\App\Models\Checklist::where('employee_id', $own->id)->count())->toBe(1);
+    }
+})->with([[Role::Admin, true], [Role::Hr, true], [Role::Hod, false]]);

@@ -56,7 +56,7 @@
 
     <p class="mx-auto mt-3 max-w-3xl text-xs text-slate-400 print:hidden">
         {{ __('Dibuat') }} {{ $report->created_at->translatedFormat('d M Y H:i') }}@if ($report->finalized_at) · {{ __('Final') }} {{ $report->finalized_at->translatedFormat('d M Y H:i') }}@endif
-        @if ($report->roomIssue) · <a class="underline" href="{{ route('kamar.issues.show', $report->roomIssue) }}">{{ __('Kendala kamar') }} #{{ $report->roomIssue->id }}</a>@endif
+        @if ($report->roomIssue) · <a class="underline" href="{{ route('kamar.issues.show', $report->roomIssue) }}">{{ __('Kendala') }} #{{ $report->roomIssue->id }}</a>@endif
     </p>
 
 

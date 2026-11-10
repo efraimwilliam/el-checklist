@@ -158,3 +158,22 @@ it('lets administrators rename, deactivate and delete a position, but keeps one 
     expect(Position::find($this->position->id))->not->toBeNull();
 });
 
+
+it('deletes the selected tasks of one position only', function () {
+    $other = Position::factory()->for($this->fo)->create(['name' => 'Cashier']);
+    $otherTask = Task::factory()->for($other)->create(['title' => 'Hitung kas']);
+    loggedIn(userWithRole(Role::Admin));
+
+    $this->delete(route('admin.tasks.destroy-many', $this->position), ['task_ids' => [$this->first->id, $this->third->id, $otherTask->id]])
+        ->assertRedirect(route('admin.tasks.show', $this->position));
+
+    expect(titles($this->position))->toBe(['Read email']);
+    expect(Task::find($otherTask->id))->not->toBeNull();
+});
+
+it('needs at least one selected task to delete', function () {
+    loggedIn(userWithRole(Role::Admin));
+
+    $this->delete(route('admin.tasks.destroy-many', $this->position), ['task_ids' => []])->assertSessionHasErrors('task_ids');
+    expect(titles($this->position))->toHaveCount(3);
+});

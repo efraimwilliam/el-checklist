@@ -23,6 +23,10 @@
         </div>
     </div>
 
+    @if (auth()->user()->isHodWithoutDepartment())
+        <div class="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900"><span class="font-semibold">{{ __('Departemen Anda belum diatur.') }}</span> {{ __('Minta Administrator mencentang departemen Anda di Akses pengguna, supaya daftar tugas dan pegawainya muncul di sini.') }}</div>
+    @endif
+
     <div class="card overflow-hidden">
         <div class="border-b border-slate-100 p-4">
             <div class="mb-3 grid gap-3 sm:grid-cols-2">

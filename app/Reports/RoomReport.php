@@ -8,7 +8,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Peta kamar: kendala per kamar dalam satu rentang tanggal (tanggal dicatatnya). Dipakai halaman Laporan > Peta kamar.
+ * Peta kamar: kendala di kamar (bukan lokasi lain) per kamar dalam satu rentang tanggal (tanggal dicatatnya). Dipakai halaman Laporan > Peta kamar.
  * Hanya kendala yang boleh dilihat pengguna (RoomIssue::visibleTo), jadi HOD / staf hanya melihat bagian departemennya.
  */
 class RoomReport
@@ -21,7 +21,8 @@ class RoomReport
      */
     public function build(\App\Models\User $user, array $range, ?int $departmentId = null, ?int $categoryId = null): array
     {
-        $issues = RoomIssue::visibleTo($user)
+        // Peta kamar hanya menghitung kendala di kamar; kendala di lokasi lain tidak ikut.
+        $issues = RoomIssue::visibleTo($user)->whereNotNull('room_id')
             ->whereBetween(DB::raw('date(room_issues.created_at)'), $range)
             ->when($departmentId, fn ($q, $id) => $q->where('assigned_department_id', $id))
             ->when($categoryId, fn ($q, $id) => $q->where('category_id', $id))

@@ -50,7 +50,7 @@ class ChronologyReportController extends Controller
         // Dari halaman kendala kamar: nomor kamar dan tautan kendala terisi.
         $issue = $request->filled('kendala') ? RoomIssue::with('room')->find((int) $request->query('kendala')) : null;
         if ($issue && $request->user()->can('view', $issue)) {
-            $guests = [['name' => '', 'room_number' => $issue->room->number]];
+            $guests = [['name' => '', 'room_number' => $issue->room?->number ?? '']];
             $report->room_issue_id = $issue->id;
         }
 

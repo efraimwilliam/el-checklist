@@ -61,7 +61,11 @@
             </ul>
         </dialog>
     @empty
-        <p class="card p-6 text-sm text-slate-500">Belum ada pegawai di departemen Anda. Data pegawai datang dari Absensi (Administrator bisa menekan "Sinkron dari absensi").</p>
+        @if (auth()->user()->isHodWithoutDepartment())
+            <p class="card border-amber-200 bg-amber-50 p-6 text-sm text-amber-900"><span class="font-semibold">{{ __('Departemen Anda belum diatur.') }}</span> {{ __('Minta Administrator mencentang departemen Anda di Akses pengguna, supaya daftar tugas dan pegawainya muncul di sini.') }}</p>
+        @else
+            <p class="card p-6 text-sm text-slate-500">Belum ada pegawai di departemen Anda. Data pegawai datang dari Absensi (Administrator bisa menekan "Sinkron dari absensi").</p>
+        @endif
     @endforelse
     @endif
 

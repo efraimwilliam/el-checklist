@@ -4,7 +4,7 @@
         $filtered = $search || $floor || $status;
         $heading = ['kamar' => __('Data kamar'), 'kategori' => __('Kategori kendala'), 'denah' => __('Denah')][$tab];
         $intro = [
-            'kamar' => __('Daftar kamar untuk mencatat kendala kamar dan Peta kamar.'),
+            'kamar' => __('Daftar kamar untuk mencatat kendala di kamar dan Peta kamar.'),
             'kategori' => __('Kategori masalah dan departemen penanggung jawab bawaannya.'),
             'denah' => __('Gambar denah per lantai atau kawasan, tempat kamar dan gedung ditandai untuk Peta kamar.'),
         ][$tab];

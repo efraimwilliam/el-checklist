@@ -64,7 +64,7 @@ class ChronologyReport extends Model
         return $query->where(function (Builder $q) use ($user) {
             $q->where('author_id', $user->id);
             if ($user->role === \App\Enums\Role::Hod) {
-                $q->orWhereIn('department_id', $user->departments->pluck('id')->all());
+                $q->orWhereIn('department_id', $user->hodDepartmentIds());
             }
         });
     }

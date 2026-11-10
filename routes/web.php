@@ -58,6 +58,7 @@ Route::middleware(['auth', EnsureActiveSession::class, VerifySsoSession::class])
     Route::get('/kamar/kendala', [RoomIssueController::class, 'index'])->name('kamar.issues.index');
     Route::get('/kamar/{room}', [RoomIssueController::class, 'room'])->whereNumber('room')->name('kamar.room');
     Route::get('/denah/{plan}/gambar', [FloorPlanController::class, 'image'])->name('denah.image');
+    Route::get('/kamar/lokasi', [RoomIssueController::class, 'place'])->name('kamar.place');
     Route::get('/kamar/kendala/serupa', [RoomIssueController::class, 'duplicate'])->name('kamar.issues.duplicate');
     Route::post('/kamar/kendala', [RoomIssueController::class, 'store'])->name('kamar.issues.store');
     Route::get('/kamar/kendala/{issue}', [RoomIssueController::class, 'show'])->name('kamar.issues.show');
@@ -161,6 +162,7 @@ Route::middleware(['auth', EnsureActiveSession::class, VerifySsoSession::class])
         Route::post('/tugas/jabatan/{position}/tugas', [TaskController::class, 'storeTask'])->name('tasks.store');
         Route::post('/tugas/jabatan/{position}/dari-kamus', [TaskController::class, 'importFromCatalog'])->name('tasks.import-catalog');
         Route::put('/tugas/{task}', [TaskController::class, 'updateTask'])->name('tasks.update');
+        Route::delete('/tugas/jabatan/{position}/tugas', [TaskController::class, 'destroyTasks'])->name('tasks.destroy-many');
         Route::delete('/tugas/{task}', [TaskController::class, 'destroyTask'])->name('tasks.destroy');
         Route::post('/tugas/{task}/geser', [TaskController::class, 'moveTask'])->name('tasks.move');
     });

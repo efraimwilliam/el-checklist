@@ -43,7 +43,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('assign-tasks', fn (User $actor, Employee $target) => Gate::forUser($actor)->allows('manage-team-tasks')
             && $target->is_active
             && $target->department_id !== null
-            && ($target->id !== $actor->employee_id || $actor->isAdmin())
+            && ($target->id !== $actor->employee_id || $actor->role->overridesReview())
             && $actor->canAccessDepartment($target->department_id));
         // Kendala kamar: semua pengguna berakses (termasuk Staff Front Office) boleh mencatat dan melihat yang menjadi bagiannya; hak per kendala ada di RoomIssuePolicy.
         Gate::define('room-issues', fn (User $user) => $user->canUseApp());

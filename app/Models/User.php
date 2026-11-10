@@ -74,7 +74,7 @@ class User extends Authenticatable
      */
     public function issueDepartmentIds(): array
     {
-        $ids = $this->role === Role::Hod ? $this->departments->pluck('id')->all() : [];
+        $ids = $this->hodDepartmentIds();
         if ($own = $this->checklistDepartmentId()) {
             $ids[] = $own;
         }
@@ -82,13 +82,15 @@ class User extends Authenticatable
         return array_values(array_unique($ids));
     }
 
-    /** Kendala kamar berstatus baru yang ditugaskan ke departemen pengguna ini (penanda di menu Kendala kamar). */
+    /** Kendala berstatus baru yang diteruskan kepada pengguna ini: ke departemennya, jabatannya, atau dirinya (penanda di menu Kendala). */
     public function newRoomIssueCount(): int
     {
         return once(function () {
-            $ids = $this->issueDepartmentIds();
+            if ($this->issueDepartmentIds() === [] && ! $this->employee_id) {
+                return 0;
+            }
 
-            return $ids === [] ? 0 : \App\Models\RoomIssue::where('status', \App\Models\RoomIssue::STATUS_NEW)->whereIn('assigned_department_id', $ids)->count();
+            return \App\Models\RoomIssue::where('status', \App\Models\RoomIssue::STATUS_NEW)->forUser($this)->count();
         });
     }
 
@@ -104,7 +106,7 @@ class User extends Authenticatable
         }
 
         return $this->role === Role::Hod && $departmentId !== null
-            && $this->departments->contains('id', $departmentId);
+            && in_array($departmentId, $this->hodDepartmentIds(), true);
     }
 
     /** @return list<int>|null null = semua departemen */
@@ -114,7 +116,24 @@ class User extends Authenticatable
             return null;
         }
 
+        return $this->hodDepartmentIds();
+    }
+
+    /**
+     * Departemen yang dipegang HOD: hanya yang dicentang Administrator di Akses pengguna (bukan dari departemen / jabatan Absensi).
+     * Kosong untuk peran lain.
+     *
+     * @return list<int>
+     */
+    public function hodDepartmentIds(): array
+    {
         return $this->role === Role::Hod ? $this->departments->pluck('id')->all() : [];
+    }
+
+    /** HOD yang belum dicentang departemennya di Akses pengguna: belum bisa mengatur tugas atau checklist siapa pun. */
+    public function isHodWithoutDepartment(): bool
+    {
+        return $this->role === Role::Hod && $this->hodDepartmentIds() === [];
     }
 
     public function name(): string

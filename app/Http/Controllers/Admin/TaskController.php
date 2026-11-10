@@ -170,6 +170,21 @@ class TaskController extends Controller
         return redirect()->route('admin.tasks.show', $task->position_id)->with('status', __('Tugas dihapus. Checklist yang sudah dibuat tidak berubah.'));
     }
 
+    // Hapus beberapa tugas sekaligus; hanya tugas milik jabatan ini yang dihapus.
+    public function destroyTasks(Request $request, Position $position): RedirectResponse
+    {
+        Gate::authorize('manage-tasks');
+        $ids = $request->validate([
+            'task_ids' => ['required', 'array', 'min:1'],
+            'task_ids.*' => ['integer'],
+        ])['task_ids'];
+
+        $tasks = Task::where('position_id', $position->id)->whereIn('id', $ids)->get();
+        $tasks->each->delete();
+
+        return redirect()->route('admin.tasks.show', $position)->with('status', __(':n tugas dihapus. Checklist yang sudah dibuat tidak berubah.', ['n' => $tasks->count()]));
+    }
+
     public function moveTask(Request $request, Task $task): RedirectResponse|JsonResponse
     {
         Gate::authorize('manage-tasks');

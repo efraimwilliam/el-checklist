@@ -1,4 +1,4 @@
-<x-app-layout title="{{ __('Riwayat penanganan kamar :room', ['room' => $issue->room->number]) }}">
+<x-app-layout title="{{ __('Riwayat penanganan :place', ['place' => $issue->placeTitle()]) }}">
     @php
         $labels = \App\Models\RoomIssue::statusLabels();
         $kinds = [
@@ -23,17 +23,17 @@
     <article class="card mx-auto max-w-4xl p-6 sm:p-8 print:max-w-none print:border-0 print:p-0 print:shadow-none">
         <header class="border-b border-slate-200 pb-4">
             <p class="text-xs font-semibold uppercase tracking-[0.12em] text-gold-700">eL Hotel &amp; Resort Sanur</p>
-            <h1 class="mt-1 text-2xl text-slate-900 sm:text-3xl">{{ __('Riwayat Penanganan Kendala Kamar') }}</h1>
-            <p class="mt-1 text-sm text-slate-500">{{ __('Kendala') }} #{{ $issue->id }} · {{ __('Kamar') }} {{ $issue->room->number }}</p>
+            <h1 class="mt-1 text-2xl text-slate-900 sm:text-3xl">{{ __('Riwayat Penanganan Kendala') }}</h1>
+            <p class="mt-1 text-sm text-slate-500">{{ __('Kendala') }} #{{ $issue->id }} · {{ $issue->placeTitle() }}</p>
         </header>
 
         {{-- Ringkasan --}}
         <dl class="mt-5 grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
-            <div><dt class="text-slate-500">{{ __('Kamar') }}</dt><dd class="font-medium text-slate-900">{{ $issue->room->number }}{{ $issue->room->floor ? ' · '.__('Lantai').' '.$issue->room->floor : '' }}{{ $issue->room->building ? ' · '.$issue->room->building : '' }}{{ $issue->room->type ? ' · '.$issue->room->type : '' }}</dd></div>
+            <div><dt class="text-slate-500">{{ $issue->room_id ? __('Kamar') : __('Lokasi') }}</dt><dd class="font-medium text-slate-900">{{ $issue->placeName() }}{{ $issue->room?->floor ? ' · '.__('Lantai').' '.$issue->room->floor : '' }}{{ $issue->room?->building ? ' · '.$issue->room->building : '' }}{{ $issue->room?->type ? ' · '.$issue->room->type : '' }}</dd></div>
             <div><dt class="text-slate-500">{{ __('Kategori') }}</dt><dd class="font-medium text-slate-900">{{ $issue->category?->name ?? __('Tanpa kategori') }}</dd></div>
             <div><dt class="text-slate-500">{{ __('Status') }}</dt><dd class="font-medium text-slate-900">{{ $labels[$issue->status] }}@if ($issue->priority === 'mendesak') · {{ __('Mendesak') }}@endif @if ($issue->recurrence > 1) · {{ __('Berulang ke-:n', ['n' => $issue->recurrence]) }}@endif</dd></div>
             <div><dt class="text-slate-500">{{ __('Sumber laporan') }}</dt><dd class="font-medium text-slate-900">{{ $sources[$issue->source] ?? $issue->source }}</dd></div>
-            <div><dt class="text-slate-500">{{ __('Departemen penanggung jawab') }}</dt><dd class="font-medium text-slate-900">{{ $issue->department?->name ?? __('Belum ditugaskan') }}</dd></div>
+            <div><dt class="text-slate-500">{{ __('Diteruskan ke') }}</dt><dd class="font-medium text-slate-900">{{ $issue->targetLabel() }}</dd></div>
             <div><dt class="text-slate-500">{{ __('Dikerjakan oleh') }}</dt><dd class="font-medium text-slate-900">{{ $issue->claimer?->name() ?? '—' }}</dd></div>
         </dl>
 

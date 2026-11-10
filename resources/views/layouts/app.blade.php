@@ -82,7 +82,7 @@
                 @endcan
                 @can('room-issues')
                     @php($newIssues = auth()->user()->newRoomIssueCount())
-                    <a href="{{ route('kamar.issues.index') }}" class="{{ $navLink(request()->routeIs('kamar.*')) }}" @if ($newIssues) aria-label="{{ __('Kendala kamar') }}, {{ $newIssues }} {{ __('baru untuk departemen Anda') }}" @endif>{{ __('Kendala kamar') }}@if ($newIssues) <span class="ml-1.5 inline-flex min-w-5 items-center justify-center rounded-full bg-rose-600 px-1.5 text-[11px] font-semibold leading-5 text-white" title="{{ $newIssues }} {{ __('baru untuk departemen Anda') }}">{{ $newIssues > 99 ? '99+' : $newIssues }}</span>@endif</a>
+                    <a href="{{ route('kamar.issues.index') }}" class="{{ $navLink(request()->routeIs('kamar.*')) }}" @if ($newIssues) aria-label="{{ __('Kendala') }}, {{ $newIssues }} {{ __('baru untuk Anda') }}" @endif>{{ __('Kendala') }}@if ($newIssues) <span class="ml-1.5 inline-flex min-w-5 items-center justify-center rounded-full bg-rose-600 px-1.5 text-[11px] font-semibold leading-5 text-white" title="{{ $newIssues }} {{ __('baru untuk Anda') }}">{{ $newIssues > 99 ? '99+' : $newIssues }}</span>@endif</a>
                 @endcan
                 @can('chronology-reports')
                     <a href="{{ route('chronology.index') }}" class="{{ $navLink(request()->routeIs('chronology.*')) }}">Chronology Report</a>

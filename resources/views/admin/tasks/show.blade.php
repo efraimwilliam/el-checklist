@@ -128,15 +128,30 @@
 
     <div class="mb-2 flex flex-wrap items-center justify-between gap-3">
         <h2 class="font-display text-xl">Daftar tugas ({{ $position->tasks->where('is_active', true)->count() }} aktif)</h2>
-        <div class="flex items-center gap-3">
+        <div class="flex flex-wrap items-center gap-3">
             <span class="text-xs text-slate-500" data-move-status aria-live="polite"></span>
+            @if ($position->tasks->isNotEmpty())
+                <label class="flex items-center gap-2 text-sm text-slate-600">
+                    <input type="checkbox" class="h-4 w-4" data-select-all-tasks>
+                    {{ __('Pilih semua') }}
+                </label>
+                <span class="text-xs text-slate-500" data-selected-count>0 {{ __('dipilih') }}</span>
+                <button type="submit" form="bulk-tasks-form" class="btn-danger" data-bulk-delete disabled data-confirm-button="{{ __('Hapus tugas yang dipilih? Checklist yang sudah dibuat tidak berubah.') }}">{{ __('Hapus yang dipilih') }}</button>
+            @endif
             <button type="button" class="btn-primary" data-open-add>{{ __('+ Tambah tugas') }}</button>
         </div>
     </div>
+    @if ($position->tasks->isNotEmpty())
+        <form id="bulk-tasks-form" method="POST" action="{{ route('admin.tasks.destroy-many', $position) }}" class="hidden">
+            @csrf
+            @method('DELETE')
+        </form>
+    @endif
     <div class="space-y-2" data-task-list>
         @forelse ($position->tasks as $task)
             <div class="card p-3 {{ $task->is_active ? '' : 'bg-slate-50' }}" data-task-item>
                 <div class="flex items-start gap-3">
+                    <input type="checkbox" name="task_ids[]" value="{{ $task->id }}" form="bulk-tasks-form" class="mt-1 h-4 w-4 shrink-0" data-task-check aria-label="{{ __('Pilih tugas') }}">
                     <div class="flex flex-col gap-1">
                         <button type="button" class="btn-secondary !px-2 !py-0.5" data-move="up" data-url="{{ route('admin.tasks.move', $task) }}" @disabled($loop->first) aria-label="{{ __('Naikkan') }}">↑</button>
                         <button type="button" class="btn-secondary !px-2 !py-0.5" data-move="down" data-url="{{ route('admin.tasks.move', $task) }}" @disabled($loop->last) aria-label="{{ __('Turunkan') }}">↓</button>
@@ -246,4 +261,32 @@
             @endif
         })();
     </script>
+@if ($position->tasks->isNotEmpty())
+    <script>
+        (() => {
+            const boxes = () => Array.from(document.querySelectorAll('[data-task-check]'));
+            const selectAll = document.querySelector('[data-select-all-tasks]');
+            const count = document.querySelector('[data-selected-count]');
+            const remove = document.querySelector('[data-bulk-delete]');
+
+            // Hitung pilihan dan atur tombol hapus; "Pilih semua" mengikuti kondisi kotak tugas.
+            const refresh = () => {
+                const checked = boxes().filter((box) => box.checked).length;
+                count.textContent = `${checked} ${window.t('dipilih')}`;
+                remove.disabled = checked === 0;
+                selectAll.checked = checked > 0 && checked === boxes().length;
+                selectAll.indeterminate = checked > 0 && checked < boxes().length;
+            };
+
+            selectAll.addEventListener('change', () => {
+                boxes().forEach((box) => { box.checked = selectAll.checked; });
+                refresh();
+            });
+            document.querySelector('[data-task-list]').addEventListener('change', (event) => {
+                if (event.target.matches('[data-task-check]')) refresh();
+            });
+            refresh();
+        })();
+    </script>
+@endif
 </x-app-layout>

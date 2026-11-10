@@ -53,7 +53,7 @@
         <section class="card p-5">
             <h2 class="font-display text-xl text-slate-900">{{ __('Data tamu') }}</h2>
             @if ($issue)
-                <p class="mt-1 text-sm text-slate-500">{{ __('Terhubung ke kendala kamar') }} <a class="underline" href="{{ route('kamar.issues.show', $issue) }}">#{{ $issue->id }} · {{ $issue->room->number }}</a></p>
+                <p class="mt-1 text-sm text-slate-500">{{ __('Terhubung ke kendala') }} <a class="underline" href="{{ route('kamar.issues.show', $issue) }}">#{{ $issue->id }} · {{ $issue->placeName() }}</a></p>
             @endif
 
             <div class="mt-4" data-repeater data-min="1">

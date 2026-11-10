@@ -140,7 +140,7 @@
         @empty
             <div class="p-10 text-center">
                 <p class="font-medium text-slate-800">{{ __('Belum ada data kamar.') }}</p>
-                <p class="mt-1 text-sm text-slate-500">{{ __('Tambahkan daftar kamar di menu Data kamar, lalu catat kendala di menu Kendala kamar.') }}</p>
+                <p class="mt-1 text-sm text-slate-500">{{ __('Tambahkan daftar kamar di menu Data kamar, lalu catat kendala di menu Kendala.') }}</p>
             </div>
         @endforelse
     </section>

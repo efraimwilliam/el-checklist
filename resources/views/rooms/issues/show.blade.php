@@ -1,4 +1,4 @@
-<x-app-layout title="{{ __('Kamar') }} {{ $issue->room->number }}">
+<x-app-layout title="{{ $issue->placeTitle() }}">
     @php
         $tones = ['baru' => 'bg-rose-50 text-rose-700', 'dikerjakan' => 'bg-sky-50 text-sky-800', 'tertunda' => 'bg-amber-50 text-amber-800', 'selesai' => 'bg-emerald-50 text-emerald-800'];
         $labels = \App\Models\RoomIssue::statusLabels();
@@ -9,9 +9,9 @@
 
     <div class="mb-5 mt-1 flex flex-wrap items-start justify-between gap-3">
         <div>
-            <h1 class="text-3xl text-slate-900">{{ __('Kamar') }} {{ $issue->room->number }}</h1>
+            <h1 class="text-3xl text-slate-900">{{ $issue->placeTitle() }}</h1>
             <p class="text-sm text-slate-500">
-                @if ($issue->room->floor){{ __('Lantai') }} {{ $issue->room->floor }} · @endif{{ $issue->room->type ? $issue->room->type.' · ' : '' }}{{ $issue->category?->name ?? __('Tanpa kategori') }}
+                @if ($issue->room?->floor){{ __('Lantai') }} {{ $issue->room->floor }} · @endif{{ $issue->room?->type ? $issue->room->type.' · ' : '' }}{{ $issue->room_id ? '' : __('Lokasi lain').' · ' }}{{ $issue->category?->name ?? __('Tanpa kategori') }}
             </p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
@@ -33,7 +33,7 @@
             <div><dt class="text-slate-500">{{ __('Sumber') }}</dt><dd class="font-medium text-slate-800">{{ $sources[$issue->source] ?? $issue->source }}</dd></div>
             <div><dt class="text-slate-500">{{ __('Dicatat oleh') }}</dt><dd class="font-medium text-slate-800">{{ $issue->reporter?->employee?->name ?? '—' }}</dd></div>
             <div><dt class="text-slate-500">{{ __('Dicatat') }}</dt><dd class="font-medium text-slate-800">{{ $issue->created_at->translatedFormat('d M Y H:i') }}</dd></div>
-            <div><dt class="text-slate-500">{{ __('Ditangani oleh') }}</dt><dd class="font-medium text-slate-800">{{ $issue->department?->name ?? __('Belum ditugaskan') }}</dd></div>
+            <div><dt class="text-slate-500">{{ __('Diteruskan ke') }} <span class="text-xs">({{ __($issue->targetKind()) }})</span></dt><dd class="font-medium text-slate-800">{{ $issue->targetLabel() }}</dd></div>
         </dl>
         @if ($issue->isDone() && $issue->completed_at)
             <p class="mt-4 text-sm text-emerald-800">{{ __('Selesai') }} {{ $issue->completed_at->translatedFormat('d M Y H:i') }}
@@ -198,7 +198,7 @@
                     <p class="text-sm text-slate-700">{{ __('Belum ada yang mengambil kendala ini. Ambil bila Anda yang akan mengerjakannya, supaya rekan lain tahu.') }}</p>
                     <form method="POST" action="{{ route('kamar.issues.claim', $issue) }}">
                         @csrf
-                        <button class="btn-primary" data-confirm-button="{{ __('Anda yang akan mengerjakan kendala kamar :room ini? Rekan lain akan melihat nama Anda.', ['room' => $issue->room->number]) }}">{{ __('Saya ambil') }}</button>
+                        <button class="btn-primary" data-confirm-button="{{ __('Anda yang akan mengerjakan kendala di :place ini? Rekan lain akan melihat nama Anda.', ['place' => $issue->placeTitle()]) }}">{{ __('Saya ambil') }}</button>
                     </form>
                 </section>
             @endcan
@@ -230,10 +230,10 @@
         <section class="card mb-6 overflow-hidden">
             <div class="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 p-5">
                 <div>
-                    <h2 class="font-display text-xl text-slate-900">{{ __('Track record kamar :room', ['room' => $issue->room->number]) }}</h2>
+                    <h2 class="font-display text-xl text-slate-900">{{ __('Track record :place', ['place' => $issue->placeTitle()]) }}</h2>
                     <p class="mt-1 text-sm text-slate-500">{{ __('Cek dulu apakah masalah ini pernah terjadi dan apa yang sudah dikerjakan, sebelum mengambil.') }}</p>
                 </div>
-                <a href="{{ route('kamar.room', $issue->room) }}" class="btn-secondary">{{ __('Seluruh track record') }}</a>
+                <a href="{{ $issue->room_id ? route('kamar.room', $issue->room) : route('kamar.place', ['nama' => $issue->location]) }}" class="btn-secondary">{{ __('Seluruh track record') }}</a>
             </div>
 
             <div class="border-b border-slate-100 p-5">
@@ -241,13 +241,13 @@
                 @if ($record['same']->isNotEmpty())
                     <ul class="mt-2 space-y-2">@foreach ($record['same'] as $past) @include('rooms.partials.record-item', ['past' => $past]) @endforeach</ul>
                 @else
-                    <p class="mt-2 text-sm text-slate-500">{{ __('Belum pernah ada kendala sejenis di kamar ini.') }}</p>
+                    <p class="mt-2 text-sm text-slate-500">{{ __('Belum pernah ada kendala sejenis di lokasi ini.') }}</p>
                 @endif
             </div>
 
             @if ($record['ownDepartment']->isNotEmpty())
                 <details class="border-b border-slate-100 p-5 last:border-0">
-                    <summary class="cursor-pointer text-sm font-semibold text-slate-800">{{ __('Pekerjaan departemen Anda di kamar ini') }} <span class="font-normal text-slate-500">({{ $record['ownDepartment']->count() }}, {{ __('kategori lain') }})</span></summary>
+                    <summary class="cursor-pointer text-sm font-semibold text-slate-800">{{ __('Pekerjaan departemen Anda di lokasi ini') }} <span class="font-normal text-slate-500">({{ $record['ownDepartment']->count() }}, {{ __('kategori lain') }})</span></summary>
                     <ul class="mt-2 space-y-2">@foreach ($record['ownDepartment'] as $past) @include('rooms.partials.record-item', ['past' => $past]) @endforeach</ul>
                 </details>
             @endif
@@ -262,7 +262,7 @@
         {{-- Setelah diambil: hanya track record yang dikerjakan departemen ini (mis. Engineering), tersembunyi sampai dibuka. --}}
         <details class="card group mb-6 overflow-hidden">
             <summary class="flex cursor-pointer list-none items-center justify-between gap-3 p-5">
-                <span class="font-display text-xl text-slate-900">{{ __('Track record kamar :room', ['room' => $issue->room->number]) }}
+                <span class="font-display text-xl text-slate-900">{{ __('Track record :place', ['place' => $issue->placeTitle()]) }}
                     <span class="text-sm font-normal text-slate-500">({{ $record['department']->count() }})</span></span>
                 <span class="text-slate-400 transition group-open:rotate-180" aria-hidden="true">▾</span>
             </summary>
@@ -270,9 +270,9 @@
                 @if ($record['department']->isNotEmpty())
                     <ul class="space-y-2">@foreach ($record['department'] as $past) @include('rooms.partials.record-item', ['past' => $past]) @endforeach</ul>
                 @else
-                    <p class="text-sm text-slate-500">{{ __('Belum ada track record sebelumnya di kamar ini.') }}</p>
+                    <p class="text-sm text-slate-500">{{ __('Belum ada track record sebelumnya di lokasi ini.') }}</p>
                 @endif
-                <a class="mt-3 inline-block text-sm text-sky-700 hover:underline" href="{{ route('kamar.room', ['room' => $issue->room->id, 'department_id' => $issue->assigned_department_id]) }}">{{ __('Lihat semua di halaman kamar') }} &rarr;</a>
+                <a class="mt-3 inline-block text-sm text-sky-700 hover:underline" href="{{ $issue->room_id ? route('kamar.room', ['room' => $issue->room_id, 'department_id' => $issue->assigned_department_id]) : route('kamar.place', ['nama' => $issue->location, 'department_id' => $issue->assigned_department_id]) }}">{{ __('Lihat semua di halaman lokasi') }} &rarr;</a>
             </div>
         </details>
     @endif

@@ -99,7 +99,7 @@ class FillController extends Controller
         if (! $staffMode && $department) {
             $day = Checklist::with('items.parameters', 'items.photos')->where('department_id', $department->id)->whereDate('date', $date)->get()->groupBy('employee_id');
             $board = $employees->load('checklistPosition')
-                ->reject(fn (Employee $e) => $e->id === $user->employee_id && ! $user->isAdmin() && ! $day->has($e->id))
+                ->reject(fn (Employee $e) => $e->id === $user->employee_id && ! $user->role->overridesReview() && ! $day->has($e->id))
                 ->map(function (Employee $e) use ($day, $user, $schedules) {
                     $checklists = $day->get($e->id, collect());
                     $noSchedule = $schedules !== null && ($schedules[$e->external_id]['status'] ?? 'unscheduled') === 'unscheduled';
