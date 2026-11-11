@@ -5,7 +5,12 @@
 <aside @class(['relative flex min-h-0 w-full shrink-0 flex-col bg-white md:w-[23rem] md:border-r md:border-slate-200', $hideOnMobile ?? false ? 'max-md:hidden' : ''])
        data-sidebar data-reorder-url="{{ route('chat.pins.reorder') }}" data-list-url="{{ route('chat.list', array_filter(['semua' => $viewingAll ? 1 : null, 'aktif' => $activeId])) }}">
     <div class="flex items-center justify-between gap-2 px-4 pb-2 pt-4">
-        <h1 class="text-2xl text-slate-900">{{ __('Obrolan') }}</h1>
+        <span class="flex min-w-0 items-center gap-1">
+            <button type="button" hidden data-chat-return class="-ml-2 grid h-10 w-10 shrink-0 place-items-center rounded-full text-slate-700 hover:bg-slate-100 md:hidden" aria-label="{{ __('Kembali') }}">
+                <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <h1 class="text-2xl text-slate-900">{{ __('Obrolan') }}</h1>
+        </span>
         <span class="flex items-center gap-1">
         <button type="button" data-push-toggle hidden data-state="unsupported" class="group/bell inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-700 hover:bg-slate-100">
             <svg class="h-5 w-5 group-data-[state=on]/bell:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 9a6 6 0 0112 0c0 5 2 6.5 2 6.5H4S6 14 6 9zM10 19a2 2 0 004 0M4 4l16 16" stroke-linecap="round" stroke-linejoin="round"/></svg>

@@ -6,32 +6,35 @@ const inFrame = window.self !== window.top;
 // Panel tombol melayang ditutup = jangan memanggil server (window.__chatPaused diatur oleh chat-widget.js di halaman induk).
 const paused = () => document.hidden || window.__chatPaused === true;
 
-// HP: saat papan ketik muncul, tinggi halaman mengikuti area yang benar-benar terlihat (visualViewport) dan halaman dijaga di
-// posisi 0, supaya kotak tulis tidak terdorong keluar layar dan halaman tidak ikut tergeser.
-if (!inFrame && document.body.classList.contains('chat-fixed') && window.visualViewport) {
-    const phone = window.matchMedia('(max-width: 767px)');
-    const fit = () => {
-        if (!phone.matches) { document.body.style.height = ''; return; }
-        document.body.style.height = `${Math.round(window.visualViewport.height)}px`;
-        if (window.scrollY !== 0) window.scrollTo(0, 0);
-    };
-    window.visualViewport.addEventListener('resize', fit);
-    window.visualViewport.addEventListener('scroll', fit);
-    phone.addEventListener('change', fit);
-    fit();
-}
+// ---- Tombol kembali (HP) ----
+// Kembali memakai riwayat browser bila memungkinkan, supaya halaman sebelumnya dipulihkan apa adanya (tanpa memuat ulang, posisi gulir tetap).
+if (!inFrame) {
+    const sameOriginReferrer = (() => {
+        try {
+            const url = new URL(document.referrer);
+            return url.origin === location.origin ? url : null;
+        } catch { return null; }
+    })();
 
-// Halaman obrolan (juga di dalam panel) tidak dirancang untuk bergulir. iOS menggulir dokumen secara otomatis agar kolom tulis terlihat
-// saat papan ketik muncul, dan hasilnya header bisa terdorong ke atas layar: setiap pergeseran dikembalikan ke posisi 0.
-if (document.body.classList.contains('chat-fixed')) {
-    const snap = () => {
-        if (window.scrollY !== 0 || window.scrollX !== 0) window.scrollTo(0, 0);
-        const root = document.scrollingElement;
-        if (root && root.scrollTop !== 0) root.scrollTop = 0;
-    };
-    window.addEventListener('scroll', snap, { passive: true });
-    window.addEventListener('resize', snap);
-    document.addEventListener('focusin', () => { [0, 60, 250, 600].forEach((delay) => setTimeout(snap, delay)); });
+    // Daftar obrolan yang dibuka dari tombol obrolan: tampilkan panah kembali ke halaman asal.
+    const returnButton = document.querySelector('[data-chat-return]');
+    let returnTo = null;
+    try { returnTo = sessionStorage.getItem('chat-return'); } catch { returnTo = null; }
+    if (returnButton && returnTo) {
+        returnButton.hidden = false;
+        returnButton.addEventListener('click', () => {
+            if (sameOriginReferrer && sameOriginReferrer.href === returnTo && history.length > 1) history.back();
+            else window.location.href = returnTo;
+        });
+    }
+
+    // Percakapan yang dibuka dari daftar obrolan: panah kembali = kembali di riwayat (daftar tidak dimuat ulang).
+    document.querySelector('[data-chat-back]')?.addEventListener('click', (event) => {
+        if (sameOriginReferrer && sameOriginReferrer.pathname === '/obrolan' && history.length > 1) {
+            event.preventDefault();
+            history.back();
+        }
+    });
 }
 
 // Di dalam panel: tautan ke luar obrolan (kendala, checklist, laporan) dibuka di halaman induk, bukan di dalam panel.

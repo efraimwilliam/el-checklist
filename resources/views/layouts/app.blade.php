@@ -354,22 +354,15 @@
                     <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 016.5 3h11A2.5 2.5 0 0120 5.5v8a2.5 2.5 0 01-2.5 2.5H10l-4.5 4v-4A1.5 1.5 0 014 14.5v-9z" stroke-linejoin="round"/><path d="M8 8h8M8 11.5h5" stroke-linecap="round"/></svg>
                     <span data-chat-fab-badge @if (! $unreadChats) hidden @endif class="absolute -right-1 -top-1 min-w-5 rounded-full border-2 border-white bg-rose-600 px-1 text-[11px] font-semibold leading-4 text-white">{{ $unreadChats > 99 ? '99+' : $unreadChats }}</span>
                 </button>
-                {{-- HP: pelapis polos di belakang panel. Celah di atas papan ketik (area yang disisihkan iOS untuk bilah Sebelumnya / Berikutnya / Selesai)
-                     tidak lagi memperlihatkan isi halaman di belakangnya. --}}
-                <div hidden data-chat-backdrop class="fixed inset-0 z-[49] bg-[#f4efe6] sm:hidden"></div>
                 <section id="chat-panel" hidden data-chat-panel role="dialog" aria-label="{{ __('Obrolan') }}"
-                         class="fixed inset-0 z-50 flex flex-col overflow-hidden bg-white shadow-2xl sm:inset-auto sm:bottom-24 sm:right-6 sm:h-[min(42rem,calc(100dvh-8rem))] sm:w-[25rem] sm:rounded-2xl sm:ring-1 sm:ring-black/10">
+                         class="fixed z-50 flex flex-col overflow-hidden bg-white shadow-2xl max-sm:hidden sm:bottom-24 sm:right-6 sm:h-[min(42rem,calc(100dvh-8rem))] sm:w-[25rem] sm:rounded-2xl sm:ring-1 sm:ring-black/10">
                     <div class="flex shrink-0 items-center justify-between gap-2 bg-ink px-3 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] text-white">
-                        <span class="flex items-center gap-1 text-sm font-semibold sm:gap-2 sm:pl-1">
-                            {{-- HP: panah kembali seperti layar baru (menutup panel, halaman di bawahnya tetap seperti semula). --}}
-                            <button type="button" data-chat-close class="-ml-1 grid h-9 w-9 place-items-center rounded-full text-white/90 hover:bg-white/10 sm:hidden" aria-label="{{ __('Kembali') }}">
-                                <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                            </button>
-                            <svg class="hidden h-4 w-4 text-gold-400 sm:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 016.5 3h11A2.5 2.5 0 0120 5.5v8a2.5 2.5 0 01-2.5 2.5H10l-4.5 4v-4A1.5 1.5 0 014 14.5v-9z" stroke-linejoin="round"/></svg>
+                        <span class="flex items-center gap-2 pl-1 text-sm font-semibold">
+                            <svg class="h-4 w-4 text-gold-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 016.5 3h11A2.5 2.5 0 0120 5.5v8a2.5 2.5 0 01-2.5 2.5H10l-4.5 4v-4A1.5 1.5 0 014 14.5v-9z" stroke-linejoin="round"/></svg>
                             {{ __('Obrolan') }}
                         </span>
                         <span class="flex items-center gap-1">
-                            <button type="button" data-chat-close class="hidden h-8 w-8 place-items-center rounded-full text-xl leading-none text-white/80 hover:bg-white/10 sm:grid" aria-label="{{ __('Tutup obrolan') }}">×</button>
+                            <button type="button" data-chat-close class="grid h-8 w-8 place-items-center rounded-full text-xl leading-none text-white/80 hover:bg-white/10" aria-label="{{ __('Tutup obrolan') }}">×</button>
                         </span>
                     </div>
                     <div class="relative min-h-0 flex-1">

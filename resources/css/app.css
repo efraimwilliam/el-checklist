@@ -280,28 +280,14 @@ html:has(body.chat-fixed) {
 [data-chat-panel] {
     overscroll-behavior: contain;
 }
-/* Panel obrolan melayang terbuka di HP: halaman di belakangnya dikunci (lihat chat-widget.js). */
-body.chat-locked {
-    position: fixed;
-    inset-inline: 0;
-    width: 100%;
-    overflow: hidden;
-}
-
-/* Panel obrolan melayang terbuka seperti layar baru: HP = masuk dari kanan, komputer = naik pelan. Halaman di bawahnya tidak dimuat ulang. */
+/* Panel obrolan melayang (komputer): naik pelan saat dibuka. Di HP tombolnya membuka halaman Obrolan biasa. */
 [data-chat-panel] {
     transition: transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s ease;
-    will-change: transform;
 }
 [data-chat-panel]:not([data-open]) {
     opacity: 0;
-    transform: translateX(100%);
+    transform: translateY(12px) scale(0.98);
     pointer-events: none;
-}
-@media (min-width: 640px) {
-    [data-chat-panel]:not([data-open]) {
-        transform: translateY(12px) scale(0.98);
-    }
 }
 @media (prefers-reduced-motion: reduce) {
     [data-chat-panel] { transition: none; }

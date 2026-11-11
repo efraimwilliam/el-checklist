@@ -25,7 +25,7 @@
                  data-mentionables="{{ json_encode($thread->participants->pluck('user')->filter()->reject(fn ($u) => $u->id === $me->id)->sortBy(fn ($u) => mb_strtolower($u->name()))->map(fn ($u) => ['id' => $u->id, 'name' => $u->name(), 'info' => $u->employee?->department?->name ?? '', 'photo' => $u->employee?->photoUrl()])->values()) }}">
             {{-- Header percakapan --}}
             <header class="flex shrink-0 items-center gap-2 border-b border-slate-200 bg-[#251d17] px-2 py-2 text-white md:bg-[#f7f2e8] md:px-4 md:text-slate-900">
-                <a href="{{ route('chat.index', request()->boolean('semua') ? ['semua' => 1] : []) }}" class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full hover:bg-white/10 md:hidden" aria-label="{{ __('Kembali ke daftar obrolan') }}">
+                <a href="{{ route('chat.index', request()->boolean('semua') ? ['semua' => 1] : []) }}" data-chat-back class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full hover:bg-white/10 md:hidden" aria-label="{{ __('Kembali ke daftar obrolan') }}">
                     <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </a>
                 <button type="button" data-info-open class="flex min-w-0 flex-1 items-center gap-3 rounded-lg py-1 text-left md:hover:bg-black/5">
