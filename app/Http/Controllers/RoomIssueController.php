@@ -242,7 +242,7 @@ class RoomIssueController extends Controller
             'related' => $related,
             'departments' => Department::where('is_active', true)->orderBy('sort')->orderBy('name')->get(),
             'sources' => RoomIssue::sourceLabels(),
-        ]);
+        ] + \App\Models\ChatThread::shareTargets(request()->user()));
     }
 
     /**

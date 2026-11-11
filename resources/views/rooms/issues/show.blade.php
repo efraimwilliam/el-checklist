@@ -15,6 +15,10 @@
             </p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
+            @can('chat')
+                <a href="{{ route('chat.issue', $issue) }}" class="btn-secondary !px-4 !py-1.5 text-sm">{{ __('Obrolan') }}</a>
+                <button type="button" class="btn-secondary !px-4 !py-1.5 text-sm" data-share-open>{{ __('Kirim ke obrolan') }}</button>
+            @endcan
             <a href="{{ route('kamar.issues.chronology', $issue) }}" class="btn-secondary !px-4 !py-1.5 text-sm">{{ __('Cetak riwayat') }}</a>
             <a href="{{ route('chronology.create', ['kendala' => $issue->id]) }}" class="btn-secondary !px-4 !py-1.5 text-sm">{{ __('Buat Chronology Report') }}</a>
             @if ($issue->recurrence > 1)<span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900">{{ __('Berulang ke-:n', ['n' => $issue->recurrence]) }}</span>@endif
@@ -283,4 +287,9 @@
             <button class="btn-secondary">{{ __('Buka kembali') }}</button>
         </form>
     @endcan
+    @include('chat.partials.share-dialog', [
+        'action' => route('chat.share-issue', $issue),
+        'subtitle' => $issue->placeTitle().' · '.($issue->category?->name ?? __('Tanpa kategori')),
+        'preselect' => [],
+    ])
 </x-app-layout>

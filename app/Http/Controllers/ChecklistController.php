@@ -96,7 +96,7 @@ class ChecklistController extends Controller
             'canReview' => $user->can('review', $checklist),
             'canUnreview' => $user->can('unreview', $checklist),
             'canDelete' => $user->can('delete', $checklist),
-        ]);
+        ] + \App\Models\ChatThread::shareTargets($user));
     }
 
     /** Halaman kartu / daftar: setiap pilihan tersimpan otomatis. Yang tidak boleh mengubah diarahkan ke detail. */

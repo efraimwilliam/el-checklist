@@ -41,6 +41,12 @@ class ChecklistSettings
         return $this->get('checklist_future_fill') === '1';
     }
 
+    /** Obrolan pekerjaan aktif? Mati secara bawaan; hanya Administrator yang menyalakan. Data tetap tersimpan saat dimatikan. */
+    public function chatEnabled(): bool
+    {
+        return $this->get('chat_enabled') === '1';
+    }
+
     public const MAX_DAYS_AHEAD = 60;
 
     public function photosPerTask(): int

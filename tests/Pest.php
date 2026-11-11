@@ -114,3 +114,20 @@ function makeChecklist(Employee $employee, Position $position, ?CarbonImmutable 
 
     return $checklist->refresh();
 }
+
+/** Pengirim push palsu: mencatat kiriman, tanpa menghubungi layanan push sungguhan. */
+class FakePushSender implements \App\Push\PushSender
+{
+    /** @var list<array{endpoint: string, payload: array<string, mixed>}> */
+    public array $sent = [];
+
+    /** @var array<string, string> endpoint => hasil (bawaan SENT) */
+    public array $results = [];
+
+    public function send(\App\Models\PushSubscription $subscription, array $payload): string
+    {
+        $this->sent[] = ['endpoint' => $subscription->endpoint, 'payload' => $payload];
+
+        return $this->results[$subscription->endpoint] ?? self::SENT;
+    }
+}

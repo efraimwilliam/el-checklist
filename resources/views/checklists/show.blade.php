@@ -103,6 +103,10 @@
             @if ($canEdit)
                 <a href="{{ route('checklists.fill', $checklist) }}" class="btn-secondary">{{ __('Edit') }}</a>
             @endif
+            @can('chat')
+                <a href="{{ route('chat.checklist', $checklist) }}" class="btn-secondary">{{ __('Obrolan') }}</a>
+                <button type="button" class="btn-secondary" data-share-open>{{ __('Kirim ke obrolan') }}</button>
+            @endcan
             @if (auth()->user()->role !== \App\Enums\Role::Staff)
                 <button type="button" onclick="window.print()" class="btn-secondary">{{ __('Cetak') }}</button>
             @endif
@@ -129,4 +133,11 @@
             </form>
         @endif
     </div>
+
+    @php($owner = $checklist->employee?->user)
+    @include('chat.partials.share-dialog', [
+        'action' => route('chat.share-checklist', $checklist),
+        'subtitle' => ($checklist->employee?->name ?? '—').' · '.$checklist->position_name.' · '.$checklist->date->format('d M Y'),
+        'preselect' => $owner && $owner->id !== auth()->id() ? [$owner->id] : [],
+    ])
 </x-app-layout>

@@ -173,7 +173,7 @@
         </dialog>
 
         {{-- Bilah progres menempel di bawah layar --}}
-        <div class="sticky bottom-3 z-10 mt-4 rounded-2xl bg-ink px-5 py-3 text-white shadow-lg">
+        <div data-bottom-bar class="sticky bottom-3 z-10 mt-4 rounded-2xl bg-ink px-5 py-3 text-white shadow-lg">
             <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
                 <div>
                     <p class="text-sm text-white/80">

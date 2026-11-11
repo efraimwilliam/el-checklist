@@ -87,7 +87,7 @@ class AttendanceApiService
      * (tidak disimpan di sini). Respons 422 (validasi) dikembalikan sebagai alasan `validation`.
      *
      * @param  array<string, string>  $payload
-     * @return array{ok: bool, reason?: string, message?: string, retry_after?: int, employee?: array{id: int, username: string, name: string, department_id: ?int, position: ?string, is_active: bool}}
+     * @return array{ok: bool, reason?: string, message?: string, retry_after?: int, employee?: array{id: int, username: string, name: string, department_id: ?int, position: ?string, is_active: bool, photo_version: ?string}}
      *
      * @throws AttendanceUnavailable
      */
@@ -132,7 +132,7 @@ class AttendanceApiService
     }
 
     /**
-     * @return list<array{id: int, username: string, name: string, department_id: ?int, position: ?string, is_active: bool}>
+     * @return list<array{id: int, username: string, name: string, department_id: ?int, position: ?string, is_active: bool, photo_version: ?string}>
      *
      * @throws AttendanceUnavailable
      */
@@ -178,6 +178,32 @@ class AttendanceApiService
         return $result;
     }
 
+    /**
+     * Foto profil satu pegawai (isi JPEG mentah dari Absensi); null bila pegawai tidak punya foto (404).
+     *
+     * @throws AttendanceUnavailable
+     */
+    public function employeePhoto(int $externalId): ?string
+    {
+        if (! $this->configured()) {
+            throw new AttendanceUnavailable(__('Koneksi Sistem Absensi belum diatur (ATTENDANCE_API_URL & ATTENDANCE_API_TOKEN).'));
+        }
+
+        try {
+            $response = $this->client()->accept('image/jpeg')->get(str_replace('{id}', (string) $externalId, (string) config('attendance.paths.employee_photo')));
+        } catch (ConnectionException) {
+            throw new AttendanceUnavailable(__('Sistem Absensi tidak dapat dihubungi.'));
+        }
+        if ($response->notFound()) {
+            return null;
+        }
+        if (! $response->ok()) {
+            throw new AttendanceUnavailable(__('Sistem Absensi menolak permintaan (kode :code).', ['code' => $response->status()]));
+        }
+
+        return $response->body();
+    }
+
     /** @return list<mixed> */
     private function fetch(string $resource, array $query = []): array
     {
@@ -201,7 +227,7 @@ class AttendanceApiService
         return $data;
     }
 
-    /** @return array{id: int, username: string, name: string, department_id: ?int, position: ?string, is_active: bool}|null */
+    /** @return array{id: int, username: string, name: string, department_id: ?int, position: ?string, is_active: bool, photo_version: ?string}|null */
     private function normalizeEmployee(mixed $row): ?array
     {
         if (! is_array($row) || ! is_int($row['id'] ?? null) || ! filled($row['username'] ?? null) || ! filled($row['name'] ?? null) || ! is_bool($row['is_active'] ?? null)) {
@@ -215,6 +241,7 @@ class AttendanceApiService
             'department_id' => is_int($row['department_id'] ?? null) ? $row['department_id'] : null,
             'position' => filled($row['position'] ?? null) ? (string) $row['position'] : null,
             'is_active' => $row['is_active'],
+            'photo_version' => is_string($row['photo_version'] ?? null) && preg_match('/^[A-Za-z0-9_-]{1,32}$/', $row['photo_version']) ? $row['photo_version'] : null,
         ];
     }
 

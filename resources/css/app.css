@@ -254,3 +254,18 @@
     .cl-shutter:active { transform: scale(0.94); }
     .cl-shutter:disabled { opacity: 0.5; }
 }
+
+/* Obrolan di dalam panel tombol melayang (iframe): tanpa header aplikasi, tanpa tombol obrolan, tanpa bingkai. */
+.in-frame [data-app-header],
+.in-frame [data-chat-widget] {
+    display: none !important;
+}
+.in-frame main {
+    max-width: none !important;
+    padding: 0 !important;
+}
+.in-frame [data-chat-shell] {
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+}

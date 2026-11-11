@@ -77,7 +77,7 @@
             </section>
         @endif
 
-        <div class="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur">
+        <div data-bottom-bar class="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur">
             <div class="mx-auto flex max-w-6xl items-center justify-between gap-3">
                 <span class="text-sm text-slate-500">{{ __('Perubahan langsung berlaku pada checklist ini.') }}</span>
                 <button class="btn-primary">{{ __('Simpan tugas hari ini') }}</button>

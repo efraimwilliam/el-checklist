@@ -86,6 +86,19 @@
                                 </span>
                             </label>
                         </div>
+                        <div class="grid gap-4 border-t border-slate-100 py-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+                            <div>
+                                <p class="font-semibold text-slate-900">{{ __('Obrolan pekerjaan') }}</p>
+                                <p class="mt-1 text-sm text-slate-500">{{ __('Menu Obrolan untuk membahas pekerjaan, juga dari halaman kendala dan checklist. HR dan Administrator dapat membaca semua percakapan. Kalau dimatikan, menu hilang dan tidak ada yang bisa membuka obrolan; isinya tetap tersimpan.') }}</p>
+                            </div>
+                            <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-3.5 text-sm transition hover:border-slate-300 has-[:checked]:border-gold-500 has-[:checked]:bg-[#fbf6ea]">
+                                <input type="checkbox" name="chat_enabled" value="1" class="mt-1 h-4 w-4 accent-[#b08a3e]" @checked($chatEnabled)>
+                                <span>
+                                    <span class="block font-semibold text-slate-900">{{ __('Aktifkan obrolan pekerjaan') }}</span>
+                                    <span class="mt-0.5 block text-slate-500">{{ __('Mati secara bawaan.') }}</span>
+                                </span>
+                            </label>
+                        </div>
                         <div class="flex justify-end border-t border-slate-100 pt-5">
                             <button class="btn-primary">{{ __('Simpan bagian ini') }}</button>
                         </div>

@@ -12,6 +12,7 @@ return [
         'account' => env('ATTENDANCE_API_ACCOUNT_PATH', '/api/v1/tasks/account'),
         'employees' => env('ATTENDANCE_API_EMPLOYEES_PATH', '/api/v1/tasks/employees'),
         'departments' => env('ATTENDANCE_API_DEPARTMENTS_PATH', '/api/v1/tasks/departments'),
+        'employee_photo' => env('ATTENDANCE_API_EMPLOYEE_PHOTO_PATH', '/api/v1/tasks/employees/{id}/photo'),
         'schedules' => env('ATTENDANCE_API_SCHEDULES_PATH', '/api/v1/tasks/schedules'),
     ],
 

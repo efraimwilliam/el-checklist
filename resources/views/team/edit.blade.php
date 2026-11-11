@@ -79,7 +79,7 @@
             <p class="card p-6 text-sm text-slate-500">{{ __('Jabatan di departemen ini belum punya tugas aktif.') }}</p>
         @endforelse
 
-        <div class="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur sm:px-6">
+        <div data-bottom-bar class="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur sm:px-6">
             <div class="mx-auto flex max-w-6xl items-center justify-between gap-3">
                 <p class="text-sm text-slate-600"><strong class="tabular-nums text-slate-900" data-chosen>{{ $chosen }}</strong> dari {{ $total }} tugas dipilih</p>
                 <div class="flex gap-2">

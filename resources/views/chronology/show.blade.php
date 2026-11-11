@@ -18,6 +18,9 @@
                     </button>
                 </form>
             @endcan
+            @can('chat')
+                <button type="button" class="btn-secondary !px-4 !py-1.5 text-sm" data-share-open>{{ __('Kirim ke obrolan') }}</button>
+            @endcan
             <button type="button" class="btn-secondary !px-4 !py-1.5 text-sm" data-copy>{{ __('Salin teks') }}</button>
             <button type="button" class="btn-primary !px-4 !py-1.5 text-sm" onclick="window.print()">{{ __('Cetak / simpan PDF') }}</button>
         </div>
@@ -70,4 +73,12 @@
             }
         });
     </script>
+
+    <div class="print:hidden">
+        @include('chat.partials.share-dialog', [
+            'action' => route('chat.share-chronology', $report),
+            'subtitle' => 'Chronology Report · '.$report->guests->map(fn ($g) => trim($g->name.($g->room_number ? ' ('.$g->room_number.')' : '')))->implode(', '),
+            'preselect' => [],
+        ])
+    </div>
 </x-app-layout>

@@ -131,7 +131,7 @@
         <p class="hidden text-center text-sm text-slate-500" data-filter-empty>{{ __('Tidak ada staff yang cocok dengan pencarian atau saringan.') }}</p>
     </form>
 
-    <div class="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur">
+    <div data-bottom-bar class="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur">
         <div class="mx-auto flex max-w-5xl items-center justify-between gap-3">
             <span class="text-sm text-slate-600" data-dirty-count aria-live="polite">{{ __('Tidak ada perubahan') }}</span>
             <button type="submit" form="positions-form" class="btn-primary" data-save disabled>{{ __('Simpan jabatan') }}</button>

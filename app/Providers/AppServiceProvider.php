@@ -48,9 +48,14 @@ class AppServiceProvider extends ServiceProvider
         // Kendala kamar: semua pengguna berakses (termasuk Staff Front Office) boleh mencatat dan melihat yang menjadi bagiannya; hak per kendala ada di RoomIssuePolicy.
         Gate::define('room-issues', fn (User $user) => $user->canUseApp());
         Gate::policy(\App\Models\RoomIssue::class, \App\Policies\RoomIssuePolicy::class);
+        // Notifikasi obrolan (Web Push): pengirim bisa diganti di tes.
+        $this->app->bind(\App\Push\PushSender::class, \App\Push\WebPushSender::class);
         // Chronology Report (laporan kejadian tamu): semua pengguna berakses boleh membuat; hak per laporan ada di ChronologyReportPolicy.
         Gate::define('chronology-reports', fn (User $user) => $user->canUseApp());
         Gate::policy(\App\Models\ChronologyReport::class, \App\Policies\ChronologyReportPolicy::class);
+        // Obrolan pekerjaan: hanya bila Administrator menyalakannya (Pengaturan); hak per percakapan ada di ChatThreadPolicy.
+        Gate::define('chat', fn (User $user) => $user->canUseApp() && app(\App\Checklists\ChecklistSettings::class)->chatEnabled());
+        Gate::policy(\App\Models\ChatThread::class, \App\Policies\ChatThreadPolicy::class);
         Gate::define('manage-tasks', fn (User $user) => $user->canUseApp() && in_array($user->role, [Role::Admin, Role::Hr], true));
         Gate::define('manage-access', fn (User $user) => $user->canUseApp() && $user->isAdmin());
     }

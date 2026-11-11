@@ -117,7 +117,7 @@ class ChronologyReportController extends Controller
             'statement' => ReportText::STATEMENT,
             'closing' => ReportText::CLOSING,
             'title' => ReportText::TITLE,
-        ]);
+        ] + \App\Models\ChatThread::shareTargets(request()->user()));
     }
 
     public function edit(ChronologyReport $report): View

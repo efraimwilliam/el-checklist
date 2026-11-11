@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Attendance\AttendanceUnavailable;
+use App\Attendance\EmployeePhotoSync;
 use App\Attendance\EmployeeSyncService;
 use App\Enums\Role;
 use App\Http\Controllers\Controller;
@@ -71,11 +72,12 @@ class AccessController extends Controller
         return redirect()->route('admin.access.index')->with('status', __('Akses :name disimpan.', ['name' => $employee->name]));
     }
 
-    public function sync(EmployeeSyncService $sync): RedirectResponse
+    public function sync(EmployeeSyncService $sync, EmployeePhotoSync $photos): RedirectResponse
     {
         Gate::authorize('manage-access');
         try {
             $result = $sync->sync();
+            $photos->refresh();
         } catch (AttendanceUnavailable $e) {
             return back()->withErrors(['sync' => $e->getMessage()]);
         }

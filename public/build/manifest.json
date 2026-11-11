@@ -1,4 +1,8 @@
 {
+  "_push-D_xs6dIL.js": {
+    "file": "assets/push-D_xs6dIL.js",
+    "name": "push"
+  },
   "node_modules/@fontsource/inter/files/inter-latin-400-normal.woff": {
     "file": "assets/inter-latin-400-normal-CyCys3Eg.woff",
     "src": "node_modules/@fontsource/inter/files/inter-latin-400-normal.woff"
@@ -51,7 +55,7 @@
     ]
   },
   "resources/css/app.css": {
-    "file": "assets/app-CGfvabuI.css",
+    "file": "assets/app-CMU1EzV1.css",
     "name": "app",
     "names": [
       "app.css"
@@ -67,6 +71,24 @@
       "assets/inter-latin-600-normal-CiBQ2DWP.woff",
       "assets/inter-latin-700-normal-Yt3aPRUw.woff2",
       "assets/inter-latin-700-normal-BLAVimhd.woff"
+    ]
+  },
+  "resources/js/chat-widget.js": {
+    "file": "assets/chat-widget-C6WhNOqY.js",
+    "name": "chat-widget",
+    "src": "resources/js/chat-widget.js",
+    "isEntry": true,
+    "imports": [
+      "_push-D_xs6dIL.js"
+    ]
+  },
+  "resources/js/chat.js": {
+    "file": "assets/chat-DFvVH66X.js",
+    "name": "chat",
+    "src": "resources/js/chat.js",
+    "isEntry": true,
+    "imports": [
+      "_push-D_xs6dIL.js"
     ]
   },
   "resources/js/checklist.js": {

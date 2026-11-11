@@ -13,7 +13,7 @@ class Employee extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['external_id', 'username', 'name', 'department_id', 'position_title', 'is_active', 'custom_tasks', 'checklist_position_id', 'checklist_title', 'synced_at'];
+    protected $fillable = ['external_id', 'username', 'name', 'department_id', 'position_title', 'photo_version', 'is_active', 'custom_tasks', 'checklist_position_id', 'checklist_title', 'synced_at'];
 
     protected function casts(): array
     {
@@ -66,5 +66,11 @@ class Employee extends Model
     public function user(): HasOne
     {
         return $this->hasOne(User::class);
+    }
+
+    /** Foto profil dari Sistem Absensi (salinan lokal, `EmployeePhotoSync`); null = tampilkan inisial. */
+    public function photoUrl(): ?string
+    {
+        return $this->photo_cached_version ? route('chat.employee-photo', ['employee' => $this->id, 'v' => $this->photo_cached_version]) : null;
     }
 }

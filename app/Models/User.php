@@ -94,6 +94,25 @@ class User extends Authenticatable
         });
     }
 
+    /** Jumlah percakapan yang punya pesan baru dari orang lain (satu query per permintaan; 0 bila obrolan dimatikan). */
+    public function unreadChatCount(): int
+    {
+        return once(function () {
+            if (! \Illuminate\Support\Facades\Gate::forUser($this)->allows('chat')) {
+                return 0;
+            }
+
+            return \App\Models\ChatParticipant::where('user_id', $this->id)
+                ->where(fn ($outer) => $outer->where('marked_unread', true)
+                    ->orWhereExists(fn ($q) => $q->selectRaw('1')->from('chat_messages')
+                        ->whereColumn('chat_messages.chat_thread_id', 'chat_participants.chat_thread_id')
+                        ->whereColumn('chat_messages.id', '>', 'chat_participants.last_read_message_id')
+                        ->where('chat_messages.user_id', '!=', $this->id)
+                        ->whereNull('chat_messages.deleted_at')))
+                ->count();
+        });
+    }
+
     public function isAdmin(): bool
     {
         return $this->role === Role::Admin;

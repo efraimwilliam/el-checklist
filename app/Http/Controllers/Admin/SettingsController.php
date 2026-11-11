@@ -29,6 +29,7 @@ class SettingsController extends Controller
             'checkedAt' => now(),
             'requirement' => $settings->photoRequirement(),
             'futureFill' => $settings->futureFillAllowed(),
+            'chatEnabled' => $settings->chatEnabled(),
             'retention' => $settings->photoRetentionDays(),
             'requirements' => ChecklistSettings::REQUIREMENTS,
             'departments' => Department::where('is_active', true)->when($allowedIds !== null, fn ($q) => $q->whereIn('id', $allowedIds))->orderBy('sort')->orderBy('name')->get(),
@@ -40,6 +41,7 @@ class SettingsController extends Controller
     {
         Gate::authorize('manage-access');
         $settings->put('checklist_future_fill', $request->boolean('future_fill') ? '1' : '0');
+        $settings->put('chat_enabled', $request->boolean('chat_enabled') ? '1' : '0');
 
         return back()->with('status', __('Pengaturan disimpan.'));
     }

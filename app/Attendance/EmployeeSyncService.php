@@ -40,6 +40,7 @@ class EmployeeSyncService
                     // Departemen yang tidak dikenal: tetap departemen lama supaya akses HOD tidak berubah diam-diam.
                     'department_id' => $departmentIds[$row['department_id']] ?? $employee->department_id,
                     'is_active' => $row['is_active'],
+                    'photo_version' => $row['photo_version'] ?? null, // fotonya diambil EmployeePhotoSync, bukan di sini (sync juga jalan saat login SSO)
                     'synced_at' => $now,
                 ])->save();
             }
