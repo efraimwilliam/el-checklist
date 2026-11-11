@@ -12,7 +12,7 @@
                 </div>
                 @error('share')<p class="mx-5 mt-3 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{{ $message }}</p>@enderror
                 <div class="px-5 pt-3">
-                    <input type="search" data-share-search placeholder="{{ __('Cari obrolan atau nama') }}" class="w-full rounded-lg border-0 bg-slate-100 px-3 py-2 text-sm focus:bg-white focus:ring-2 focus:ring-gold-500">
+                    <input type="search" data-share-search placeholder="{{ __('Cari obrolan atau nama') }}" class="w-full rounded-lg border-0 bg-slate-100 px-3 py-2 text-sm focus:bg-white focus:ring-2 focus:ring-gold-500 focus:outline-none">
                 </div>
                 <div class="min-h-0 flex-1 overflow-y-auto py-2">
                     @if ($shareThreads->isNotEmpty())

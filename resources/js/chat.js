@@ -6,6 +6,25 @@ const inFrame = window.self !== window.top;
 // Panel tombol melayang ditutup = jangan memanggil server (window.__chatPaused diatur oleh chat-widget.js di halaman induk).
 const paused = () => document.hidden || window.__chatPaused === true;
 
+// ---- Papan ketik di HP ----
+// Saat papan ketik muncul, iPhone menggeser seluruh halaman ke atas sehingga header obrolan keluar layar. Tinggi layar obrolan
+// disesuaikan dengan area yang terlihat HANYA ketika papan ketik muncul / ditutup (visualViewport "resize"), lalu halaman dikembalikan
+// ke atas beberapa kali sesaat sesudahnya. Sengaja tidak mendengarkan gulir: versi lama yang mengawasi gulir membuat layar berkedip.
+if (!inFrame && document.body.classList.contains('chat-fixed') && window.visualViewport) {
+    const phone = window.matchMedia('(max-width: 767px)');
+    let timers = [];
+    const settle = () => { if (window.scrollY !== 0) window.scrollTo(0, 0); };
+    const onViewportResize = () => {
+        if (!phone.matches) { document.body.style.height = ''; return; }
+        const keyboardOpen = window.innerHeight - window.visualViewport.height > 120;
+        document.body.style.height = keyboardOpen ? `${Math.round(window.visualViewport.height)}px` : '';
+        timers.forEach(clearTimeout);
+        timers = [0, 120, 400].map((delay) => setTimeout(settle, delay));
+        document.dispatchEvent(new CustomEvent('chat:viewport', { detail: { keyboardOpen } }));
+    };
+    window.visualViewport.addEventListener('resize', onViewportResize);
+}
+
 // ---- Tombol kembali (HP) ----
 // Kembali memakai riwayat browser bila memungkinkan, supaya halaman sebelumnya dipulihkan apa adanya (tanpa memuat ulang, posisi gulir tetap).
 if (!inFrame) {
@@ -450,7 +469,12 @@ if (chat) {
     } else if (divider) divider.scrollIntoView({ block: 'center', inline: 'nearest' });
     else toBottom();
 
+    // Papan ketik muncul / tutup: bila tadi sedang di pesan terbaru, tetap di pesan terbaru (area pesan jadi lebih pendek).
+    let stickToBottom = true;
+    document.addEventListener('chat:viewport', () => { if (stickToBottom) { toBottom(); requestAnimationFrame(() => toBottom()); } });
+
     log.addEventListener('scroll', () => {
+        stickToBottom = nearBottom();
         if (nearBottom()) {
             unseen = 0;
             scrollCount.hidden = true;

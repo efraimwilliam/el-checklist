@@ -54,7 +54,7 @@
                     <label class="relative min-w-0 flex-1">
                         <span class="sr-only">{{ __('Cari pesan') }}</span>
                         <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="9" cy="9" r="6"/><path d="M14 14l4 4" stroke-linecap="round"/></svg>
-                        <input type="search" data-search-input autocomplete="off" class="w-full rounded-lg border-0 bg-slate-100 py-2 pl-9 pr-3 text-sm focus:bg-white focus:ring-2 focus:ring-gold-500">
+                        <input type="search" data-search-input autocomplete="off" class="w-full rounded-lg border-0 bg-slate-100 py-2 pl-9 pr-3 text-sm focus:bg-white focus:ring-2 focus:ring-gold-500 focus:outline-none">
                     </label>
                     <button type="button" data-search-close class="shrink-0 rounded-full px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100">{{ __('Tutup') }}</button>
                 </div>
@@ -126,7 +126,7 @@
                     <p hidden class="mb-2 rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-700" data-error></p>
                     <form class="flex items-end gap-2" data-form method="POST" action="{{ route('chat.send', $thread) }}" enctype="multipart/form-data">
                         @csrf
-                        <div class="relative flex min-w-0 flex-1 items-end rounded-3xl bg-white shadow-sm">
+                        <div class="relative flex min-w-0 flex-1 items-end rounded-3xl bg-white shadow-sm ring-[#b08a3e]/40 transition focus-within:ring-2">
                             <button type="button" data-attach-open aria-haspopup="menu" aria-expanded="false" class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-slate-500 hover:text-slate-800" aria-label="{{ __('Lampirkan') }}" title="{{ __('Lampirkan') }}">
                                 <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M20 11.5l-7.8 7.8a5 5 0 01-7.1-7.1l8.1-8.1a3.4 3.4 0 014.8 4.8l-8 8a1.7 1.7 0 01-2.4-2.4l7.4-7.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
                             </button>
@@ -145,7 +145,7 @@
                                 </label>
                             </div>
                             <label class="sr-only" for="chat-body">{{ __('Pesan') }}</label>
-                            <textarea id="chat-body" name="body" rows="1" maxlength="4000" class="max-h-36 min-h-11 flex-1 resize-none border-0 bg-transparent py-2.5 pr-4 text-[15px] focus:ring-0" data-body aria-autocomplete="list"></textarea>
+                            <textarea id="chat-body" name="body" rows="1" maxlength="4000" class="max-h-36 min-h-11 flex-1 resize-none border-0 bg-transparent py-2.5 pr-4 text-[15px] outline-none focus:outline-none focus:ring-0" data-body aria-autocomplete="list"></textarea>
                         </div>
                         <button class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#b08a3e] text-white shadow-sm hover:bg-[#9a7733] disabled:opacity-60" data-send aria-label="{{ __('Kirim') }}">
                             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3.4 20.4l17.4-7.5a1 1 0 000-1.8L3.4 3.6a1 1 0 00-1.4 1.1L3.8 11l9.2 1-9.2 1-1.8 6.3a1 1 0 001.4 1.1z"/></svg>

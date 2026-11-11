@@ -30,7 +30,7 @@
         <label class="relative block">
             <span class="sr-only">{{ __('Cari obrolan') }}</span>
             <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="9" cy="9" r="6"/><path d="M14 14l4 4" stroke-linecap="round"/></svg>
-            <input type="search" data-thread-search placeholder="{{ __('Cari obrolan') }}" class="w-full rounded-lg border-0 bg-slate-100 py-2 pl-9 pr-3 text-sm focus:bg-white focus:ring-2 focus:ring-gold-500">
+            <input type="search" data-thread-search placeholder="{{ __('Cari obrolan') }}" class="w-full rounded-lg border-0 bg-slate-100 py-2 pl-9 pr-3 text-sm focus:bg-white focus:ring-2 focus:ring-gold-500 focus:outline-none">
         </label>
     </div>
     @if ($canSeeAll)
@@ -62,7 +62,7 @@
             <h2 class="text-lg font-semibold">{{ __('Chat baru') }}</h2>
         </div>
         <div class="p-3">
-            <input type="search" data-contact-search placeholder="{{ __('Cari nama atau departemen') }}" class="w-full rounded-lg border-0 bg-slate-100 px-3 py-2 text-sm focus:bg-white focus:ring-2 focus:ring-gold-500">
+            <input type="search" data-contact-search placeholder="{{ __('Cari nama atau departemen') }}" class="w-full rounded-lg border-0 bg-slate-100 px-3 py-2 text-sm focus:bg-white focus:ring-2 focus:ring-gold-500 focus:outline-none">
         </div>
         <div class="min-h-0 flex-1 overflow-y-auto">
             <button type="button" data-panel-open="group" class="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-[#faf6ec]">
@@ -104,7 +104,7 @@
                 <span class="text-sm font-medium text-slate-700">{{ __('Nama grup') }}</span>
                 <input name="subject" value="{{ old('subject') }}" maxlength="120" required class="input mt-1 w-full" placeholder="{{ __('Contoh: Engineering shift pagi') }}">
             </label>
-            <input type="search" data-member-search placeholder="{{ __('Cari anggota') }}" class="w-full rounded-lg border-0 bg-slate-100 px-3 py-2 text-sm focus:bg-white focus:ring-2 focus:ring-gold-500">
+            <input type="search" data-member-search placeholder="{{ __('Cari anggota') }}" class="w-full rounded-lg border-0 bg-slate-100 px-3 py-2 text-sm focus:bg-white focus:ring-2 focus:ring-gold-500 focus:outline-none">
         </div>
         <div class="min-h-0 flex-1 overflow-y-auto">
             @foreach ($people as $person)
