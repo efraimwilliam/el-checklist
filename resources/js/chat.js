@@ -7,22 +7,28 @@ const inFrame = window.self !== window.top;
 const paused = () => document.hidden || window.__chatPaused === true;
 
 // ---- Papan ketik di HP ----
-// Saat papan ketik muncul, iPhone menggeser seluruh halaman ke atas sehingga header obrolan keluar layar. Tinggi layar obrolan
-// disesuaikan dengan area yang terlihat HANYA ketika papan ketik muncul / ditutup (visualViewport "resize"), lalu halaman dikembalikan
-// ke atas beberapa kali sesaat sesudahnya. Sengaja tidak mendengarkan gulir: versi lama yang mengawasi gulir membuat layar berkedip.
+// Layar obrolan (body.chat-fixed, posisi tetap) ditempelkan pada area yang benar-benar terlihat: tinggi = visualViewport.height,
+// atas = visualViewport.offsetTop. Saat papan ketik muncul, iOS menggeser area terlihat; layar obrolan IKUT bergeser (bukan menarik
+// halaman kembali), jadi header, pesan, dan kotak tulis tetap di tempatnya tanpa tarik-menarik. Tidak pernah memanggil scrollTo.
 if (!inFrame && document.body.classList.contains('chat-fixed') && window.visualViewport) {
-    const phone = window.matchMedia('(max-width: 767px)');
-    let timers = [];
-    const settle = () => { if (window.scrollY !== 0) window.scrollTo(0, 0); };
-    const onViewportResize = () => {
-        if (!phone.matches) { document.body.style.height = ''; return; }
-        const keyboardOpen = window.innerHeight - window.visualViewport.height > 120;
-        document.body.style.height = keyboardOpen ? `${Math.round(window.visualViewport.height)}px` : '';
-        timers.forEach(clearTimeout);
-        timers = [0, 120, 400].map((delay) => setTimeout(settle, delay));
-        document.dispatchEvent(new CustomEvent('chat:viewport', { detail: { keyboardOpen } }));
+    const vv = window.visualViewport;
+    const rootStyle = document.documentElement.style;
+    let pending = 0;
+    let lastHeight = 0;
+    const apply = () => {
+        pending = 0;
+        rootStyle.setProperty('--vv-height', `${Math.round(vv.height)}px`);
+        rootStyle.setProperty('--vv-top', `${Math.round(vv.offsetTop)}px`);
+        // Tinggi berubah banyak = papan ketik muncul / ditutup: pesan terbaru tetap terlihat.
+        if (Math.abs(vv.height - lastHeight) > 80) {
+            lastHeight = vv.height;
+            document.dispatchEvent(new CustomEvent('chat:viewport'));
+        }
     };
-    window.visualViewport.addEventListener('resize', onViewportResize);
+    const schedule = () => { if (!pending) pending = requestAnimationFrame(apply); };
+    vv.addEventListener('resize', schedule);
+    vv.addEventListener('scroll', schedule);
+    apply();
 }
 
 // ---- Tombol kembali (HP) ----

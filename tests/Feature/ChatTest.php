@@ -196,7 +196,8 @@ it('opens one shared thread per room issue for people who may see that issue', f
     ]);
 
     chatAs($this->ani);
-    $this->get(route('kamar.issues.show', $issue))->assertOk()->assertSee(route('chat.issue', $issue), false);
+    // Tombol "Obrolan" sudah tidak ada di halaman kendala (cukup "Kirim ke obrolan"); obrolan per kendala yang sudah ada tetap bisa dibuka.
+    $this->get(route('kamar.issues.show', $issue))->assertOk()->assertDontSee('href="'.route('chat.issue', $issue).'"', false)->assertSee('Kirim ke obrolan');
     $this->get(route('chat.issue', $issue))->assertRedirect();
     $thread = ChatThread::firstOrFail();
     say($this, $thread, 'Saya cek sore ini')->assertOk();

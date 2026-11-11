@@ -275,6 +275,13 @@ body.chat-fixed {
     overflow: hidden;
     overscroll-behavior: none;
 }
+/* Layar obrolan menempel pada area yang terlihat (variabel diisi chat.js dari visualViewport; tanpa JS = 100dvh). */
+body.chat-fixed {
+    position: fixed;
+    inset-inline: 0;
+    top: var(--vv-top, 0px);
+    height: var(--vv-height, 100dvh);
+}
 /* Warna yang sama dengan bilah tulis, supaya celah di atas papan ketik (iPhone) terlihat menyatu, bukan putih / isi halaman lain. */
 html:has(body.chat-fixed) {
     background-color: #f4efe6;

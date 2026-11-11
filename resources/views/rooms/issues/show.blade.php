@@ -5,49 +5,105 @@
         $kindTones = ['catatan' => 'bg-slate-300', 'selesai' => 'bg-emerald-500', 'ambil' => 'bg-sky-500', 'lepas' => 'bg-slate-400', 'tunda' => 'bg-amber-500', 'laporan' => 'bg-rose-500', 'berulang' => 'bg-amber-400'];
     @endphp
 
-    <a href="{{ route('kamar.issues.index') }}" class="text-sm text-sky-700 hover:underline">{{ __('← Semua kendala') }}</a>
+    @php
+        $doneStatus = $issue->isDone();
+        $claimed = $issue->claimed_by !== null || in_array($issue->status, ['dikerjakan', 'tertunda', 'selesai'], true);
+        $working = in_array($issue->status, ['dikerjakan', 'tertunda'], true);
+        $steps = [
+            ['label' => __('Dicatat'), 'done' => true, 'at' => $issue->created_at],
+            ['label' => __('Diambil'), 'done' => $claimed, 'at' => $issue->claimed_at],
+            ['label' => $issue->status === 'tertunda' ? 'Pending' : 'Ongoing', 'done' => $working || $doneStatus, 'at' => null, 'warn' => $issue->status === 'tertunda'],
+            ['label' => 'Done', 'done' => $doneStatus, 'at' => $issue->completed_at],
+        ];
+        $current = $doneStatus ? 3 : ($working ? 2 : ($claimed ? 1 : 0));
+        $iconButton = 'inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-500';
+    @endphp
 
-    <div class="mb-5 mt-1 flex flex-wrap items-start justify-between gap-3">
-        <div>
-            <h1 class="text-3xl text-slate-900">{{ $issue->placeTitle() }}</h1>
-            <p class="text-sm text-slate-500">
-                @if ($issue->room?->floor){{ __('Lantai') }} {{ $issue->room->floor }} · @endif{{ $issue->room?->type ? $issue->room->type.' · ' : '' }}{{ $issue->room_id ? '' : __('Lokasi lain').' · ' }}{{ $issue->category?->name ?? __('Tanpa kategori') }}
-            </p>
-        </div>
-        <div class="flex flex-wrap items-center gap-2">
+    {{-- Baris atas: kembali + aksi sebagai ikon (keterangan lewat title / aria-label). --}}
+    <div class="flex items-center justify-between gap-3">
+        <a href="{{ route('kamar.issues.index') }}" class="inline-flex items-center gap-1 text-sm font-medium text-slate-600 hover:text-slate-900">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            {{ __('Semua kendala') }}
+        </a>
+        <div class="flex items-center gap-2">
             @can('chat')
-                <a href="{{ route('chat.issue', $issue) }}" class="btn-secondary !px-4 !py-1.5 text-sm">{{ __('Obrolan') }}</a>
-                <button type="button" class="btn-secondary !px-4 !py-1.5 text-sm" data-share-open>{{ __('Kirim ke obrolan') }}</button>
+                <button type="button" data-share-open class="{{ $iconButton }}" title="{{ __('Kirim ke obrolan') }}" aria-label="{{ __('Kirim ke obrolan') }}">
+                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 016.5 3h11A2.5 2.5 0 0120 5.5v8a2.5 2.5 0 01-2.5 2.5H10l-4.5 4v-4A1.5 1.5 0 014 14.5v-9z" stroke-linejoin="round"/><path d="M8 8h8M8 11.5h5" stroke-linecap="round"/></svg>
+                </button>
             @endcan
-            <a href="{{ route('kamar.issues.chronology', $issue) }}" class="btn-secondary !px-4 !py-1.5 text-sm">{{ __('Cetak riwayat') }}</a>
-            <a href="{{ route('chronology.create', ['kendala' => $issue->id]) }}" class="btn-secondary !px-4 !py-1.5 text-sm">{{ __('Buat Chronology Report') }}</a>
-            @if ($issue->recurrence > 1)<span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900">{{ __('Berulang ke-:n', ['n' => $issue->recurrence]) }}</span>@endif
-            @if ($issue->priority === 'mendesak')<span class="rounded-full bg-rose-600 px-3 py-1 text-xs font-semibold text-white">{{ __('Mendesak') }}</span>@endif
-            <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $tones[$issue->status] }}">{{ $labels[$issue->status] }}</span>
+            <a href="{{ route('kamar.issues.chronology', $issue) }}" class="{{ $iconButton }}" title="{{ __('Cetak riwayat') }}" aria-label="{{ __('Cetak riwayat') }}">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M7 9V3h10v6M7 17H5a2 2 0 01-2-2v-4a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2h-2M7 14h10v7H7z" stroke-linejoin="round"/></svg>
+            </a>
+            <a href="{{ route('chronology.create', ['kendala' => $issue->id]) }}" class="{{ $iconButton }}" title="{{ __('Buat Chronology Report') }}" aria-label="{{ __('Buat Chronology Report') }}">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9l-6-6z" stroke-linejoin="round"/><path d="M14 3v6h6M8 13h8M8 17h5" stroke-linecap="round"/></svg>
+            </a>
         </div>
     </div>
 
+    {{-- Judul: status di atas nama tempat, keterangan singkat di bawahnya. --}}
+    <div class="mt-4">
+        <div class="flex flex-wrap items-center gap-1.5">
+            <span class="rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $tones[$issue->status] }}">{{ $labels[$issue->status] }}</span>
+            @if ($issue->priority === 'mendesak')<span class="rounded-full bg-rose-600 px-2.5 py-0.5 text-xs font-semibold text-white">{{ __('Mendesak') }}</span>@endif
+            @if ($issue->recurrence > 1)<span class="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-900">{{ __('Berulang ke-:n', ['n' => $issue->recurrence]) }}</span>@endif
+            <span class="text-xs text-slate-400">#{{ $issue->id }}</span>
+        </div>
+        <h1 class="mt-1.5 text-3xl text-slate-900">{{ $issue->placeTitle() }}</h1>
+        <p class="mt-0.5 text-sm text-slate-500">
+            @if ($issue->room?->floor){{ __('Lantai') }} {{ $issue->room->floor }} · @endif{{ $issue->room?->type ? $issue->room->type.' · ' : '' }}{{ $issue->room_id ? '' : __('Lokasi lain').' · ' }}{{ $issue->category?->name ?? __('Tanpa kategori') }}
+        </p>
+    </div>
+
     @if ($errors->any())
-        <div class="mb-4 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-700">@foreach ($errors->all() as $message)<p>{{ $message }}</p>@endforeach</div>
+        <div class="mt-4 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">@foreach ($errors->all() as $message)<p>{{ $message }}</p>@endforeach</div>
     @endif
 
-    <section class="card mb-6 p-5">
-        <p class="text-slate-900">{{ $issue->description }}</p>
-        <dl class="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
-            <div><dt class="text-slate-500">{{ __('Sumber') }}</dt><dd class="font-medium text-slate-800">{{ $sources[$issue->source] ?? $issue->source }}</dd></div>
-            <div><dt class="text-slate-500">{{ __('Dicatat oleh') }}</dt><dd class="font-medium text-slate-800">{{ $issue->reporter?->employee?->name ?? '—' }}</dd></div>
-            <div><dt class="text-slate-500">{{ __('Dicatat') }}</dt><dd class="font-medium text-slate-800">{{ $issue->created_at->translatedFormat('d M Y H:i') }}</dd></div>
-            <div><dt class="text-slate-500">{{ __('Diteruskan ke') }} <span class="text-xs">({{ __($issue->targetKind()) }})</span></dt><dd class="font-medium text-slate-800">{{ $issue->targetLabel() }}</dd></div>
+    {{-- Ringkasan: masalahnya, langkah penanganan, lalu detail. --}}
+    <section class="card mt-5 mb-6 p-5">
+        <p class="text-[15px] leading-relaxed text-slate-900">{{ $issue->description }}</p>
+
+        <ol class="mt-5 grid grid-cols-4 gap-1" aria-label="{{ __('Tahap penanganan') }}">
+            @foreach ($steps as $index => $step)
+                <li class="min-w-0" @if ($index === $current) aria-current="step" @endif>
+                    <span @class([
+                        'block h-1.5 rounded-full',
+                        'bg-emerald-500' => $step['done'] && ! ($step['warn'] ?? false),
+                        'bg-amber-400' => $step['done'] && ($step['warn'] ?? false),
+                        'bg-slate-200' => ! $step['done'],
+                    ])></span>
+                    <span @class(['mt-1.5 block truncate text-xs', 'font-semibold text-slate-900' => $index === $current, 'text-slate-500' => $index !== $current])>{{ $step['label'] }}</span>
+                    @if ($step['at'])<span class="block truncate text-[11px] text-slate-400">{{ $step['at']->translatedFormat('d M H:i') }}</span>@endif
+                </li>
+            @endforeach
+        </ol>
+
+        <dl class="mt-5 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-slate-100 pt-4 text-sm sm:grid-cols-4">
+            <div><dt class="text-xs text-slate-500">{{ __('Sumber') }}</dt><dd class="font-medium text-slate-800">{{ $sources[$issue->source] ?? $issue->source }}</dd></div>
+            <div><dt class="text-xs text-slate-500">{{ __('Dicatat oleh') }}</dt><dd class="truncate font-medium text-slate-800">{{ $issue->reporter?->employee?->name ?? '—' }}</dd></div>
+            <div><dt class="text-xs text-slate-500">{{ __('Diteruskan ke') }} ({{ __($issue->targetKind()) }})</dt><dd class="font-medium text-slate-800">{{ $issue->targetLabel() }}</dd></div>
+            <div><dt class="text-xs text-slate-500">{{ __('Ditangani') }}</dt><dd class="truncate font-medium text-slate-800">{{ $issue->claimer?->name() ?? '—' }}</dd></div>
         </dl>
-        @if ($issue->isDone() && $issue->completed_at)
-            <p class="mt-4 text-sm text-emerald-800">{{ __('Selesai') }} {{ $issue->completed_at->translatedFormat('d M Y H:i') }}
-                · {{ __('dalam') }} {{ $issue->created_at->diffForHumans($issue->completed_at, \Carbon\CarbonInterface::DIFF_ABSOLUTE) }}</p>
-        @endif
     </section>
+
+    {{-- Kendala selesai: ringkas di satu kartu hijau (HR / Administrator bisa membuka kembali). --}}
+    @if ($doneStatus)
+        <section class="card mb-6 flex flex-wrap items-center justify-between gap-3 border-emerald-200 bg-emerald-50/60 p-5">
+            <p class="text-sm text-emerald-900">
+                <span class="font-semibold">{{ __('Selesai') }}</span>
+                @if ($issue->completed_at) {{ $issue->completed_at->translatedFormat('d M Y H:i') }} · {{ __('dalam') }} {{ $issue->created_at->diffForHumans($issue->completed_at, \Carbon\CarbonInterface::DIFF_ABSOLUTE) }}@endif
+            </p>
+            @can('reopen', $issue)
+                <form method="POST" action="{{ route('kamar.issues.reopen', $issue) }}">
+                    @csrf
+                    <button class="btn-secondary !px-4 !py-1.5 text-sm">{{ __('Buka kembali') }}</button>
+                </form>
+            @endcan
+        </section>
+    @endif
 
     {{-- Status pekerjaan di paling atas: yang mengambil langsung mengisinya. --}}
     @can('work', $issue)
-        <section class="card mb-6 p-5">
+        <section class="card mb-6 border-gold-500/40 p-5">
             <h2 class="font-display text-xl text-slate-900">{{ __('Status pekerjaan') }}</h2>
             @if ($issue->claimer)
                 <p class="mt-1 text-sm text-slate-500"><span class="font-semibold text-slate-700">{{ $issue->claimer->name() }}</span> {{ __('sedang mengerjakan kendala ini') }}@if ($issue->claimed_at) {{ __('sejak') }} {{ $issue->claimed_at->translatedFormat('d M Y H:i') }}@endif.</p>
@@ -192,52 +248,60 @@
     @if (! $issue->isDone())
         @if ($issue->claimer)
             @cannot('work', $issue)
-                <section class="card mb-6 border-sky-200 bg-sky-50/50 p-5">
+                <section class="card mb-6 flex items-center gap-3 border-sky-200 bg-sky-50/60 p-4">
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-sky-100 text-sky-700" aria-hidden="true"><svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6" stroke-linecap="round"/></svg></span>
                     <p class="text-sm text-sky-900"><span class="font-semibold">{{ $issue->claimer->name() }}</span> {{ __('sedang mengerjakan kendala ini') }}@if ($issue->claimed_at) {{ __('sejak') }} {{ $issue->claimed_at->translatedFormat('d M Y H:i') }}@endif.</p>
                 </section>
             @endcannot
         @else
             @can('claim', $issue)
-                <section class="card mb-6 flex flex-wrap items-center justify-between gap-3 p-5">
-                    <p class="text-sm text-slate-700">{{ __('Belum ada yang mengambil kendala ini. Ambil bila Anda yang akan mengerjakannya, supaya rekan lain tahu.') }}</p>
-                    <form method="POST" action="{{ route('kamar.issues.claim', $issue) }}">
+                <section class="card mb-6 border-gold-500/40 bg-[#fbf6ea] p-5">
+                    <p class="font-semibold text-slate-900">{{ __('Belum ada yang mengambil') }}</p>
+                    <p class="mt-0.5 text-sm text-slate-600">{{ __('Ambil bila Anda yang akan mengerjakannya, supaya rekan lain tahu.') }}</p>
+                    <form method="POST" action="{{ route('kamar.issues.claim', $issue) }}" class="mt-3">
                         @csrf
-                        <button class="btn-primary" data-confirm-button="{{ __('Anda yang akan mengerjakan kendala di :place ini? Rekan lain akan melihat nama Anda.', ['place' => $issue->placeTitle()]) }}">{{ __('Saya ambil') }}</button>
+                        <button class="btn-primary w-full sm:w-auto" data-confirm-button="{{ __('Anda yang akan mengerjakan kendala di :place ini? Rekan lain akan melihat nama Anda.', ['place' => $issue->placeTitle()]) }}">{{ __('Saya ambil') }}</button>
                     </form>
                 </section>
             @endcan
         @endif
     @endif
 
-    <section class="card mb-6 overflow-hidden">
-        <h2 class="border-b border-slate-100 p-5 font-display text-xl text-slate-900">{{ __('Pekerjaan yang sudah dilakukan') }}</h2>
-        <ol class="divide-y divide-slate-100">
-            @forelse ($issue->updates as $update)
-                <li class="flex gap-3 p-5">
-                    <span class="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full {{ $kindTones[$update->kind] ?? 'bg-slate-300' }}" aria-hidden="true"></span>
-                    <div class="min-w-0">
-                        <p class="text-sm text-slate-800">{{ $update->body }}@if ($update->related_issue_id && isset($related[$update->related_issue_id]))@can('view', $related[$update->related_issue_id]) <a class="underline" href="{{ route('kamar.issues.show', $update->related_issue_id) }}">{{ __('Lihat') }}</a>@endcan @endif</p>
-                        @if ($update->photos->isNotEmpty())
-                            <div class="mt-2 flex flex-wrap gap-2">@foreach ($update->photos as $photo)<a href="{{ route('kamar.issues.photo', [$issue, $photo]) }}" target="_blank" rel="noopener"><img src="{{ route('kamar.issues.photo', [$issue, $photo]) }}" alt="{{ __('Foto pekerjaan') }}" loading="lazy" class="h-16 w-16 rounded-lg object-cover ring-1 ring-slate-200"></a>@endforeach</div>
-                        @endif
-                        <p class="mt-0.5 text-xs text-slate-500">{{ $update->user?->employee?->name ?? __('Pengguna dihapus') }}@if ($update->department) · {{ $update->department->name }}@endif · {{ $update->created_at->translatedFormat('d M Y H:i') }}</p>
-                    </div>
-                </li>
-            @empty
-                <li class="p-8 text-center text-sm text-slate-500">{{ __('Belum ada pekerjaan yang dicatat.') }}</li>
-            @endforelse
-        </ol>
+    <section class="card mb-6 p-5">
+        <h2 class="font-display text-xl text-slate-900">{{ __('Riwayat pekerjaan') }}</h2>
+        @if ($issue->updates->isEmpty())
+            <p class="mt-3 text-sm text-slate-500">{{ __('Belum ada pekerjaan yang dicatat.') }}</p>
+        @else
+            <ol class="mt-4 space-y-0">
+                @foreach ($issue->updates as $update)
+                    <li class="relative flex gap-3 pb-5 last:pb-0">
+                        @unless ($loop->last)<span class="absolute left-[5px] top-4 h-full w-px bg-slate-200" aria-hidden="true"></span>@endunless
+                        <span class="relative mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ring-4 ring-white {{ $kindTones[$update->kind] ?? 'bg-slate-300' }}" aria-hidden="true"></span>
+                        <div class="min-w-0">
+                            <p class="text-sm text-slate-800">{{ $update->body }}@if ($update->related_issue_id && isset($related[$update->related_issue_id]))@can('view', $related[$update->related_issue_id]) <a class="underline" href="{{ route('kamar.issues.show', $update->related_issue_id) }}">{{ __('Lihat') }}</a>@endcan @endif</p>
+                            @if ($update->photos->isNotEmpty())
+                                <div class="mt-2 flex flex-wrap gap-2">@foreach ($update->photos as $photo)<a href="{{ route('kamar.issues.photo', [$issue, $photo]) }}" data-photo-open data-alt="{{ __('Foto pekerjaan') }}"><img src="{{ route('kamar.issues.photo', [$issue, $photo]) }}" alt="{{ __('Foto pekerjaan') }}" loading="lazy" class="h-16 w-16 rounded-lg object-cover ring-1 ring-slate-200"></a>@endforeach</div>
+                            @endif
+                            <p class="mt-0.5 text-xs text-slate-500">{{ $update->user?->employee?->name ?? __('Pengguna dihapus') }}@if ($update->department) · {{ $update->department->name }}@endif · {{ $update->created_at->translatedFormat('d M Y H:i') }}</p>
+                        </div>
+                    </li>
+                @endforeach
+            </ol>
+        @endif
     </section>
 
     {{-- Track record kamar, dipisah supaya tidak tercampur. Dilihat sebelum mengambil kendala; setelah diambil, pengambil fokus ke pekerjaannya. --}}
     @if ($issue->claimed_by !== auth()->id())
-        <section class="card mb-6 overflow-hidden">
-            <div class="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 p-5">
-                <div>
-                    <h2 class="font-display text-xl text-slate-900">{{ __('Track record :place', ['place' => $issue->placeTitle()]) }}</h2>
-                    <p class="mt-1 text-sm text-slate-500">{{ __('Cek dulu apakah masalah ini pernah terjadi dan apa yang sudah dikerjakan, sebelum mengambil.') }}</p>
-                </div>
-                <a href="{{ $issue->room_id ? route('kamar.room', $issue->room) : route('kamar.place', ['nama' => $issue->location]) }}" class="btn-secondary">{{ __('Seluruh track record') }}</a>
+        <details class="card group mb-6 overflow-hidden" @if (! $issue->claimed_by && ! $doneStatus) open @endif>
+            <summary class="flex cursor-pointer list-none items-start justify-between gap-3 p-5">
+                <span>
+                    <span class="block font-display text-xl text-slate-900">{{ __('Track record :place', ['place' => $issue->placeTitle()]) }}</span>
+                    <span class="mt-1 block text-sm text-slate-500">{{ __('Cek dulu apakah masalah ini pernah terjadi dan apa yang sudah dikerjakan, sebelum mengambil.') }}</span>
+                </span>
+                <span class="mt-1 text-slate-400 transition group-open:rotate-180" aria-hidden="true">▾</span>
+            </summary>
+            <div class="border-t border-slate-100 px-5 py-3 text-right">
+                <a href="{{ $issue->room_id ? route('kamar.room', $issue->room) : route('kamar.place', ['nama' => $issue->location]) }}" class="text-sm font-medium text-sky-700 hover:underline">{{ __('Seluruh track record') }} &rarr;</a>
             </div>
 
             <div class="border-b border-slate-100 p-5">
@@ -261,7 +325,7 @@
                     <ul class="mt-2 space-y-2">@foreach ($record['others'] as $past) @include('rooms.partials.record-item', ['past' => $past]) @endforeach</ul>
                 </details>
             @endif
-        </section>
+        </details>
     @else
         {{-- Setelah diambil: hanya track record yang dikerjakan departemen ini (mis. Engineering), tersembunyi sampai dibuka. --}}
         <details class="card group mb-6 overflow-hidden">
@@ -281,12 +345,6 @@
         </details>
     @endif
 
-    @can('reopen', $issue)
-        <form method="POST" action="{{ route('kamar.issues.reopen', $issue) }}" class="mb-6">
-            @csrf
-            <button class="btn-secondary">{{ __('Buka kembali') }}</button>
-        </form>
-    @endcan
     @include('chat.partials.share-dialog', [
         'action' => route('chat.share-issue', $issue),
         'subtitle' => $issue->placeTitle().' · '.($issue->category?->name ?? __('Tanpa kategori')),
