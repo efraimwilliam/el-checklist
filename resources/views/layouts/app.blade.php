@@ -22,7 +22,7 @@
     </script>
     @vite(['resources/css/app.css', 'resources/js/date-picker.js', 'resources/js/photo-viewer.js', 'resources/js/password-toggle.js'])
 </head>
-<body @class(['bg-white text-slate-800 antialiased', 'min-h-screen' => ! $fullHeight, 'flex h-dvh flex-col overflow-hidden' => $fullHeight])>
+<body @class(['bg-white text-slate-800 antialiased', 'min-h-screen' => ! $fullHeight, 'chat-fixed flex h-dvh flex-col overflow-hidden' => $fullHeight])>
 @auth
     @php($me = auth()->user())
     @php($initials = collect(explode(' ', $me->name()))->filter()->take(2)->map(fn ($word) => mb_strtoupper(mb_substr($word, 0, 1)))->implode(''))

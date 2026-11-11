@@ -519,3 +519,19 @@ it('marks a chat unread or read from the list, with a green dot, and clears the 
     $this->postJson(route('chat.mark', $thread), ['unread' => true])->assertForbidden();
     $this->get(route('chat.index', ['semua' => 1]))->assertOk()->assertDontSee('data-row-actions', false);
 });
+
+it('shows a "Mulai percakapan" notice in a chat that has no messages yet, and not once it has some', function () {
+    $thread = directChat($this, $this->ani, $this->budi);
+    $this->get(route('chat.show', $thread))->assertOk()->assertSee('data-empty-state', false)->assertSee('Mulai percakapan')
+        ->assertSee('Belum ada pesan dengan '.$this->budi->name());
+
+    say($this, $thread, 'Halo')->assertOk();
+    $this->get(route('chat.show', $thread))->assertOk()->assertDontSee('data-empty-state', false);
+
+    // Grup kosong: kalimatnya untuk grup; HR yang memantau tidak diajak menulis.
+    $group = groupChat($this, [$this->budi]);
+    $group->messages()->delete();
+    $this->get(route('chat.show', $group))->assertOk()->assertSee('Belum ada pesan di sini');
+    chatAs($this->hr);
+    $this->get(route('chat.show', $group))->assertOk()->assertSee('Belum ada pesan di percakapan ini')->assertDontSee('Tulis pesan pertama');
+});

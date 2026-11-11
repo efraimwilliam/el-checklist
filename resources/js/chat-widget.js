@@ -44,9 +44,40 @@ if (root) {
         } catch { /* dicoba lagi nanti */ }
     };
 
+    // Layar penuh di HP: halaman di belakang dikunci (tidak ikut tergulir) dan panel mengikuti tinggi area terlihat
+    // (papan ketik). Di layar lebar panel hanya jendela kecil dan halaman tetap bisa digulir.
+    const phone = window.matchMedia('(max-width: 639px)');
+    let lockedAt = null;
+    const fitPanel = () => {
+        const vv = window.visualViewport;
+        if (panel.hidden || !phone.matches || !vv) { panel.style.top = ''; if (phone.matches) panel.style.height = ''; return; }
+        panel.style.top = `${Math.round(vv.offsetTop)}px`;
+        panel.style.height = `${Math.round(vv.height)}px`;
+        panel.style.bottom = 'auto';
+    };
+    const lockPage = () => {
+        if (lockedAt !== null || !phone.matches) return;
+        lockedAt = window.scrollY;
+        document.body.style.top = `-${lockedAt}px`;
+        document.body.classList.add('chat-locked');
+    };
+    const unlockPage = () => {
+        if (lockedAt === null) return;
+        const y = lockedAt;
+        lockedAt = null;
+        document.body.classList.remove('chat-locked');
+        document.body.style.top = '';
+        window.scrollTo(0, y);
+    };
+    window.visualViewport?.addEventListener('resize', fitPanel);
+    window.visualViewport?.addEventListener('scroll', fitPanel);
+    phone.addEventListener('change', () => { if (!phone.matches) { unlockPage(); panel.style.top = ''; panel.style.bottom = ''; } else if (!panel.hidden) { lockPage(); } fitPanel(); });
+
     const open = (url) => {
         if (!frame.src || (url && url !== frameUrl())) frame.src = url || root.dataset.chatUrl;
         panel.hidden = false;
+        lockPage();
+        fitPanel();
         fab.setAttribute('aria-expanded', 'true');
         fab.classList.add('max-sm:hidden');
         setPaused(false);
@@ -56,6 +87,8 @@ if (root) {
         remember({ open: false, url: frameUrl() });
         setPaused(true);
         panel.hidden = true;
+        unlockPage();
+        fitPanel();
         fab.setAttribute('aria-expanded', 'false');
         fab.classList.remove('max-sm:hidden');
         fab.focus();

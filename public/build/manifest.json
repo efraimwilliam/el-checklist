@@ -55,7 +55,7 @@
     ]
   },
   "resources/css/app.css": {
-    "file": "assets/app-CMU1EzV1.css",
+    "file": "assets/app-ytGLV2xI.css",
     "name": "app",
     "names": [
       "app.css"
@@ -74,7 +74,7 @@
     ]
   },
   "resources/js/chat-widget.js": {
-    "file": "assets/chat-widget-C6WhNOqY.js",
+    "file": "assets/chat-widget-Czrnrq5r.js",
     "name": "chat-widget",
     "src": "resources/js/chat-widget.js",
     "isEntry": true,
@@ -83,7 +83,7 @@
     ]
   },
   "resources/js/chat.js": {
-    "file": "assets/chat-DFvVH66X.js",
+    "file": "assets/chat-Cf7O_a_U.js",
     "name": "chat",
     "src": "resources/js/chat.js",
     "isEntry": true,

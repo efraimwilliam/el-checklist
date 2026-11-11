@@ -255,6 +255,29 @@
     .cl-shutter:disabled { opacity: 0.5; }
 }
 
+/* Obrolan layar penuh: halaman tidak ikut bergulir atau tertarik (pull-to-refresh / pantulan iOS); hanya daftar dan pesan yang menggulir,
+   dan gulir di ujungnya tidak merambat ke halaman. */
+html:has(body.chat-fixed),
+body.chat-fixed {
+    overflow: hidden;
+    overscroll-behavior: none;
+}
+[data-log],
+[data-thread-list],
+[data-search-results],
+[data-info-dialog] .overflow-y-auto,
+[data-sidebar] .overflow-y-auto,
+[data-chat-panel] {
+    overscroll-behavior: contain;
+}
+/* Panel obrolan melayang terbuka di HP: halaman di belakangnya dikunci (lihat chat-widget.js). */
+body.chat-locked {
+    position: fixed;
+    inset-inline: 0;
+    width: 100%;
+    overflow: hidden;
+}
+
 /* Obrolan di dalam panel tombol melayang (iframe): tanpa header aplikasi, tanpa tombol obrolan, tanpa bingkai. */
 .in-frame [data-app-header],
 .in-frame [data-chat-widget] {

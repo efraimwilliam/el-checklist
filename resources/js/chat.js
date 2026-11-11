@@ -6,6 +6,21 @@ const inFrame = window.self !== window.top;
 // Panel tombol melayang ditutup = jangan memanggil server (window.__chatPaused diatur oleh chat-widget.js di halaman induk).
 const paused = () => document.hidden || window.__chatPaused === true;
 
+// HP: saat papan ketik muncul, tinggi halaman mengikuti area yang benar-benar terlihat (visualViewport) dan halaman dijaga di
+// posisi 0, supaya kotak tulis tidak terdorong keluar layar dan halaman tidak ikut tergeser.
+if (!inFrame && document.body.classList.contains('chat-fixed') && window.visualViewport) {
+    const phone = window.matchMedia('(max-width: 767px)');
+    const fit = () => {
+        if (!phone.matches) { document.body.style.height = ''; return; }
+        document.body.style.height = `${Math.round(window.visualViewport.height)}px`;
+        if (window.scrollY !== 0) window.scrollTo(0, 0);
+    };
+    window.visualViewport.addEventListener('resize', fit);
+    window.visualViewport.addEventListener('scroll', fit);
+    phone.addEventListener('change', fit);
+    fit();
+}
+
 // Di dalam panel: tautan ke luar obrolan (kendala, checklist, laporan) dibuka di halaman induk, bukan di dalam panel.
 if (inFrame) {
     document.addEventListener('click', (event) => {
@@ -350,6 +365,7 @@ if (chat) {
             last = Math.max(last, m.id);
         });
         if (!added) return;
+        log.querySelector('[data-empty-state]')?.remove(); // pesan pertama sudah ada
         if (stick || fromMe) {
             toBottom(true);
         } else {

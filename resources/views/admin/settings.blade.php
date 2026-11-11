@@ -7,7 +7,7 @@
             'pending' => __('Tugas Pending harus punya alasan dan minimal satu foto.'),
             'all' => __('Setiap tugas harus punya minimal satu foto, apa pun statusnya.'),
         ];
-        $firstTab = $canPhotos ? 'foto' : 'otomatis';
+        $firstTab = $canPhotos ? 'aturan' : 'otomatis';
         $healthTone = [
             'ok' => 'bg-emerald-100 text-emerald-800',
             'info' => 'bg-slate-100 text-slate-600',

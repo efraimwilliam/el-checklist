@@ -63,6 +63,20 @@
 
             {{-- Pesan --}}
             <div class="min-h-0 flex-1 space-y-1 overflow-y-auto bg-[#efe6d6] bg-[radial-gradient(#e2d6bf_1px,transparent_1px)] [background-size:18px_18px] px-3 py-3 sm:px-[6%]" data-log aria-live="polite">
+                @if ($messages->isEmpty())
+                    <div data-empty-state class="mx-auto my-8 max-w-xs rounded-2xl bg-white/90 px-5 py-6 text-center shadow-sm">
+                        <p class="font-display text-lg text-slate-900">{{ __('Mulai percakapan') }}</p>
+                        <p class="mt-1 text-sm text-slate-500">
+                            @if (! $canPost)
+                                {{ __('Belum ada pesan di percakapan ini.') }}
+                            @elseif ($thread->isDirect())
+                                {{ __('Belum ada pesan dengan :name. Tulis pesan pertama di bawah.', ['name' => $title]) }}
+                            @else
+                                {{ __('Belum ada pesan di sini. Tulis pesan pertama di bawah.') }}
+                            @endif
+                        </p>
+                    </div>
+                @endif
                 @foreach ($messages as $message)
                     @php($day = $message->created_at->copy()->timezone(config('app.timezone'))->toDateString())
                     @if ($day !== $previousDay)
