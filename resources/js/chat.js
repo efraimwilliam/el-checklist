@@ -29,6 +29,13 @@ if (!inFrame && document.body.classList.contains('chat-fixed') && window.visualV
     vv.addEventListener('resize', schedule);
     vv.addEventListener('scroll', schedule);
     apply();
+
+    // Cadangan untuk touch-action (app.css): seretan jari di luar daftar / pesan / kolom tulis tidak boleh menggeser layar di iOS.
+    const scrollable = '[data-log], [data-thread-list], [data-search-results], [data-mention-list], [data-sidebar] .overflow-y-auto, [data-info-dialog] .overflow-y-auto, textarea';
+    document.addEventListener('touchmove', (event) => {
+        if (event.touches.length > 1 || !(event.target instanceof Element) || event.target.closest(scrollable)) return;
+        event.preventDefault();
+    }, { passive: false });
 }
 
 // ---- Tombol kembali (HP) ----

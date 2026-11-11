@@ -275,6 +275,22 @@ body.chat-fixed {
     overflow: hidden;
     overscroll-behavior: none;
 }
+/* Saat papan ketik terbuka, iOS membiarkan jari menggeser seluruh layar di atas halaman (header ikut turun / terpotong). Di layar obrolan
+   hanya daftar, pesan, dan kolom tulis yang boleh digeser; sisanya (header, celah, bilah tulis) tidak bereaksi pada seretan jari.
+   touch-action berlaku sampai ke wadah gulir terdekat, jadi di dalam daftar / pesan gulir tetap normal. */
+body.chat-fixed {
+    touch-action: none;
+}
+body.chat-fixed [data-log],
+body.chat-fixed [data-thread-list],
+body.chat-fixed [data-search-results],
+body.chat-fixed [data-mention-list],
+body.chat-fixed [data-sidebar] .overflow-y-auto,
+body.chat-fixed [data-info-dialog] .overflow-y-auto,
+body.chat-fixed textarea {
+    touch-action: pan-y;
+}
+
 /* Layar obrolan menempel pada area yang terlihat (variabel diisi chat.js dari visualViewport; tanpa JS = 100dvh). */
 body.chat-fixed {
     position: fixed;
