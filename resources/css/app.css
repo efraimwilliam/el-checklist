@@ -255,6 +255,13 @@
     .cl-shutter:disabled { opacity: 0.5; }
 }
 
+/* Tanpa zoom: cubit dan ketuk-dua-kali tidak memperbesar halaman (gulir dan geser tetap jalan). Lihat juga tag viewport di layout. */
+html {
+    touch-action: pan-x pan-y;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
 /* Tarik-untuk-muat-ulang bawaan browser dimatikan di semua halaman: diganti tarikan buatan sendiri (resources/js/pull-refresh.js)
    yang juga jalan di aplikasi yang dipasang ke layar utama. */
 html {

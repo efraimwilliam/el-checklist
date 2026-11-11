@@ -2,7 +2,12 @@
 <html lang="id">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    {{-- Tampilan dikunci di skala 1 (tanpa zoom): mencegah layar "bergerak" karena cubit, ketuk dua kali, atau zoom otomatis iPhone saat
+         kolom isian diketuk. Safari iPhone mengabaikan user-scalable, jadi cubitnya juga dicegah di bawah (gesture*) dan di app.css (touch-action). --}}
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <script>
+        ['gesturestart', 'gesturechange', 'gestureend'].forEach((type) => document.addEventListener(type, (event) => event.preventDefault(), { passive: false }));
+    </script>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="theme-color" content="#1b1511">
     <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
