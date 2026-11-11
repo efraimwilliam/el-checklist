@@ -21,6 +21,19 @@ if (!inFrame && document.body.classList.contains('chat-fixed') && window.visualV
     fit();
 }
 
+// Halaman obrolan (juga di dalam panel) tidak dirancang untuk bergulir. iOS menggulir dokumen secara otomatis agar kolom tulis terlihat
+// saat papan ketik muncul, dan hasilnya header bisa terdorong ke atas layar: setiap pergeseran dikembalikan ke posisi 0.
+if (document.body.classList.contains('chat-fixed')) {
+    const snap = () => {
+        if (window.scrollY !== 0 || window.scrollX !== 0) window.scrollTo(0, 0);
+        const root = document.scrollingElement;
+        if (root && root.scrollTop !== 0) root.scrollTop = 0;
+    };
+    window.addEventListener('scroll', snap, { passive: true });
+    window.addEventListener('resize', snap);
+    document.addEventListener('focusin', () => { [0, 60, 250, 600].forEach((delay) => setTimeout(snap, delay)); });
+}
+
 // Di dalam panel: tautan ke luar obrolan (kendala, checklist, laporan) dibuka di halaman induk, bukan di dalam panel.
 if (inFrame) {
     document.addEventListener('click', (event) => {

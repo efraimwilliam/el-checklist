@@ -55,7 +55,7 @@
     ]
   },
   "resources/css/app.css": {
-    "file": "assets/app-ytGLV2xI.css",
+    "file": "assets/app-_KQ_N6iU.css",
     "name": "app",
     "names": [
       "app.css"
@@ -74,7 +74,7 @@
     ]
   },
   "resources/js/chat-widget.js": {
-    "file": "assets/chat-widget-Czrnrq5r.js",
+    "file": "assets/chat-widget-zOU4Jvq9.js",
     "name": "chat-widget",
     "src": "resources/js/chat-widget.js",
     "isEntry": true,
@@ -83,7 +83,7 @@
     ]
   },
   "resources/js/chat.js": {
-    "file": "assets/chat-Cf7O_a_U.js",
+    "file": "assets/chat-u-iCke_R.js",
     "name": "chat",
     "src": "resources/js/chat.js",
     "isEntry": true,
@@ -141,6 +141,12 @@
     "file": "assets/photo-viewer-DP_f5l-2.js",
     "name": "photo-viewer",
     "src": "resources/js/photo-viewer.js",
+    "isEntry": true
+  },
+  "resources/js/pull-refresh.js": {
+    "file": "assets/pull-refresh-BH82MLZq.js",
+    "name": "pull-refresh",
+    "src": "resources/js/pull-refresh.js",
     "isEntry": true
   }
 }

@@ -535,3 +535,9 @@ it('shows a "Mulai percakapan" notice in a chat that has no messages yet, and no
     chatAs($this->hr);
     $this->get(route('chat.show', $group))->assertOk()->assertSee('Belum ada pesan di percakapan ini')->assertDontSee('Tulis pesan pertama');
 });
+
+it('loads the pull-to-refresh script on every logged in page', function () {
+    chatAs($this->ani);
+    $this->get(route('checklists.index'))->assertOk()->assertSee('pull-refresh', false);
+    $this->get(route('chat.index'))->assertOk()->assertSee('pull-refresh', false);
+});

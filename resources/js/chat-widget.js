@@ -9,6 +9,7 @@ if (root) {
     const badge = root.querySelector('[data-chat-fab-badge]');
     const panel = root.querySelector('[data-chat-panel]');
     const frame = root.querySelector('[data-chat-frame]');
+    const loading = root.querySelector('[data-chat-loading]');
     const STORE = 'chat-widget';
 
     const remember = (value) => {
@@ -36,8 +37,9 @@ if (root) {
         badge.hidden = !count;
         badge.textContent = count > 99 ? '99+' : String(count);
     };
+    const isOpen = () => panel.dataset.open === '1';
     const refreshUnread = async () => {
-        if (document.hidden || !panel.hidden) return;
+        if (document.hidden || isOpen()) return;
         try {
             const response = await fetch(root.dataset.unreadUrl, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
             if (response.ok) setBadge((await response.json()).unread);
@@ -50,11 +52,13 @@ if (root) {
     let lockedAt = null;
     const fitPanel = () => {
         const vv = window.visualViewport;
-        if (panel.hidden || !phone.matches || !vv) { panel.style.top = ''; if (phone.matches) panel.style.height = ''; return; }
+        if (!isOpen() || !phone.matches || !vv) { panel.style.top = ''; if (phone.matches) panel.style.height = ''; return; }
         panel.style.top = `${Math.round(vv.offsetTop)}px`;
         panel.style.height = `${Math.round(vv.height)}px`;
         panel.style.bottom = 'auto';
     };
+    const backdrop = root.querySelector('[data-chat-backdrop]');
+    const syncBackdrop = () => { if (backdrop) backdrop.hidden = !isOpen() || !phone.matches; };
     const lockPage = () => {
         if (lockedAt !== null || !phone.matches) return;
         lockedAt = window.scrollY;
@@ -71,36 +75,56 @@ if (root) {
     };
     window.visualViewport?.addEventListener('resize', fitPanel);
     window.visualViewport?.addEventListener('scroll', fitPanel);
-    phone.addEventListener('change', () => { if (!phone.matches) { unlockPage(); panel.style.top = ''; panel.style.bottom = ''; } else if (!panel.hidden) { lockPage(); } fitPanel(); });
+    phone.addEventListener('change', () => { if (!phone.matches) { unlockPage(); panel.style.top = ''; panel.style.bottom = ''; } else if (isOpen()) { lockPage(); } fitPanel(); syncBackdrop(); });
 
+    // Obrolan dimuat sekali dan dibiarkan hidup di latar: menutup panel hanya menyembunyikannya (percakapan, gulir, dan tulisan yang
+    // belum terkirim tetap ada), membukanya lagi seketika. Dimuat lebih awal begitu jari / kursor menyentuh tombolnya.
+    const load = (url) => {
+        const target = url || recall()?.url || root.dataset.chatUrl;
+        if (!frame.getAttribute('src') || (url && url !== frameUrl())) {
+            if (loading) loading.hidden = false;
+            frame.src = target;
+        }
+    };
+    ['pointerdown', 'touchstart', 'mouseenter', 'focus'].forEach((type) => fab.addEventListener(type, () => load(), { passive: true, once: true }));
+
+    let closeTimer = null;
     const open = (url) => {
-        if (!frame.src || (url && url !== frameUrl())) frame.src = url || root.dataset.chatUrl;
+        clearTimeout(closeTimer);
+        load(url);
         panel.hidden = false;
+        void panel.offsetWidth; // mulai transisi masuk dari keadaan tertutup
+        panel.dataset.open = '1';
         lockPage();
         fitPanel();
+        syncBackdrop();
         fab.setAttribute('aria-expanded', 'true');
         fab.classList.add('max-sm:hidden');
         setPaused(false);
         remember({ open: true, url: frameUrl() || url || root.dataset.chatUrl });
     };
     const close = () => {
+        if (!isOpen()) return;
         remember({ open: false, url: frameUrl() });
         setPaused(true);
-        panel.hidden = true;
+        delete panel.dataset.open;
         unlockPage();
         fitPanel();
+        syncBackdrop();
         fab.setAttribute('aria-expanded', 'false');
         fab.classList.remove('max-sm:hidden');
-        fab.focus();
+        closeTimer = setTimeout(() => { if (!isOpen()) panel.hidden = true; }, 260);
+        fab.focus({ preventScroll: true });
         refreshUnread();
     };
 
-    fab.addEventListener('click', () => (panel.hidden ? open(recall()?.url) : close()));
-    root.querySelector('[data-chat-close]').addEventListener('click', close);
-    document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !panel.hidden) close(); });
+    fab.addEventListener('click', () => (isOpen() ? close() : open(recall()?.url)));
+    root.querySelectorAll('[data-chat-close]').forEach((button) => button.addEventListener('click', close));
+    document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && isOpen()) close(); });
     frame.addEventListener('load', () => {
-        setPaused(panel.hidden);
-        if (!panel.hidden) remember({ open: true, url: frameUrl() });
+        if (loading) loading.hidden = true;
+        setPaused(!isOpen());
+        if (isOpen()) remember({ open: true, url: frameUrl() });
     });
 
     // Naik di atas bilah Simpan / progres yang menempel di bawah halaman, supaya tombolnya tidak tertutup.

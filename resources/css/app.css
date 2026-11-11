@@ -255,12 +255,22 @@
     .cl-shutter:disabled { opacity: 0.5; }
 }
 
+/* Tarik-untuk-muat-ulang bawaan browser dimatikan di semua halaman: diganti tarikan buatan sendiri (resources/js/pull-refresh.js)
+   yang juga jalan di aplikasi yang dipasang ke layar utama. */
+html {
+    overscroll-behavior-y: contain;
+}
+
 /* Obrolan layar penuh: halaman tidak ikut bergulir atau tertarik (pull-to-refresh / pantulan iOS); hanya daftar dan pesan yang menggulir,
    dan gulir di ujungnya tidak merambat ke halaman. */
 html:has(body.chat-fixed),
 body.chat-fixed {
     overflow: hidden;
     overscroll-behavior: none;
+}
+/* Warna yang sama dengan bilah tulis, supaya celah di atas papan ketik (iPhone) terlihat menyatu, bukan putih / isi halaman lain. */
+html:has(body.chat-fixed) {
+    background-color: #f4efe6;
 }
 [data-log],
 [data-thread-list],
@@ -276,6 +286,25 @@ body.chat-locked {
     inset-inline: 0;
     width: 100%;
     overflow: hidden;
+}
+
+/* Panel obrolan melayang terbuka seperti layar baru: HP = masuk dari kanan, komputer = naik pelan. Halaman di bawahnya tidak dimuat ulang. */
+[data-chat-panel] {
+    transition: transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s ease;
+    will-change: transform;
+}
+[data-chat-panel]:not([data-open]) {
+    opacity: 0;
+    transform: translateX(100%);
+    pointer-events: none;
+}
+@media (min-width: 640px) {
+    [data-chat-panel]:not([data-open]) {
+        transform: translateY(12px) scale(0.98);
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    [data-chat-panel] { transition: none; }
 }
 
 /* Obrolan di dalam panel tombol melayang (iframe): tanpa header aplikasi, tanpa tombol obrolan, tanpa bingkai. */
