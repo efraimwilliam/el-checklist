@@ -291,6 +291,13 @@ body.chat-fixed textarea {
     touch-action: pan-y;
 }
 
+/* Papan ketik terbuka di HP: header percakapan disembunyikan (class diatur chat.js). */
+@media (max-width: 767px) {
+    body.chat-fixed.keyboard-open [data-chat] > header {
+        display: none;
+    }
+}
+
 /* Layar obrolan menempel pada area yang terlihat (variabel diisi chat.js dari visualViewport; tanpa JS = 100dvh). */
 body.chat-fixed {
     position: fixed;

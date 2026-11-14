@@ -8,26 +8,48 @@ const paused = () => document.hidden || window.__chatPaused === true;
 
 // ---- Papan ketik di HP ----
 // Layar obrolan (body.chat-fixed, posisi tetap) ditempelkan pada area yang benar-benar terlihat: tinggi = visualViewport.height,
-// atas = visualViewport.offsetTop. Saat papan ketik muncul, iOS menggeser area terlihat; layar obrolan IKUT bergeser (bukan menarik
-// halaman kembali), jadi header, pesan, dan kotak tulis tetap di tempatnya tanpa tarik-menarik. Tidak pernah memanggil scrollTo.
+// atas = visualViewport.offsetTop (variabel CSS --vv-height / --vv-top di app.css). iOS menganimasikan sendiri pergeseran layar saat
+// papan ketik muncul / hilang, dan peristiwa visualViewport terlambat satu-dua frame; karena itu selama transisi nilainya dibaca
+// TIAP FRAME (requestAnimationFrame) sampai stabil, bukan hanya saat peristiwa datang. Selama papan ketik terbuka header percakapan
+// disembunyikan (class keyboard-open): bagian yang paling terlihat melompat itu header, dan ruang pesan jadi lebih lega.
+// Tidak pernah memanggil scrollTo.
 if (!inFrame && document.body.classList.contains('chat-fixed') && window.visualViewport) {
     const vv = window.visualViewport;
     const rootStyle = document.documentElement.style;
-    let pending = 0;
-    let lastHeight = 0;
+    const phone = window.matchMedia('(max-width: 767px)');
+    let lastHeight = Math.round(vv.height);
+    let lastTop = -1;
+    let keyboardOpen = false;
+    let loopUntil = 0;
+    let looping = false;
+
     const apply = () => {
-        pending = 0;
-        rootStyle.setProperty('--vv-height', `${Math.round(vv.height)}px`);
-        rootStyle.setProperty('--vv-top', `${Math.round(vv.offsetTop)}px`);
-        // Tinggi berubah banyak = papan ketik muncul / ditutup: pesan terbaru tetap terlihat.
-        if (Math.abs(vv.height - lastHeight) > 80) {
-            lastHeight = vv.height;
-            document.dispatchEvent(new CustomEvent('chat:viewport'));
-        }
+        const height = Math.round(vv.height);
+        const top = Math.round(vv.offsetTop);
+        const open = phone.matches && window.innerHeight - vv.height > 120;
+        let changed = false;
+        if (height !== lastHeight || lastTop === -1) { rootStyle.setProperty('--vv-height', `${height}px`); changed = true; }
+        if (top !== lastTop) { rootStyle.setProperty('--vv-top', `${top}px`); changed = true; }
+        if (open !== keyboardOpen) { keyboardOpen = open; document.body.classList.toggle('keyboard-open', open); changed = true; }
+        // Tinggi berubah banyak = papan ketik muncul / tutup: pesan terbaru tetap terlihat.
+        if (Math.abs(height - lastHeight) > 80) document.dispatchEvent(new CustomEvent('chat:viewport'));
+        lastHeight = height;
+        lastTop = top;
+        return changed;
     };
-    const schedule = () => { if (!pending) pending = requestAnimationFrame(apply); };
-    vv.addEventListener('resize', schedule);
-    vv.addEventListener('scroll', schedule);
+    const loop = () => {
+        if (apply()) loopUntil = Math.max(loopUntil, performance.now() + 450);
+        if (performance.now() < loopUntil) requestAnimationFrame(loop);
+        else looping = false;
+    };
+    const track = (ms) => {
+        loopUntil = Math.max(loopUntil, performance.now() + ms);
+        if (!looping) { looping = true; requestAnimationFrame(loop); }
+    };
+    vv.addEventListener('resize', () => track(700));
+    vv.addEventListener('scroll', () => track(300));
+    document.addEventListener('focusin', () => track(1000));
+    document.addEventListener('focusout', () => track(1000));
     apply();
 
     // Cadangan untuk touch-action (app.css): seretan jari di luar daftar / pesan / kolom tulis tidak boleh menggeser layar di iOS.
