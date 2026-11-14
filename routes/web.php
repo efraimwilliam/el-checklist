@@ -103,6 +103,7 @@ Route::middleware(['auth', EnsureActiveSession::class, VerifySsoSession::class])
     Route::post('/kamar/kendala/{issue}/ambil', [RoomIssueController::class, 'claim'])->name('kamar.issues.claim');
     Route::post('/kamar/kendala/{issue}/lepas', [RoomIssueController::class, 'release'])->name('kamar.issues.release');
     Route::post('/kamar/kendala/{issue}/buka-lagi', [RoomIssueController::class, 'reopen'])->name('kamar.issues.reopen');
+    Route::delete('/kamar/kendala/{issue}', [RoomIssueController::class, 'destroy'])->whereNumber('issue')->name('kamar.issues.destroy');
     Route::get('/laporan', [ReportController::class, 'index'])->name('laporan.index');
     Route::get('/laporan/ekspor.xlsx', [ReportController::class, 'export'])->name('laporan.export');
     Route::get('/laporan/masalah', [ReportController::class, 'issues'])->name('laporan.issues');

@@ -112,7 +112,7 @@
                                 </button>
                             </form>
                         @else
-                            <span class="inline-flex h-9 w-9 cursor-not-allowed items-center justify-center rounded-full text-slate-300" title="{{ __('Punya :n kendala dalam riwayat: nonaktifkan saja, tidak bisa dihapus.', ['n' => $room->issues_count]) }}" role="img" aria-label="{{ __('Tidak bisa dihapus: punya riwayat kendala') }}">
+                            <span class="inline-flex h-9 w-9 cursor-not-allowed items-center justify-center rounded-full text-slate-300" title="{{ __('Punya :n kendala dalam riwayat: nonaktifkan saja, atau Administrator menghapus kendalanya dulu.', ['n' => $room->issues_count]) }}" role="img" aria-label="{{ __('Tidak bisa dihapus: punya riwayat kendala') }}">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg>
                             </span>
                         @endif

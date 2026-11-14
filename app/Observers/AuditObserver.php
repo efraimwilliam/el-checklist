@@ -62,7 +62,11 @@ class AuditObserver
 
     public function deleted(Model $model): void
     {
-        $this->record($model, 'deleted');
+        // Kendala yang dihapus: isi pokoknya ikut dicatat (nilai lama -> kosong) supaya log tetap menjelaskan apa yang hilang.
+        $changes = $model instanceof RoomIssue
+            ? collect($model->getAttributes())->reject(fn ($value, $key) => in_array($key, self::IGNORED, true) || $value === null)->mapWithKeys(fn ($value, $key) => [$key => [$value, null]])->all()
+            : null;
+        $this->record($model, 'deleted', $changes);
     }
 
     /** @param  array<string, array{0: mixed, 1: mixed}>|null  $changes */
@@ -79,6 +83,7 @@ class AuditObserver
             $model instanceof Checklist => $model->position_name.' · '.($model->date?->format('d M Y') ?? ''),
             $model instanceof User => $model->name(),
             $model instanceof Setting => $model->key,
+            $model instanceof RoomIssue => '#'.$model->getKey().' · '.$model->placeTitle().' · '.($model->category?->name ?? '—').' · '.$model->status,
             $model instanceof ReportNote => 'Catatan '.($model->period_from?->format('d M Y') ?? ''),
             default => (string) ($model->name ?? $model->title ?? '#'.$model->getKey()),
         };

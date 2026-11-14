@@ -13,12 +13,18 @@ use App\Models\User;
  * - Mengambil (`claim`): yang kendalanya diteruskan kepadanya, HR, Administrator; GM hanya melihat.
  * - Mengisi status Done / Ongoing / Pending (`work`): hanya setelah diambil, oleh yang mengambil, HOD departemennya, HR, Administrator.
  * - Kendala yang sudah selesai terkunci; hanya HR / Administrator yang bisa membukanya kembali (`reopen`).
+ * - Menghapus kendala (`delete`): hanya Administrator; penghapusan dicatat lengkap di Log aplikasi.
  */
 class RoomIssuePolicy
 {
     public function before(User $user): ?bool
     {
         return $user->canUseApp() ? null : false;
+    }
+
+    public function delete(User $user, RoomIssue $issue): bool
+    {
+        return $user->isAdmin();
     }
 
     public function view(User $user, RoomIssue $issue): bool

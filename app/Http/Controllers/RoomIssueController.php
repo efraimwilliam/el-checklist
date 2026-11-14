@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Audit\AuditLogger;
+use App\Models\ChatThread;
 use App\Models\Department;
 use App\Models\Employee;
 use App\Models\IssueCategory;
@@ -20,6 +22,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -451,6 +454,41 @@ class RoomIssueController extends Controller
         });
 
         return redirect()->route('kamar.issues.show', $issue)->with('status', __('Pengambilan dilepas.'));
+    }
+
+    /**
+     * Hapus kendala (hanya Administrator). Catatan pekerjaan dan fotonya ikut terhapus (berkas foto juga dihapus dari disk).
+     * Kartu kendala di obrolan menjadi "Kendala ini sudah dihapus", obrolan khusus kendala itu tetap ada dengan judul yang jelas,
+     * dan kaitan Chronology Report dilepas. Semuanya tercatat lengkap di Log aplikasi, termasuk isi catatan yang hilang.
+     */
+    public function destroy(Request $request, RoomIssue $issue): RedirectResponse
+    {
+        Gate::authorize('delete', $issue);
+        $issue->load(['room', 'category', 'updates.user.employee', 'updates.photos']);
+
+        $title = $issue->placeTitle();
+        $photos = $issue->updates->flatMap->photos;
+        $paths = $photos->pluck('path')->filter()->all();
+
+        // Isi catatan pekerjaan yang ikut hilang masuk log (baris dihapus lewat cascade basis data, tanpa peristiwa Eloquent sendiri).
+        if ($issue->updates->isNotEmpty()) {
+            AuditLogger::record('room_issue_update.deleted', 'RoomIssue', $issue->id, $issue->updates->count().' catatan pekerjaan, '.$photos->count().' foto ikut terhapus bersama kendala #'.$issue->id.' ('.$title.')',
+                $issue->updates->mapWithKeys(fn ($update, $index) => [
+                    '#'.($index + 1).' '.$update->kind.' · '.($update->user?->name() ?? '—').' · '.$update->created_at?->format('d M Y H:i') => [(string) $update->body, null],
+                ])->all());
+        }
+
+        DB::transaction(function () use ($issue, $title) {
+            // Obrolan yang menempel pada kendala ini tetap ada; beri judul supaya tidak kehilangan konteks.
+            ChatThread::where('room_issue_id', $issue->id)->update(['subject' => mb_substr(__('Kendala').' #'.$issue->id.' · '.$title.' ('.__('dihapus').')', 0, 120)]);
+            $issue->delete(); // diamati AuditObserver: room_issue.deleted
+        });
+
+        if ($paths !== []) {
+            Storage::disk(config('checklist.photos.disk'))->delete($paths);
+        }
+
+        return redirect()->route('kamar.issues.index')->with('status', __('Kendala #:id (:place) dihapus.', ['id' => $issue->id, 'place' => $title]));
     }
 
     public function reopen(Request $request, RoomIssue $issue): RedirectResponse

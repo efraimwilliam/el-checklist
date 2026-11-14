@@ -632,3 +632,46 @@ it('forwards an issue to one employee who has an account', function () {
     $this->post(route('kamar.issues.claim', $issue))->assertRedirect();
     expect($issue->fresh()->claimed_by)->toBe($target->id);
 });
+
+it('lets only the Administrator delete an issue, removes its work history and photos, keeps the chat thread, and logs everything', function () {
+    Storage::fake('local');
+    config(['checklist.photos.disk' => 'local']);
+    $issue = reportIssue($this);
+    $update = $issue->updates()->create(['user_id' => $this->engStaff->id, 'department_id' => $this->eng->id, 'body' => 'Freon diisi 300 g', 'kind' => 'catatan']);
+    $photo = app(\App\Rooms\RoomIssuePhotoService::class)->store($update, UploadedFile::fake()->image('bukti.jpg', 600, 400), $this->engStaff);
+    Storage::disk('local')->assertExists($photo->path);
+    $thread = \App\Models\ChatThread::create(['room_issue_id' => $issue->id, 'created_by' => $this->engStaff->id]);
+    $message = $thread->messages()->create(['user_id' => $this->engStaff->id, 'body' => 'Lihat kendala ini', 'room_issue_id' => $issue->id]);
+    $admin = staffOf($this->fo, Role::Admin);
+
+    // HR, HOD, dan pelapornya tidak bisa; ikon hapus tidak ditampilkan.
+    foreach ([staffOf($this->fo, Role::Hr), staffOf($this->eng, Role::Hod), $this->foStaff] as $user) {
+        loggedIn($user);
+        $this->get(route('kamar.issues.show', $issue))->assertOk()->assertDontSee('action="'.route('kamar.issues.destroy', $issue).'"', false)->assertDontSee('Hapus kendala');
+        $this->delete(route('kamar.issues.destroy', $issue))->assertForbidden();
+        $this->post('/logout');
+    }
+    expect(RoomIssue::whereKey($issue->id)->exists())->toBeTrue();
+
+    loggedIn($admin);
+    $this->get(route('kamar.issues.show', $issue))->assertOk()->assertSee('action="'.route('kamar.issues.destroy', $issue).'"', false)->assertSee('Hapus kendala');
+    $this->delete(route('kamar.issues.destroy', $issue))->assertRedirect(route('kamar.issues.index'))->assertSessionHas('status');
+
+    expect(RoomIssue::whereKey($issue->id)->exists())->toBeFalse()
+        ->and(\App\Models\RoomIssueUpdate::where('room_issue_id', $issue->id)->count())->toBe(0)
+        ->and(\App\Models\RoomIssuePhoto::whereKey($photo->id)->exists())->toBeFalse();
+    Storage::disk('local')->assertMissing($photo->path);
+
+    // Obrolan tetap ada dengan judul yang jelas; kartu kendalanya menjadi "sudah dihapus".
+    expect($thread->fresh()->subject)->toContain('Kendala #'.$issue->id)->toContain('dihapus')->and($thread->fresh()->room_issue_id)->toBeNull()
+        ->and($message->fresh()->room_issue_id)->toBeNull();
+
+    // Log aplikasi: penghapusan kendala (dengan isi pokoknya) dan catatan pekerjaan yang ikut hilang.
+    $deleted = \App\Models\AuditLog::where('action', 'room_issue.deleted')->where('subject_id', $issue->id)->firstOrFail();
+    expect($deleted->user_id)->toBe($admin->id)->and($deleted->subject_label)->toContain('Kamar 305')->toContain('#'.$issue->id)
+        ->and($deleted->changes)->toHaveKey('description')->and($deleted->changes['description'][0])->toBe('Lampu kamar mandi mati')->and($deleted->changes['description'][1])->toBeNull();
+    $work = \App\Models\AuditLog::where('action', 'room_issue_update.deleted')->where('subject_id', $issue->id)->firstOrFail();
+    expect($work->subject_label)->toContain('1 catatan pekerjaan, 1 foto')->and(collect($work->changes)->flatten()->filter()->all())->toContain('Freon diisi 300 g');
+
+    $this->get(route('kamar.issues.show', $issue))->assertNotFound();
+});

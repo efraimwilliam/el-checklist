@@ -34,6 +34,16 @@
             <a href="{{ route('kamar.issues.chronology', $issue) }}" class="{{ $iconButton }}" title="{{ __('Cetak riwayat') }}" aria-label="{{ __('Cetak riwayat') }}">
                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M7 9V3h10v6M7 17H5a2 2 0 01-2-2v-4a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2h-2M7 14h10v7H7z" stroke-linejoin="round"/></svg>
             </a>
+            @can('delete', $issue)
+                {{-- Hapus kendala: hanya Administrator; tercatat lengkap di Log aplikasi. --}}
+                <form method="POST" action="{{ route('kamar.issues.destroy', $issue) }}" data-confirm="{{ __('Hapus kendala #:id (:place)? Semua catatan pekerjaan dan fotonya ikut terhapus. Penghapusan tercatat di Log aplikasi dan tidak bisa dibatalkan.', ['id' => $issue->id, 'place' => $issue->placeTitle()]) }}">
+                    @csrf
+                    @method('DELETE')
+                    <button class="{{ $iconButton }} hover:!border-rose-200 hover:!bg-rose-50 hover:!text-rose-700" title="{{ __('Hapus kendala') }}" aria-label="{{ __('Hapus kendala') }}">
+                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v5M14 11v5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
+                </form>
+            @endcan
             <a href="{{ route('chronology.create', ['kendala' => $issue->id]) }}" class="{{ $iconButton }}" title="{{ __('Buat Chronology Report') }}" aria-label="{{ __('Buat Chronology Report') }}">
                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9l-6-6z" stroke-linejoin="round"/><path d="M14 3v6h6M8 13h8M8 17h5" stroke-linecap="round"/></svg>
             </a>

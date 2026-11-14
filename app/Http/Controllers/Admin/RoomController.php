@@ -120,7 +120,7 @@ class RoomController extends Controller
 
         $count = $room->issues()->count();
         if ($count > 0) {
-            return back()->withErrors(['room' => __('Kamar :room punya :n kendala dalam riwayat, jadi tidak bisa dihapus. Nonaktifkan saja supaya tidak muncul lagi di pilihan.', ['room' => $room->number, 'n' => $count])]);
+            return back()->withErrors(['room' => __('Kamar :room punya :n kendala dalam riwayat, jadi tidak bisa dihapus. Nonaktifkan saja supaya tidak muncul lagi di pilihan, atau minta Administrator menghapus kendalanya dulu.', ['room' => $room->number, 'n' => $count])]);
         }
 
         $number = $room->number;
