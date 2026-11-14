@@ -15,6 +15,12 @@ class Room extends Model
         return ['is_active' => 'boolean'];
     }
 
+    /** Kotak kamar ini di denah (dihapus otomatis bersama kamarnya). */
+    public function planAreas(): HasMany
+    {
+        return $this->hasMany(FloorPlanArea::class);
+    }
+
     public function issues(): HasMany
     {
         return $this->hasMany(RoomIssue::class);

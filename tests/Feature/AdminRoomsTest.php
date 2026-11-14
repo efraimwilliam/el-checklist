@@ -68,3 +68,35 @@ it('offers Kamar, Kategori kendala and Denah as a submenu of Data kamar in the T
     $this->get(route('admin.rooms.index', ['tab' => 'kategori']))->assertOk()->assertSee('Kategori masalah dan departemen penanggung jawab bawaannya.')->assertDontSee('Cari nomor kamar');
     $this->get(route('admin.rooms.index', ['tab' => 'denah']))->assertOk()->assertSee('Gambar denah per lantai atau kawasan');
 });
+
+it('deletes a room that has no issue history, together with its floor plan box, and refuses one that does', function () {
+    $free = Room::where('number', '101')->firstOrFail();
+    $used = Room::where('number', '205')->firstOrFail();
+    $category = IssueCategory::create(['name' => 'AC uji', 'department_id' => $this->eng->id, 'sort' => 99]);
+    \App\Models\RoomIssue::create([
+        'room_id' => $used->id, 'category_id' => $category->id, 'source' => 'tamu', 'description' => 'AC bocor', 'priority' => 'biasa',
+        'reported_by' => $this->hr->id, 'assigned_department_id' => $this->eng->id, 'status' => 'baru',
+    ]);
+    $plan = \App\Models\FloorPlan::create(['name' => 'Lantai 1', 'floor' => '1', 'image_path' => 'floor-plans/x.png', 'width' => 100, 'height' => 100, 'sort' => 1]);
+    \App\Models\FloorPlanArea::create(['floor_plan_id' => $plan->id, 'room_id' => $free->id, 'x' => 10, 'y' => 10, 'w' => 10, 'h' => 10]);
+
+    loggedIn($this->hr);
+    // Ikon hapus aktif untuk kamar tanpa riwayat; kamar dengan kendala tampil terkunci dengan penjelasan.
+    $html = $this->get(route('admin.rooms.index'))->assertOk()->getContent();
+    expect($html)->toContain('action="'.route('admin.rooms.destroy', $free).'"')->not->toContain('action="'.route('admin.rooms.destroy', $used).'"')
+        ->toContain('Punya 1 kendala dalam riwayat');
+
+    $this->delete(route('admin.rooms.destroy', $free))->assertRedirect()->assertSessionHas('status', 'Kamar 101 dihapus.');
+    expect(Room::whereKey($free->id)->exists())->toBeFalse()->and(\App\Models\FloorPlanArea::where('room_id', $free->id)->count())->toBe(0)
+        ->and(\App\Models\FloorPlan::whereKey($plan->id)->exists())->toBeTrue();
+
+    $this->delete(route('admin.rooms.destroy', $used))->assertRedirect()->assertSessionHasErrors('room');
+    expect(Room::whereKey($used->id)->exists())->toBeTrue()->and($used->issues()->count())->toBe(1);
+});
+
+it('lets only Administrator and HR delete rooms', function () {
+    $room = Room::where('number', '101')->firstOrFail();
+    loggedIn(User::factory()->role(Role::Hod)->create());
+    $this->delete(route('admin.rooms.destroy', $room))->assertForbidden();
+    expect(Room::whereKey($room->id)->exists())->toBeTrue();
+});

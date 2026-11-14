@@ -110,6 +110,25 @@ class RoomController extends Controller
         return back()->with('status', __('Kamar disimpan.'));
     }
 
+    /**
+     * Hapus kamar. Kamar yang pernah punya kendala TIDAK dihapus (riwayat kendala dan peta kamar bergantung padanya):
+     * nonaktifkan saja. Kotak kamar di denah ikut terhapus; kamar lain dan denahnya tidak berubah.
+     */
+    public function destroyRoom(Request $request, Room $room): RedirectResponse
+    {
+        Gate::authorize('manage-tasks');
+
+        $count = $room->issues()->count();
+        if ($count > 0) {
+            return back()->withErrors(['room' => __('Kamar :room punya :n kendala dalam riwayat, jadi tidak bisa dihapus. Nonaktifkan saja supaya tidak muncul lagi di pilihan.', ['room' => $room->number, 'n' => $count])]);
+        }
+
+        $number = $room->number;
+        $room->delete();
+
+        return back()->with('status', __('Kamar :room dihapus.', ['room' => $number]));
+    }
+
     public function storeCategory(Request $request): RedirectResponse
     {
         Gate::authorize('manage-tasks');

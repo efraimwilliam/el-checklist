@@ -86,22 +86,36 @@
 
         {{-- Daftar kamar: baris rapi, ubah lewat dialog --}}
         <section class="card mb-6 overflow-hidden">
-            <div class="hidden grid-cols-[6rem_5rem_minmax(0,1fr)_minmax(0,1fr)_6rem_5rem_4rem] gap-3 border-b border-slate-100 bg-[#fbf6ea] px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 lg:grid">
+            <div class="hidden grid-cols-[6rem_5rem_minmax(0,1fr)_minmax(0,1fr)_6rem_5rem_5.5rem] gap-3 border-b border-slate-100 bg-[#fbf6ea] px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 lg:grid">
                 <span>{{ __('Kamar') }}</span><span>{{ __('Lantai') }}</span><span>{{ __('Gedung') }}</span><span>{{ __('Tipe') }}</span><span>{{ __('Status') }}</span><span class="text-right">{{ __('Kendala') }}</span><span class="sr-only">{{ __('Aksi') }}</span>
             </div>
             @forelse ($rooms as $room)
-                <div class="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-1 border-b border-slate-100 px-5 py-3 last:border-0 lg:grid-cols-[6rem_5rem_minmax(0,1fr)_minmax(0,1fr)_6rem_5rem_4rem] {{ $room->is_active ? '' : 'bg-slate-50 text-slate-400' }}">
+                <div class="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-1 border-b border-slate-100 px-5 py-3 last:border-0 lg:grid-cols-[6rem_5rem_minmax(0,1fr)_minmax(0,1fr)_6rem_5rem_5.5rem] {{ $room->is_active ? '' : 'bg-slate-50 text-slate-400' }}">
                     <p class="font-display text-xl {{ $room->is_active ? 'text-slate-900' : 'text-slate-400' }}">{{ $room->number }}</p>
                     <p class="col-span-2 text-sm text-slate-500 lg:col-span-1 lg:order-none">{{ $room->floor ? __('Lantai').' '.$room->floor : '—' }}</p>
                     <p class="col-span-2 text-sm lg:col-span-1">{{ $room->building ?: '—' }}</p>
                     <p class="col-span-2 text-sm lg:col-span-1">{{ $room->type ?: '—' }}</p>
                     <p class="col-span-2 lg:col-span-1"><span class="rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $room->is_active ? 'bg-emerald-50 text-emerald-800' : 'bg-slate-200 text-slate-600' }}">{{ $room->is_active ? __('Aktif') : __('Nonaktif') }}</span></p>
                     <p class="col-span-2 text-sm tabular-nums text-slate-500 lg:col-span-1 lg:text-right">{{ $room->issues_count }} {{ __('kendala') }}</p>
-                    <div class="row-start-1 col-start-2 justify-self-end lg:col-start-auto lg:row-start-auto">
+                    <div class="row-start-1 col-start-2 flex items-center justify-self-end lg:col-start-auto lg:row-start-auto">
                         <button type="button" class="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:bg-[#f6efdf] hover:text-gold-700" aria-label="{{ __('Ubah kamar :room', ['room' => $room->number]) }}" title="{{ __('Ubah') }}"
                             data-edit-room data-url="{{ route('admin.rooms.update', $room) }}" data-id="{{ $room->id }}" data-number="{{ $room->number }}" data-floor="{{ $room->floor }}" data-building="{{ $room->building }}" data-type="{{ $room->type }}" data-active="{{ $room->is_active ? '1' : '0' }}">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
                         </button>
+                        {{-- Hapus: hanya untuk kamar tanpa riwayat kendala (yang punya riwayat cukup dinonaktifkan). Konfirmasi lewat dialog aplikasi. --}}
+                        @if ($room->issues_count === 0)
+                            <form method="POST" action="{{ route('admin.rooms.destroy', $room) }}" data-confirm="{{ __('Hapus kamar :room? Kotaknya di denah ikut terhapus. Tindakan ini tidak bisa dibatalkan.', ['room' => $room->number]) }}">
+                                @csrf
+                                @method('DELETE')
+                                <button class="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-400 transition hover:bg-rose-50 hover:text-rose-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-300" aria-label="{{ __('Hapus kamar :room', ['room' => $room->number]) }}" title="{{ __('Hapus') }}">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg>
+                                </button>
+                            </form>
+                        @else
+                            <span class="inline-flex h-9 w-9 cursor-not-allowed items-center justify-center rounded-full text-slate-300" title="{{ __('Punya :n kendala dalam riwayat: nonaktifkan saja, tidak bisa dihapus.', ['n' => $room->issues_count]) }}" role="img" aria-label="{{ __('Tidak bisa dihapus: punya riwayat kendala') }}">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg>
+                            </span>
+                        @endif
                     </div>
                 </div>
             @empty

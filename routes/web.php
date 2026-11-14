@@ -186,6 +186,7 @@ Route::middleware(['auth', EnsureActiveSession::class, VerifySsoSession::class])
         Route::delete('/kamar/impor', [RoomController::class, 'importCancel'])->name('rooms.import.cancel');
         Route::get('/kamar/contoh.xlsx', [RoomController::class, 'template'])->name('rooms.template');
         Route::put('/kamar/{room}', [RoomController::class, 'updateRoom'])->name('rooms.update');
+        Route::delete('/kamar/{room}', [RoomController::class, 'destroyRoom'])->whereNumber('room')->name('rooms.destroy');
         Route::post('/kategori-kendala', [RoomController::class, 'storeCategory'])->name('categories.store');
         Route::put('/kategori-kendala/{category}', [RoomController::class, 'updateCategory'])->name('categories.update');
 
