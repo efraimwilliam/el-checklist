@@ -18,7 +18,7 @@
         </div>
         <div class="flex flex-wrap gap-2">
             @if ($tab === 'kamar')
-                <a href="{{ route('admin.rooms.import') }}" class="btn-secondary">{{ __('Impor Excel') }}</a>
+                <a href="{{ route('admin.rooms.import') }}" class="btn-secondary" data-import-open>{{ __('Impor Excel') }}</a>
                 <button type="button" class="btn-primary" data-open-dialog="add-room">{{ __('+ Tambah kamar') }}</button>
             @elseif ($tab === 'kategori')
                 <button type="button" class="btn-primary" data-open-dialog="add-category">{{ __('+ Tambah kategori') }}</button>
@@ -373,4 +373,92 @@
             }
         })();
     </script>
+    @if ($tab === 'kamar')
+    <dialog id="import-dialog" aria-labelledby="import-dialog-title" class="m-auto w-[min(48rem,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl backdrop:bg-[#2a1d12]/50">
+        <div class="flex max-h-[92vh] flex-col">
+            <div class="flex items-start justify-between gap-3 border-b border-slate-100 px-6 pb-4 pt-6">
+                <div>
+                    <h2 id="import-dialog-title" class="font-display text-2xl text-slate-900">{{ __('Impor daftar kamar') }}</h2>
+                    <p class="text-sm text-slate-500">{{ __('Seret berkas Excel ke kotak, periksa hasilnya, lalu simpan.') }}</p>
+                </div>
+                <button type="button" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-2xl leading-none text-slate-500 hover:bg-[#f6efdf] hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-500" aria-label="{{ __('Tutup') }}" data-close-import-dialog>{{ __('×') }}</button>
+            </div>
+            <div class="overflow-y-auto px-6 pb-6 pt-4" data-import-body aria-live="polite">
+                <p class="text-sm text-slate-500">{{ __('Memuat…') }}</p>
+            </div>
+        </div>
+    </dialog>
+
+    <script>
+        (() => {
+            const dialog = document.getElementById('import-dialog');
+            const body = dialog.querySelector('[data-import-body]');
+            const panelUrl = @json(route('admin.rooms.import'));
+
+            const load = async (url, options = {}) => {
+                body.setAttribute('aria-busy', 'true');
+                body.querySelectorAll('button').forEach((button) => (button.disabled = true));
+                try {
+                    const response = await fetch(url, { credentials: 'same-origin', headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, ...options });
+                    if (response.status === 401 || response.status === 419) return window.location.reload();
+                    const data = await response.json();
+                    if (data.redirect) return (window.location.href = data.redirect);
+                    body.innerHTML = data.html;
+                } catch (error) {
+                    body.innerHTML = `<p class="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">${window.t('Gagal memuat. Coba lagi.')}</p>`;
+                } finally {
+                    body.removeAttribute('aria-busy');
+                }
+            };
+
+            document.querySelectorAll('[data-import-open]').forEach((trigger) => trigger.addEventListener('click', (event) => {
+                event.preventDefault();
+                dialog.showModal();
+                load(panelUrl);
+            }));
+            dialog.querySelectorAll('[data-close-import-dialog]').forEach((button) => button.addEventListener('click', () => dialog.close()));
+            dialog.addEventListener('click', (event) => { if (event.target === dialog) dialog.close(); });
+
+            // Seret berkas ke area putus-putus: berkas dipasang ke input lalu langsung diperiksa.
+            const showName = (zone, file) => { zone.querySelector('[data-dropzone-name]').textContent = file ? file.name : ''; };
+            body.addEventListener('dragover', (event) => {
+                const zone = event.target.closest('[data-dropzone]');
+                if (!zone) return;
+                event.preventDefault();
+                zone.classList.add('border-gold-500', 'bg-[#f6efdf]');
+            });
+            body.addEventListener('dragleave', (event) => {
+                const zone = event.target.closest('[data-dropzone]');
+                if (zone) zone.classList.remove('border-gold-500', 'bg-[#f6efdf]');
+            });
+            body.addEventListener('drop', (event) => {
+                const zone = event.target.closest('[data-dropzone]');
+                if (!zone) return;
+                event.preventDefault();
+                zone.classList.remove('border-gold-500', 'bg-[#f6efdf]');
+                const file = event.dataTransfer.files[0];
+                if (!file) return;
+                const input = zone.querySelector('input[type=file]');
+                const transfer = new DataTransfer();
+                transfer.items.add(file);
+                input.files = transfer.files;
+                showName(zone, file);
+                zone.closest('[data-import-form]').requestSubmit();
+            });
+            body.addEventListener('change', (event) => {
+                if (event.target.matches('[data-dropzone] input[type=file]')) {
+                    showName(event.target.closest('[data-dropzone]'), event.target.files[0]);
+                    event.target.closest('[data-import-form]').requestSubmit();
+                }
+            });
+
+            body.addEventListener('submit', (event) => {
+                const form = event.target.closest('[data-import-form]');
+                if (!form) return;
+                event.preventDefault();
+                load(form.action, { method: 'POST', body: new FormData(form) });
+            });
+        })();
+    </script>
+    @endif
 </x-app-layout>

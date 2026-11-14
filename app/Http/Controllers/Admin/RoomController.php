@@ -10,10 +10,12 @@ use App\Models\Room;
 use App\Reports\ExcelReport;
 use App\Rooms\InvalidRoomFile;
 use App\Rooms\RoomImport;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -167,21 +169,27 @@ class RoomController extends Controller
         ]]);
     }
 
-    public function importForm(): View
+    /** Halaman penuh (tanpa JavaScript) atau, dari popup, hanya isi panel (JSON). */
+    public function importForm(Request $request): View|JsonResponse
     {
         Gate::authorize('manage-tasks');
+        $this->discard($request);
 
-        return view('admin.rooms.import', ['plan' => null]);
+        return $request->expectsJson() ? $this->panel() : view('admin.rooms.import', ['plan' => null]);
     }
 
     /** Langkah 1: simpan berkas privat, periksa, tampilkan rencana perubahan. */
-    public function importPreview(Request $request): View|RedirectResponse
+    public function importPreview(Request $request): View|RedirectResponse|JsonResponse
     {
         Gate::authorize('manage-tasks');
-        $request->validate(
+        $validator = Validator::make(
+            $request->all(),
             ['berkas' => ['required', 'file', 'extensions:xlsx', 'max:5120']],
             ['berkas.required' => __('Pilih berkas Excel (.xlsx) dulu.'), 'berkas.file' => __('Berkas tidak bisa diunggah. Coba lagi.'), 'berkas.extensions' => __('Berkas harus berformat Excel (.xlsx).'), 'berkas.max' => __('Ukuran berkas maksimal 5 MB.')],
         );
+        if ($validator->fails()) {
+            return $this->failed($request, $validator->errors()->first('berkas'));
+        }
 
         $this->discard($request);
         $path = $request->file('berkas')->storeAs('room-imports', Str::uuid().'.xlsx', 'local');
@@ -192,37 +200,57 @@ class RoomController extends Controller
         } catch (InvalidRoomFile $e) {
             $this->discard($request);
 
-            return back()->withErrors(['berkas' => $e->getMessage()]);
+            return $this->failed($request, $e->getMessage());
         }
 
-        return view('admin.rooms.import', ['plan' => $plan]);
+        return $request->expectsJson() ? $this->panel($plan, $request->file('berkas')->getClientOriginalName()) : view('admin.rooms.import', ['plan' => $plan]);
     }
 
     /** Langkah 2: simpan bila tidak ada kesalahan. */
-    public function importApply(Request $request): RedirectResponse
+    public function importApply(Request $request): RedirectResponse|JsonResponse
     {
         Gate::authorize('manage-tasks');
         $path = $request->session()->get(self::SESSION);
         if (! $path || ! Storage::disk('local')->exists($path)) {
-            return redirect()->route('admin.rooms.import')->withErrors(['berkas' => __('Berkas tidak ditemukan. Unggah ulang.')]);
+            return $this->failed($request, __('Berkas tidak ditemukan. Unggah ulang.'));
         }
 
         try {
             $result = (new RoomImport)->apply(Storage::disk('local')->path($path));
         } catch (InvalidRoomFile $e) {
-            return redirect()->route('admin.rooms.import')->withErrors(['berkas' => $e->getMessage()]);
+            return $this->failed($request, $e->getMessage());
         }
         $this->discard($request);
+        $message = __(':created kamar ditambahkan, :updated diperbarui.', $result);
 
-        return redirect()->route('admin.rooms.index')->with('status', __(':created kamar ditambahkan, :updated diperbarui.', $result));
+        if ($request->expectsJson()) {
+            $request->session()->flash('status', $message);
+
+            return response()->json(['redirect' => route('admin.rooms.index')]);
+        }
+
+        return redirect()->route('admin.rooms.index')->with('status', $message);
     }
 
-    public function importCancel(Request $request): RedirectResponse
+    public function importCancel(Request $request): RedirectResponse|JsonResponse
     {
         Gate::authorize('manage-tasks');
         $this->discard($request);
 
-        return redirect()->route('admin.rooms.import');
+        return $request->expectsJson() ? $this->panel() : redirect()->route('admin.rooms.import');
+    }
+
+    /** @param  array<string, mixed>|null  $plan */
+    private function panel(?array $plan = null, ?string $file = null, ?string $uploadError = null, int $status = 200): JsonResponse
+    {
+        return response()->json(['html' => view('admin.rooms.partials.import-panel', ['plan' => $plan, 'file' => $file, 'uploadError' => $uploadError])->render()], $status);
+    }
+
+    private function failed(Request $request, string $message): RedirectResponse|JsonResponse
+    {
+        return $request->expectsJson()
+            ? $this->panel(null, null, $message, 422)
+            : redirect()->route('admin.rooms.import')->withErrors(['berkas' => $message]);
     }
 
     private function discard(Request $request): void

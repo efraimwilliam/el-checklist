@@ -51,3 +51,22 @@ it('is closed to staff', function () {
     $this->get(route('admin.rooms.index'))->assertForbidden();
     $this->get(route('admin.rooms.import'))->assertForbidden();
 });
+
+it('serves the import as a popup panel with a drop zone and drives the whole flow as JSON', function () {
+    $json = ['Accept' => 'application/json'];
+    $this->get(route('admin.rooms.index'))->assertSee('data-import-open', false);
+    $this->get(route('admin.rooms.import'), $json)->assertOk()->assertJsonPath('html', fn ($html) => str_contains($html, 'data-dropzone') && ! str_contains($html, 'Hasil pemeriksaan'));
+
+    $this->post(route('admin.rooms.import.preview'), [], $json)->assertStatus(422)->assertJsonPath('html', fn ($html) => str_contains($html, 'Pilih berkas Excel'));
+
+    $file = roomWorkbook([['Nomor kamar', 'Lantai'], ['101', '1'], ['102', '1']]);
+    $this->post(route('admin.rooms.import.preview'), ['berkas' => $file], $json)->assertOk()->assertJsonPath('html', fn ($html) => str_contains($html, 'Hasil pemeriksaan') && str_contains($html, 'kamar.xlsx'));
+    expect(Room::count())->toBe(0);
+
+    $this->delete(route('admin.rooms.import.cancel'), [], $json)->assertOk()->assertJsonPath('html', fn ($html) => ! str_contains($html, 'Hasil pemeriksaan'));
+    $this->post(route('admin.rooms.import.apply'), [], $json)->assertStatus(422);
+
+    $this->post(route('admin.rooms.import.preview'), ['berkas' => roomWorkbook([['Nomor kamar'], ['101'], ['102']])], $json)->assertOk();
+    $this->post(route('admin.rooms.import.apply'), [], $json)->assertOk()->assertJson(['redirect' => route('admin.rooms.index')]);
+    expect(Room::count())->toBe(2);
+});
