@@ -19,7 +19,7 @@ class RoomIssuePolicy
 {
     public function before(User $user): ?bool
     {
-        return $user->canUseApp() ? null : false;
+        return \Illuminate\Support\Facades\Gate::forUser($user)->allows('room-issues') ? null : false;
     }
 
     public function delete(User $user, RoomIssue $issue): bool

@@ -95,6 +95,42 @@
                 @endif
             @endif
 
+            @if ($message->guest_request_id && ! $deleted)
+                @php
+                    $sharedRequest = $message->sharedRequest;
+                    $canSeeRequest = $sharedRequest && \Illuminate\Support\Facades\Gate::forUser($me)->allows('view', $sharedRequest);
+                    $requestTones = ['baru' => 'bg-rose-50 text-rose-700', 'diambil' => 'bg-sky-50 text-sky-800', 'selesai' => 'bg-emerald-50 text-emerald-800'];
+                @endphp
+                @if ($sharedRequest)
+                    <div data-shared-request="{{ $sharedRequest->id }}" class="mb-1 block min-w-60 overflow-hidden rounded-lg border-l-4 border-sky-600 bg-white/80 p-2.5 text-left">
+                        <span class="flex items-start justify-between gap-2">
+                            <span class="min-w-0">
+                                <span class="block text-[11px] font-semibold uppercase tracking-wider text-sky-800">🛎 {{ __('Permintaan tamu') }}</span>
+                                <span class="block truncate font-semibold text-slate-900">{{ __('Kamar') }} {{ $sharedRequest->room?->number }} · {{ $sharedRequest->label() }}</span>
+                            </span>
+                            <span class="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold {{ $requestTones[$sharedRequest->status] ?? 'bg-slate-100 text-slate-700' }}">{{ \App\Models\GuestRequest::statusLabels()[$sharedRequest->status] ?? $sharedRequest->status }}</span>
+                        </span>
+                        @if ($sharedRequest->priority === 'mendesak')<span class="mt-0.5 block text-xs font-semibold text-rose-700">{{ __('Mendesak') }}</span>@endif
+                        {{-- Dari ketik bebas: catatannya = teks pesan yang sudah tampil di obrolan, jadi tidak diulang di kartu. --}}
+                        @if ($sharedRequest->note && $sharedRequest->source !== 'chat')<span class="mt-1 line-clamp-3 block text-sm text-slate-700">{{ $sharedRequest->note }}</span>@endif
+                        @if ($sharedRequest->claimer)<span class="mt-1 block text-xs text-slate-500">{{ $sharedRequest->isDone() ? __('Selesai oleh') : __('Diambil') }} {{ ($sharedRequest->completer ?? $sharedRequest->claimer)->name() }}</span>@endif
+                        {{-- Tombol langsung di kartu (pengganti balasan "Copy" / "Done" di grup WhatsApp). --}}
+                        @if ($canSeeRequest && (Gate::forUser($me)->allows('claim', $sharedRequest) || Gate::forUser($me)->allows('complete', $sharedRequest)))
+                            <span class="mt-2 flex flex-wrap gap-2">
+                                @can('claim', $sharedRequest)
+                                    <form method="POST" action="{{ route('permintaan.claim', $sharedRequest) }}">@csrf<button class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-800 ring-1 ring-slate-300 hover:bg-slate-50">{{ __('Saya ambil') }}</button></form>
+                                @endcan
+                                @can('complete', $sharedRequest)
+                                    <form method="POST" action="{{ route('permintaan.complete', $sharedRequest) }}">@csrf<button class="rounded-full bg-[#b08a3e] px-3 py-1 text-xs font-semibold text-white hover:bg-[#9a7733]">{{ __('Selesai') }}</button></form>
+                                @endcan
+                            </span>
+                        @endif
+                    </div>
+                @else
+                    <p class="mb-1 rounded-lg bg-black/5 px-3 py-2 text-sm italic text-slate-500">🛎 {{ __('Permintaan ini sudah dihapus.') }}</p>
+                @endif
+            @endif
+
             @if ($message->checklist_id && ! $deleted)
                 @php
                     $sharedChecklist = $message->sharedChecklist;

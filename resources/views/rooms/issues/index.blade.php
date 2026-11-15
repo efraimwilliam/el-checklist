@@ -5,10 +5,16 @@
         $labels = \App\Models\RoomIssue::statusLabels();
         $me = auth()->user();
         $placeType = old('place_type', $rooms->isEmpty() ? 'location' : 'room');
+        // Tautan pintas (tombol + cepat, bookmark, QR): ?catat=1 membuka dialog, ?kamar= mengisi nomor kamar (harus ada di daftar).
+        // Dibuka dari obrolan (?obrolan=ID, html.chat-tool): hanya dialognya; setelah disimpan kartunya terkirim ke percakapan itu.
+        $chatThreadId = request()->input('obrolan', old('obrolan'));
+        $openDialog = $errors->any() || request()->boolean('catat') || filled($chatThreadId);
+        $presetRoom = $rooms->firstWhere('id', (int) old('room_id'))?->number ?? old('room_number', (string) request()->query('kamar', ''));
         $targetType = old('target_type', 'department');
         $segment = 'cursor-pointer rounded-full px-4 py-1.5 text-sm font-medium text-slate-600 transition has-checked:bg-white has-checked:text-slate-900 has-checked:shadow-sm has-focus-visible:ring-2 has-focus-visible:ring-gold-500';
     @endphp
 
+    @unless (filled($chatThreadId))
     <div class="mb-5 flex flex-wrap items-start justify-between gap-4">
         <div>
             <h1 class="text-3xl text-slate-900">{{ __('Kendala') }}</h1>
@@ -99,9 +105,12 @@
         @endif
     </section>
 
-    <dialog id="issue-dialog" aria-labelledby="issue-dialog-title" class="m-auto max-h-[calc(100dvh-2rem)] w-[min(40rem,calc(100vw-2rem))] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl backdrop:bg-[#2a1d12]/50">
+    @endunless
+
+    <dialog id="issue-dialog" @if ($openDialog) data-autoopen @endif data-chat-tool-main aria-labelledby="issue-dialog-title" class="m-auto max-h-[calc(100dvh-2rem)] w-[min(40rem,calc(100vw-2rem))] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl backdrop:bg-[#2a1d12]/50">
         <form method="POST" action="{{ route('kamar.issues.store') }}" class="space-y-5 p-6">
             @csrf
+            @if (filled($chatThreadId))<input type="hidden" name="obrolan" value="{{ $chatThreadId }}">@endif
             <div class="flex items-start justify-between gap-3">
                 <div>
                     <h2 id="issue-dialog-title" class="font-display text-2xl text-slate-900">{{ __('Catat kendala') }}</h2>
@@ -119,12 +128,10 @@
                 </div>
                 <div data-place="room">
                     <label for="issue-room-input" class="sr-only">{{ __('Kamar') }}</label>
-                    {{-- Ketik nomor kamar atau pilih dari daftar; nomor yang cocok mengisi room_id. --}}
-                    <input id="issue-room-input" list="issue-room-list" autocomplete="off" inputmode="numeric" required class="input w-full" placeholder="{{ __('Ketik atau pilih kamar') }}" value="{{ $rooms->firstWhere('id', (int) old('room_id'))?->number }}" data-room-input>
+                    {{-- Nomor kamar diketik (tanpa daftar pilihan); nomor yang cocok dengan Data kamar mengisi room_id, yang tidak ada diberi peringatan. --}}
+                    <input id="issue-room-input" autocomplete="off" inputmode="numeric" required class="input w-full" placeholder="{{ __('Ketik nomor kamar, mis. 305') }}" name="room_number" value="{{ $presetRoom }}" aria-describedby="issue-room-error" data-room-input>
                     <input type="hidden" name="room_id" value="{{ old('room_id') }}" data-room-id>
-                    <datalist id="issue-room-list">
-                        @foreach ($rooms as $room)<option value="{{ $room->number }}">{{ ($room->floor ? __('Lantai').' '.$room->floor : '').($room->type ? ' · '.$room->type : '') }}</option>@endforeach
-                    </datalist>
+                    <p id="issue-room-error" @class(['mt-1 text-sm text-rose-700', 'hidden' => ! $errors->has('room_id')]) data-room-error>{{ $errors->first('room_id') }}</p>
                     <p class="mt-1 hidden text-xs text-slate-500" data-room-hint></p>
                 </div>
                 <div data-place="location">
@@ -141,7 +148,7 @@
                     <label for="issue-category" class="label">{{ __('Kategori') }} <span class="font-normal text-slate-400">{{ __('(opsional)') }}</span></label>
                     <select id="issue-category" name="category_id" class="input w-full">
                         <option value="">{{ __('Pilih kategori') }}</option>
-                        @foreach ($categories as $category)<option value="{{ $category->id }}" data-department="{{ $category->department_id }}" @selected((string) old('category_id') === (string) $category->id)>{{ $category->name }}</option>@endforeach
+                        @foreach ($categories as $category)<option value="{{ $category->id }}" data-department="{{ $category->department_id }}" @selected((string) old('category_id', request()->query('kategori')) === (string) $category->id)>{{ $category->name }}</option>@endforeach
                     </select>
                 </div>
                 <div>
@@ -208,12 +215,12 @@
 
             <div>
                 <label for="issue-description" class="label">{{ __('Kendala') }}</label>
-                <textarea id="issue-description" name="description" rows="4" required maxlength="2000" class="input w-full" placeholder="{{ __('Contoh: AC tidak dingin, tamu minta segera dicek') }}">{{ old('description') }}</textarea>
+                <textarea id="issue-description" name="description" rows="4" required maxlength="2000" class="input w-full" placeholder="{{ __('Contoh: AC tidak dingin, tamu minta segera dicek') }}">{{ old('description', mb_substr((string) request()->query('deskripsi', ''), 0, 2000)) }}</textarea>
             </div>
 
             <label class="flex items-center gap-2 text-sm text-slate-700">
                 <input type="hidden" name="priority" value="biasa">
-                <input type="checkbox" name="priority" value="mendesak" @checked(old('priority') === 'mendesak')> {{ __('Tandai mendesak') }}
+                <input type="checkbox" name="priority" value="mendesak" @checked(old('priority', request()->boolean('mendesak') ? 'mendesak' : null) === 'mendesak')> {{ __('Tandai mendesak') }}
             </label>
 
             @if ($errors->any() && ! $errors->has('duplicate'))
@@ -252,15 +259,28 @@
             });
 
             // Nomor yang diketik dicocokkan ke daftar kamar; kalau tidak ada, form menolak dengan pesan yang jelas.
-            const syncRoom = () => {
-                const match = roomMap[roomInput.value.trim().toLowerCase()];
+            // Saat mengetik peringatan hilang bila cocok; saat pindah kolom / kirim, nomor yang tidak ada ditandai merah dan form ditolak.
+            const roomError = document.querySelector('[data-room-error]');
+            const roomMessage = @json(__('Kamar :number tidak ada di data kamar. Periksa lagi nomornya.'));
+            const syncRoom = (show = false) => {
+                const value = roomInput.value.trim();
+                const match = roomMap[value.toLowerCase()];
                 roomId.value = match ? match.id : '';
                 roomHint.textContent = match ? match.hint : '';
                 roomHint.classList.toggle('hidden', !match || !match.hint);
-                roomInput.setCustomValidity(match || roomInput.value.trim() === '' ? '' : @json(__('Kamar tidak ada di daftar. Pilih dari daftar yang muncul.')));
+                const ok = Boolean(match) || value === '';
+                roomInput.setCustomValidity(ok ? '' : roomMessage.replace(':number', value));
+                roomInput.classList.toggle('!border-rose-400', !ok && (show === true || !roomError.classList.contains('hidden')));
+                if (ok) roomError.classList.add('hidden');
+                else if (show === true) { roomError.textContent = roomMessage.replace(':number', value); roomError.classList.remove('hidden'); }
             };
-            roomInput.addEventListener('input', syncRoom);
-            roomInput.addEventListener('change', syncRoom);
+            roomInput.addEventListener('input', () => syncRoom(false));
+            roomInput.addEventListener('change', () => syncRoom(true));
+            form.addEventListener('submit', (event) => {
+                if (currentPlace() !== 'room') return;
+                syncRoom(true);
+                if (!roomInput.checkValidity()) { event.preventDefault(); roomInput.focus(); }
+            });
 
             // Cek kendala serupa (lokasi + kategori sama, belum selesai) setiap lokasi atau kategori berubah.
             const duplicateBox = document.querySelector('[data-duplicate]');
@@ -329,10 +349,10 @@
             document.querySelectorAll('[data-open-issue-dialog]').forEach((button) => button.addEventListener('click', () => dialog.showModal()));
             dialog.querySelectorAll('[data-close-issue-dialog]').forEach((button) => button.addEventListener('click', () => dialog.close()));
 
-            syncRoom();
+            syncRoom(roomInput.value.trim() !== '');
             applyPlace();
             applyTarget();
-            @if ($errors->any()) dialog.showModal(); @endif
+            if (dialog.hasAttribute('data-autoopen')) dialog.showModal();
         })();
     </script>
 </x-app-layout>

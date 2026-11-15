@@ -29,21 +29,54 @@ class SettingsController extends Controller
             'checkedAt' => now(),
             'requirement' => $settings->photoRequirement(),
             'futureFill' => $settings->futureFillAllowed(),
-            'chatEnabled' => $settings->chatEnabled(),
+            'features' => ChecklistSettings::FEATURES,
+            'quickOptions' => ChecklistSettings::QUICK_ENTRY,
+            'quickTermCount' => \App\Models\QuickTerm::count(),
+            'quickStates' => collect(ChecklistSettings::QUICK_ENTRY)->map(fn ($option, $key) => $settings->get($key) !== '0')->all(),
+            'quickOtherDepartmentId' => $settings->quickOtherDepartmentId(),
+            'allDepartments' => Department::where('is_active', true)->orderBy('sort')->orderBy('name')->get(),
+            'defaultRequestDepartmentId' => \App\Models\GuestRequest::defaultDepartmentId(),
+            'featureStates' => collect(ChecklistSettings::FEATURES)->map(fn ($feature, $key) => $settings->featureEnabled($key))->all(),
             'retention' => $settings->photoRetentionDays(),
             'requirements' => ChecklistSettings::REQUIREMENTS,
             'departments' => Department::where('is_active', true)->when($allowedIds !== null, fn ($q) => $q->whereIn('id', $allowedIds))->orderBy('sort')->orderBy('name')->get(),
         ]);
     }
 
-    /** Aturan checklist (Administrator): boleh mengisi checklist untuk hari yang akan datang atau tidak. */
+    /** Aturan checklist (Administrator): boleh mengisi checklist untuk hari yang akan datang atau tidak. (Obrolan pindah ke Fitur.) */
     public function updateRules(Request $request, ChecklistSettings $settings): RedirectResponse
     {
         Gate::authorize('manage-access');
         $settings->put('checklist_future_fill', $request->boolean('future_fill') ? '1' : '0');
-        $settings->put('chat_enabled', $request->boolean('chat_enabled') ? '1' : '0');
 
         return back()->with('status', __('Pengaturan disimpan.'));
+    }
+
+    /** Fitur (Administrator): nyalakan / matikan modul untuk semua pengguna. Kotak yang tidak dicentang = mati. Tercatat di Log aplikasi (Setting). */
+    public function updateFeatures(Request $request, ChecklistSettings $settings): RedirectResponse
+    {
+        Gate::authorize('manage-access');
+        $chosen = (array) $request->input('features', []);
+        foreach (array_keys(ChecklistSettings::FEATURES) as $key) {
+            $settings->put(ChecklistSettings::featureSettingKey($key), filter_var($chosen[$key] ?? false, FILTER_VALIDATE_BOOLEAN) ? '1' : '0');
+        }
+
+        return redirect()->to(route('admin.settings.edit').'#fitur')->with('status', __('Pengaturan fitur disimpan.'));
+    }
+
+    /** Ketik bebas di obrolan (Administrator): nyala / mati per bagian + tujuan bawaan permintaan "Lainnya". */
+    public function updateQuickEntry(Request $request, ChecklistSettings $settings): RedirectResponse
+    {
+        Gate::authorize('manage-access');
+        $data = $request->validate(['quick' => ['nullable', 'array'], 'quick_other_department_id' => ['nullable', 'integer', Rule::exists('departments', 'id')->where('is_active', true)]]);
+        foreach (array_keys(ChecklistSettings::QUICK_ENTRY) as $key) {
+            $settings->put($key, filter_var($data['quick'][$key] ?? false, FILTER_VALIDATE_BOOLEAN) ? '1' : '0');
+        }
+        // Tujuan "Lainnya" disimpan di jenis Lainnya (Kamus ketik bebas memakai data yang sama).
+        \App\Models\GuestRequestKind::where('key', 'other')->update(['department_id' => $data['quick_other_department_id'] ?? null]);
+        \App\Models\GuestRequest::kinds()->refresh();
+
+        return redirect()->to(route('admin.settings.edit').'#ketik')->with('status', __('Pengaturan ketik bebas disimpan.'));
     }
 
     public function update(Request $request, ChecklistSettings $settings): RedirectResponse

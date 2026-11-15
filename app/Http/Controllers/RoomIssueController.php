@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Audit\AuditLogger;
+use App\Chat\ChatPoster;
 use App\Models\ChatThread;
 use App\Models\Department;
 use App\Models\Employee;
@@ -103,7 +104,7 @@ class RoomIssueController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, ChatPoster $poster): RedirectResponse
     {
         Gate::authorize('room-issues');
         $data = $request->validate([
@@ -156,6 +157,11 @@ class RoomIssueController extends Controller
                 }
             });
             $message = __('Laporan ditambahkan ke kendala yang sudah ada.');
+            if ($thread = $poster->target($request)) {
+                $poster->card($thread, $request->user(), ['room_issue_id' => $target->id]);
+
+                return $poster->done($thread);
+            }
 
             return $request->user()->can('view', $target)
                 ? redirect()->route('kamar.issues.show', $target)->with('status', $message)
@@ -192,6 +198,13 @@ class RoomIssueController extends Controller
                 'kind' => 'berulang',
                 'related_issue_id' => $issue->id,
             ]);
+        }
+
+        // Dicatat dari obrolan: kartu kendala dikirim ke percakapan itu.
+        if ($thread = $poster->target($request)) {
+            $poster->card($thread, $request->user(), ['room_issue_id' => $issue->id]);
+
+            return $poster->done($thread);
         }
 
         return redirect()->route('kamar.issues.show', $issue)->with('status', __('Kendala dicatat.'));

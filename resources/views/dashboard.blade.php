@@ -235,6 +235,7 @@
         @endif
     </section>
 
+    @can('chronology-reports')
     {{-- Chronology Report: laporan kejadian tamu yang dibuat dalam periode (yang boleh dilihat pengguna ini). --}}
     <section class="card mt-6 p-5">
         <div class="mb-4 flex flex-wrap items-end justify-between gap-2">
@@ -288,6 +289,7 @@
             <p class="py-4 text-center text-sm text-slate-500">{{ __('Belum ada Chronology Report dalam periode ini.') }}</p>
         @endif
     </section>
+    @endcan
     </div>
 
     <script>

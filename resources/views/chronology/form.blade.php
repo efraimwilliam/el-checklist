@@ -4,9 +4,15 @@
         $guestRows = old('guests', $guests);
         $entryRows = old('entries', $entries);
         $issueId = old('room_issue_id', $report->room_issue_id);
+        // Dibuka dari obrolan (?obrolan=ID): setelah disimpan, kartunya terkirim ke percakapan itu; Kembali / Batal menutup jendela form.
+        $chatThreadId = $report->exists ? null : request()->input('obrolan', old('obrolan'));
     @endphp
 
-    <a href="{{ $report->exists ? route('chronology.show', $report) : route('chronology.index') }}" class="text-sm text-sky-700 hover:underline">{{ __('← Kembali') }}</a>
+    @if (filled($chatThreadId))
+        <button type="button" data-chat-tool-close class="text-sm text-sky-700 hover:underline">{{ __('← Kembali ke obrolan') }}</button>
+    @else
+        <a href="{{ $report->exists ? route('chronology.show', $report) : route('chronology.index') }}" class="text-sm text-sky-700 hover:underline">{{ __('← Kembali') }}</a>
+    @endif
     <h1 class="mb-1 mt-1 text-3xl text-slate-900">{{ $report->exists ? __('Ubah Chronology Report') : __('Chronology Report baru') }}</h1>
     <p class="mb-5 text-sm text-slate-500">{{ __('Isi laporan dalam bahasa Inggris. Simpan sebagai draft dulu; setelah Finalisasi laporan terkunci.') }}</p>
 
@@ -21,6 +27,7 @@
             <p class="mt-1 text-sm text-slate-500">{{ __('Salin laporan yang sudah ditulis, tempel di sini sekali saja. Sistem membaca Guest Name, Room Number, Nationality, Length of stay, Source of Booking, dan poin bernomor.') }}</p>
             <form method="POST" action="{{ route('chronology.paste') }}" class="mt-3 space-y-3">
                 @csrf
+                @if (filled($chatThreadId))<input type="hidden" name="obrolan" value="{{ $chatThreadId }}">@endif
                 <label class="sr-only" for="paste-text">{{ __('Teks laporan') }}</label>
                 <textarea id="paste-text" name="text" rows="8" maxlength="40000" required class="input w-full font-mono text-sm leading-relaxed" placeholder="*CHRONOLOGY REPORT*&#10;&#10;Guest Name : …&#10;Room Number : …&#10;Nationality : …&#10;Length of stay : 02 November 2026 - 05 November 2026&#10;Source of Booking : …&#10;&#10;1. …&#10;2. …">{{ old('text', $pasted) }}</textarea>
                 <div class="flex flex-wrap gap-2">
@@ -48,12 +55,13 @@
         @csrf
         @if ($report->exists) @method('PUT') @endif
         <input type="hidden" name="room_issue_id" value="{{ $issueId }}">
+        @if (filled($chatThreadId))<input type="hidden" name="obrolan" value="{{ $chatThreadId }}">@endif
 
         {{-- Data tamu --}}
         <section class="card p-5">
             <h2 class="font-display text-xl text-slate-900">{{ __('Data tamu') }}</h2>
             @if ($issue)
-                <p class="mt-1 text-sm text-slate-500">{{ __('Terhubung ke kendala') }} <a class="underline" href="{{ route('kamar.issues.show', $issue) }}">#{{ $issue->id }} · {{ $issue->placeName() }}</a></p>
+                <p class="mt-1 text-sm text-slate-500">{{ __('Terhubung ke kendala') }} <a class="underline" @can('room-issues') href="{{ route('kamar.issues.show', $issue) }}" @endcan>#{{ $issue->id }} · {{ $issue->placeName() }}</a></p>
             @endif
 
             <div class="mt-4" data-repeater data-min="1">
@@ -131,7 +139,11 @@
         </section>
 
         <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <a href="{{ $report->exists ? route('chronology.show', $report) : route('chronology.index') }}" class="btn-secondary text-center">{{ __('Batal') }}</a>
+            @if (filled($chatThreadId))
+                <button type="button" data-chat-tool-close class="btn-secondary text-center">{{ __('Batal') }}</button>
+            @else
+                <a href="{{ $report->exists ? route('chronology.show', $report) : route('chronology.index') }}" class="btn-secondary text-center">{{ __('Batal') }}</a>
+            @endif
             <button name="intent" value="draft" class="btn-secondary">{{ __('Simpan draft') }}</button>
             <button name="intent" value="final" class="btn-primary" data-confirm-button="{{ __('Finalisasi laporan? Setelah final, laporan terkunci dan tidak bisa diubah.') }}">{{ __('Finalisasi') }}</button>
         </div>

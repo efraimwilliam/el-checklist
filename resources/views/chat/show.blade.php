@@ -11,6 +11,12 @@
         };
     };
     $previousDay = null;
+    // Form yang bisa dibuka dari menu lampiran (dan perintah /p /k /c): hanya fitur yang menyala dan boleh dipakai pengguna.
+    $chatTools = array_values(array_filter([
+        Gate::allows('guest-requests') ? ['command' => 'p', 'label' => __('Permintaan tamu'), 'icon' => '🛎', 'tone' => 'bg-sky-100 text-sky-800', 'url' => route('permintaan.index', ['obrolan' => $thread->id])] : null,
+        Gate::allows('room-issues') ? ['command' => 'k', 'label' => __('Kendala'), 'icon' => '🛠', 'tone' => 'bg-amber-100 text-amber-800', 'url' => route('kamar.issues.index', ['obrolan' => $thread->id])] : null,
+        Gate::allows('chronology-reports') ? ['command' => 'c', 'label' => 'Chronology Report', 'icon' => '📝', 'tone' => 'bg-violet-100 text-violet-700', 'url' => route('chronology.create', ['obrolan' => $thread->id])] : null,
+    ]));
 @endphp
 <x-app-layout :title="$title" :full-height="true" :bare-on-mobile="true">
     @vite(['resources/js/chat.js'])
@@ -18,7 +24,7 @@
         @include('chat.partials.sidebar', ['hideOnMobile' => true])
 
         <section class="relative flex min-w-0 flex-1 flex-col" data-chat
-                 data-poll-url="{{ route('chat.poll', $thread) }}" data-send-url="{{ route('chat.send', $thread) }}"
+                 data-poll-url="{{ route('chat.poll', $thread) }}" data-quick-url="{{ $canPost && app(\App\Checklists\ChecklistSettings::class)->quickEntry('quick_entry') && ((Gate::allows('guest-requests') && app(\App\Checklists\ChecklistSettings::class)->quickEntry('quick_requests')) || (Gate::allows('room-issues') && app(\App\Checklists\ChecklistSettings::class)->quickEntry('quick_issues'))) ? route('chat.quick', $thread) : '' }}" data-send-url="{{ route('chat.send', $thread) }}"
                  data-typing-url="{{ $canPost ? route('chat.typing', $thread) : '' }}" data-delete-url="{{ route('chat.destroy', [$thread, 0]) }}"
                  data-index-url="{{ route('chat.index') }}" data-last="{{ (int) $messages->last()?->id }}" data-since="{{ $serverNow }}"
                  data-read-upto="{{ $readUpto }}" data-search-url="{{ route('chat.search', $thread) }}" data-show-url="{{ route('chat.show', $thread) }}" data-target="{{ $target ?? '' }}" data-subtitle="{{ $subtitle }}" data-direct="{{ $thread->isDirect() ? 1 : 0 }}"
@@ -102,7 +108,10 @@
             {{-- Kotak tulis --}}
             @if ($canPost)
                 <div class="relative shrink-0 bg-[#f4efe6] px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2" data-composer>
+                    <div hidden data-command-list role="listbox" aria-label="{{ __('Perintah') }}" class="absolute inset-x-2 bottom-full z-20 mb-1 overflow-hidden rounded-xl bg-white py-1 shadow-xl ring-1 ring-black/10"></div>
                     <div hidden data-mention-list role="listbox" aria-label="{{ __('Sebut anggota') }}" class="absolute inset-x-2 bottom-full z-20 mb-1 max-h-64 overflow-y-auto rounded-xl bg-white py-1 shadow-xl ring-1 ring-black/10"></div>
+                    {{-- Pratinjau ketik bebas: "1206 req 2 mineral water" -> akan dicatat sebagai permintaan saat dikirim (lihat chat.js). --}}
+                    <div hidden data-quick-preview aria-live="polite" class="mb-2 flex items-start gap-2 rounded-lg border-l-4 bg-white px-3 py-2 text-sm"></div>
                     <div hidden data-reply-bar class="mb-2 flex items-start gap-2 rounded-lg border-l-4 border-[#b08a3e] bg-white px-3 py-2 text-sm">
                         <div class="min-w-0 flex-1">
                             <p class="font-semibold text-[#8a6a22]" data-reply-author></p>
@@ -130,7 +139,7 @@
                             <button type="button" data-attach-open aria-haspopup="menu" aria-expanded="false" class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-slate-500 hover:text-slate-800" aria-label="{{ __('Lampirkan') }}" title="{{ __('Lampirkan') }}">
                                 <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M20 11.5l-7.8 7.8a5 5 0 01-7.1-7.1l8.1-8.1a3.4 3.4 0 014.8 4.8l-8 8a1.7 1.7 0 01-2.4-2.4l7.4-7.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
                             </button>
-                            <div hidden data-attach-menu role="menu" class="absolute bottom-full left-0 z-20 mb-2 w-52 overflow-hidden rounded-xl bg-white py-1 text-sm shadow-xl ring-1 ring-black/10">
+                            <div hidden data-attach-menu role="menu" class="absolute bottom-full left-0 z-20 mb-2 w-64 overflow-hidden rounded-xl bg-white py-1 text-sm shadow-xl ring-1 ring-black/10">
                                 <label class="flex cursor-pointer items-center gap-3 px-4 py-2.5 hover:bg-slate-50" role="menuitem">
                                     <span class="flex h-8 w-8 items-center justify-center rounded-full bg-violet-100 text-violet-700" aria-hidden="true">📄</span>{{ __('Dokumen') }}
                                     <input type="file" class="sr-only" data-file-input accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,.zip">
@@ -143,6 +152,13 @@
                                     <span class="flex h-8 w-8 items-center justify-center rounded-full bg-rose-100 text-rose-700" aria-hidden="true">📷</span>{{ __('Kamera') }}
                                     <input type="file" class="sr-only" data-photo-input accept="image/*" capture="environment">
                                 </label>
+                                @foreach ($chatTools as $tool)
+                                    <button type="button" class="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-slate-50" role="menuitem" data-chat-tool="{{ $tool['url'] }}" data-command="{{ $tool['command'] }}" data-title="{{ $tool['label'] }}">
+                                        <span class="flex h-8 w-8 items-center justify-center rounded-full {{ $tool['tone'] }}" aria-hidden="true">{{ $tool['icon'] }}</span>
+                                        <span class="flex-1">{{ $tool['label'] }}</span>
+                                        <kbd class="font-mono text-[11px] text-slate-400">/{{ $tool['command'] }}</kbd>
+                                    </button>
+                                @endforeach
                             </div>
                             <label class="sr-only" for="chat-body">{{ __('Pesan') }}</label>
                             <textarea id="chat-body" name="body" rows="1" maxlength="4000" class="max-h-36 min-h-11 flex-1 resize-none border-0 bg-transparent py-2.5 pr-4 text-[15px] outline-none focus:outline-none focus:ring-0" data-body aria-autocomplete="list"></textarea>
@@ -166,6 +182,14 @@
         <button type="button" data-act="copy" class="block w-full px-4 py-2 text-left hover:bg-slate-50" role="menuitem">{{ __('Salin') }}</button>
         <button type="button" data-act="delete" class="block w-full px-4 py-2 text-left text-rose-700 hover:bg-rose-50" role="menuitem">{{ __('Hapus untuk semua') }}</button>
     </div>
+
+    {{-- Jendela form dari menu lampiran / perintah /p /k /c: halaman form dimuat di iframe (?obrolan=ID); setelah tersimpan
+         halaman itu mengirim "chat-tool-done", jendela ditutup dan kartunya muncul lewat polling. --}}
+    @if ($canPost && $chatTools)
+        <dialog data-tool-dialog aria-label="{{ __('Form') }}" class="m-auto h-[min(46rem,calc(100dvh-1rem))] w-[min(40rem,calc(100vw-1rem))] overflow-hidden rounded-2xl bg-white p-0 shadow-2xl backdrop:bg-black/40">
+            <iframe data-tool-frame title="{{ __('Form') }}" class="h-full w-full border-0 bg-white"></iframe>
+        </dialog>
+    @endif
 
     {{-- Info obrolan: anggota, tambah anggota, keluar grup. --}}
     <dialog data-info-dialog class="m-auto w-[min(28rem,calc(100vw-2rem))] rounded-2xl p-0 shadow-2xl backdrop:bg-black/40">

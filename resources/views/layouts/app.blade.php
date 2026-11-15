@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="id">
+@php($chatTool = filled(request()->input('obrolan', old('obrolan'))))
+<html lang="id" @class(['chat-tool' => $chatTool])>
 <head>
     <meta charset="utf-8">
     {{-- Tampilan dikunci di skala 1 (tanpa zoom): mencegah layar "bergerak" karena cubit, ketuk dua kali, atau zoom otomatis iPhone saat
@@ -22,6 +23,12 @@
     <script>
         // Dibuka di dalam panel obrolan (iframe): header aplikasi dan tombol obrolan disembunyikan (lihat app.css .in-frame).
         if (window.self !== window.top) document.documentElement.classList.add('in-frame');
+        // Form yang dibuka dari obrolan (menu lampiran / perintah /p /k /c, html.chat-tool): Batal / tutup dialog utama memberi tahu obrolan.
+        if (document.documentElement.classList.contains('chat-tool') && window.parent !== window) {
+            const closeTool = () => window.parent.postMessage({ type: 'chat-tool-close' }, location.origin);
+            document.addEventListener('close', (event) => { if (event.target.matches?.('[data-chat-tool-main]')) closeTool(); }, true);
+            document.addEventListener('click', (event) => { if (event.target.closest?.('[data-chat-tool-close]')) { event.preventDefault(); closeTool(); } });
+        }
         window.__i18n = @json(\App\Support\Translations::forJs());
         window.t = (text) => (window.__i18n && window.__i18n[text]) || text;
     </script>
@@ -35,7 +42,18 @@
     @php($menuItem = fn (bool $active) => 'flex items-center justify-between gap-6 rounded-lg px-2.5 py-2 text-slate-800 hover:bg-amber-50 '.($active ? 'bg-amber-50 font-semibold' : ''))
     @php($teamActive = request()->routeIs('team.*', 'admin.tasks.*', 'admin.positions.*', 'admin.rooms.*', 'admin.categories.*'))
     @php($accessActive = request()->routeIs('admin.access.*', 'admin.sync', 'admin.settings.*'))
-    @php($newIssues = \Illuminate\Support\Facades\Gate::allows('room-issues') ? $me->newRoomIssueCount() : 0)
+    @php($canRequests = \Illuminate\Support\Facades\Gate::allows('guest-requests'))
+    @php($canIssues = \Illuminate\Support\Facades\Gate::allows('room-issues'))
+    @php($newRequests = $canRequests ? $me->newGuestRequestCount() : 0)
+    @php($newIssues = $canIssues ? $me->newRoomIssueCount() : 0)
+    @php($newService = $newIssues + $newRequests)
+    {{-- Menu "Operasional": Kendala, Permintaan tamu, Chronology Report (yang fiturnya menyala). Dua atau lebih = dropdown, satu = tautan biasa. --}}
+    @php($serviceItems = array_values(array_filter([
+        $canIssues ? ['route' => 'kamar.issues.index', 'active' => ['kamar.*'], 'label' => __('Kendala'), 'count' => $newIssues] : null,
+        $canRequests ? ['route' => 'permintaan.index', 'active' => ['permintaan.*'], 'label' => __('Permintaan tamu'), 'count' => $newRequests] : null,
+        \Illuminate\Support\Facades\Gate::allows('chronology-reports') ? ['route' => 'chronology.index', 'active' => ['chronology.*'], 'label' => 'Chronology Report', 'count' => 0] : null,
+    ])))
+    @php($serviceActive = request()->routeIs('kamar.*', 'permintaan.*', 'chronology.*'))
     @php($unreadChats = \Illuminate\Support\Facades\Gate::allows('chat') ? $me->unreadChatCount() : 0)
     <header data-app-header @class(['shrink-0 bg-ink text-white print:hidden', 'max-md:hidden' => $bareOnMobile])>
         <div class="gold-rule h-[3px]"></div>
@@ -67,10 +85,10 @@
                     </a>
                 @endif
                 {{-- HP: satu tombol menu (☰) menggantikan baris menu; titik merah = ada kendala baru / pesan belum dibaca. --}}
-                <button type="button" data-mobile-menu-open aria-haspopup="dialog" aria-label="{{ __('Buka menu') }}{{ $newIssues + $unreadChats ? ' ('.__('ada yang baru').')' : '' }}"
+                <button type="button" data-mobile-menu-open aria-haspopup="dialog" aria-label="{{ __('Buka menu') }}{{ $newService + $unreadChats ? ' ('.__('ada yang baru').')' : '' }}"
                         class="relative grid h-9 w-9 place-items-center rounded-full border border-white/10 text-white/80 transition hover:bg-white/10 hover:text-white md:hidden">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
-                    @if ($newIssues + $unreadChats)
+                    @if ($newService + $unreadChats)
                         <span class="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-ink bg-rose-600" aria-hidden="true"></span>
                     @endif
                 </button>
@@ -102,16 +120,25 @@
                         </div>
                     @endif
                 @endcan
-                @can('room-issues')
-                    <a href="{{ route('kamar.issues.index') }}" class="{{ $navLink(request()->routeIs('kamar.*')) }}" @if ($newIssues) aria-label="{{ __('Kendala') }}, {{ $newIssues }} {{ __('baru untuk Anda') }}" @endif>{{ __('Kendala') }}@if ($newIssues) <span class="ml-1.5 inline-flex min-w-5 items-center justify-center rounded-full bg-rose-600 px-1.5 text-[11px] font-semibold leading-5 text-white" title="{{ $newIssues }} {{ __('baru untuk Anda') }}">{{ $newIssues > 99 ? '99+' : $newIssues }}</span>@endif</a>
-                @endcan
+                @if (count($serviceItems) > 1)
+                    <div class="group relative flex shrink-0">
+                        <button type="button" aria-haspopup="true" class="{{ $navLink($serviceActive) }}" @if ($newService) aria-label="{{ __('Operasional') }}, {{ $newService }} {{ __('baru untuk Anda') }}" @endif>{{ __('Operasional') }}@if ($newService) <span class="ml-1.5 inline-flex min-w-5 items-center justify-center rounded-full bg-rose-600 px-1.5 text-[11px] font-semibold leading-5 text-white">{{ $newService > 99 ? '99+' : $newService }}</span>@endif <span class="text-[10px] opacity-70" aria-hidden="true">▾</span></button>
+                        <div class="invisible absolute left-0 top-full z-30 w-60 pt-1 opacity-0 transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+                            <div class="rounded-2xl bg-[#fffdf9] p-2 shadow-xl ring-1 ring-black/5">
+                                @foreach ($serviceItems as $item)
+                                    <a href="{{ route($item['route']) }}" class="{{ $menuItem(request()->routeIs(...$item['active'])) }}"><span>{{ $item['label'] }}</span>@if ($item['count']) <span class="ml-1.5 inline-flex min-w-5 items-center justify-center rounded-full bg-rose-600 px-1.5 text-[11px] font-semibold leading-5 text-white">{{ $item['count'] > 99 ? '99+' : $item['count'] }}</span>@endif</a>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+                @elseif ($serviceItems)
+                    @php($item = $serviceItems[0])
+                    <a href="{{ route($item['route']) }}" class="{{ $navLink(request()->routeIs(...$item['active'])) }}">{{ $item['label'] }}@if ($item['count']) <span class="ml-1.5 inline-flex min-w-5 items-center justify-center rounded-full bg-rose-600 px-1.5 text-[11px] font-semibold leading-5 text-white">{{ $item['count'] > 99 ? '99+' : $item['count'] }}</span>@endif</a>
+                @endif
                 @can('chat')
                     <a href="{{ route('chat.index') }}" class="{{ $navLink(request()->routeIs('chat.*')) }}" @if ($unreadChats) aria-label="{{ __('Obrolan') }}, {{ $unreadChats }} {{ __('pesan baru') }}" @endif>{{ __('Obrolan') }}@if ($unreadChats) <span class="ml-1.5 inline-flex min-w-5 items-center justify-center rounded-full bg-rose-600 px-1.5 text-[11px] font-semibold leading-5 text-white">{{ $unreadChats > 99 ? '99+' : $unreadChats }}</span>@endif</a>
                 @endcan
-                @can('chronology-reports')
-                    <a href="{{ route('chronology.index') }}" class="{{ $navLink(request()->routeIs('chronology.*')) }}">Chronology Report</a>
-                @endcan
-                @can('view-checklists')
+                @can('reports')
                     <div class="group relative flex shrink-0">
                         <button type="button" aria-haspopup="true" class="{{ $navLink(request()->routeIs('laporan.*')) }}">{{ __('Laporan') }} <span class="text-[10px] opacity-70" aria-hidden="true">▾</span></button>
                         <div class="invisible absolute left-0 top-full z-30 w-60 pt-1 opacity-0 transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
@@ -120,7 +147,7 @@
                                 <a href="{{ route('laporan.issues') }}" class="{{ $menuItem(request()->routeIs('laporan.issues', 'laporan.task', 'laporan.followup')) }}">{{ __('Masalah & Pending') }}</a>
                                 <a href="{{ route('laporan.parameters') }}" class="{{ $menuItem(request()->routeIs('laporan.parameters')) }}">{{ __('Parameter') }}</a>
                                 <a href="{{ route('laporan.monthly') }}" class="{{ $menuItem(request()->routeIs('laporan.monthly')) }}">{{ __('Bulanan') }}</a>
-                                <a href="{{ route('laporan.rooms') }}" class="{{ $menuItem(request()->routeIs('laporan.rooms', 'laporan.room')) }}">{{ __('Peta kamar') }}</a>
+                                @can('room-issues')<a href="{{ route('laporan.rooms') }}" class="{{ $menuItem(request()->routeIs('laporan.rooms', 'laporan.room')) }}">{{ __('Peta kamar') }}</a>@endcan
                                 <a href="{{ route('laporan.data') }}" class="{{ $menuItem(request()->routeIs('laporan.data', 'laporan.data.export')) }}">{{ __('Data') }}</a>
                             </div>
                         </div>
@@ -201,22 +228,25 @@
                     @endif
                 @endcan
                 <a href="{{ route('checklists.index') }}" class="{{ $drawerLink(request()->routeIs('checklists.index', 'checklists.show')) }}">{{ __('Riwayat') }}</a>
-                @can('room-issues')
-                    <a href="{{ route('kamar.issues.index') }}" class="{{ $drawerLink(request()->routeIs('kamar.*')) }}">{{ __('Kendala') }}{!! $badge($newIssues) !!}</a>
-                @endcan
+                @if (count($serviceItems) > 1)
+                    <p class="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/40">{{ __('Operasional') }}</p>
+                @endif
+                @foreach ($serviceItems as $item)
+                    <a href="{{ route($item['route']) }}" class="{{ $drawerLink(request()->routeIs(...$item['active'])) }}">{{ $item['label'] }}{!! $badge($item['count']) !!}</a>
+                @endforeach
+                @if (count($serviceItems) > 1)
+                    <p class="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/40">{{ __('Lainnya') }}</p>
+                @endif
                 @can('chat')
                     <a href="{{ route('chat.index') }}" class="{{ $drawerLink(request()->routeIs('chat.*')) }}">{{ __('Obrolan') }}{!! $badge($unreadChats) !!}</a>
                 @endcan
-                @can('chronology-reports')
-                    <a href="{{ route('chronology.index') }}" class="{{ $drawerLink(request()->routeIs('chronology.*')) }}">Chronology Report</a>
-                @endcan
-                @can('view-checklists')
+                @can('reports')
                     <p class="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/40">{{ __('Laporan') }}</p>
                     <a href="{{ route('laporan.index') }}" class="{{ $drawerLink(request()->routeIs('laporan.index')) }}">{{ __('Ringkasan') }}</a>
                     <a href="{{ route('laporan.issues') }}" class="{{ $drawerLink(request()->routeIs('laporan.issues', 'laporan.task', 'laporan.followup')) }}">{{ __('Masalah & Pending') }}</a>
                     <a href="{{ route('laporan.parameters') }}" class="{{ $drawerLink(request()->routeIs('laporan.parameters')) }}">{{ __('Parameter') }}</a>
                     <a href="{{ route('laporan.monthly') }}" class="{{ $drawerLink(request()->routeIs('laporan.monthly')) }}">{{ __('Bulanan') }}</a>
-                    <a href="{{ route('laporan.rooms') }}" class="{{ $drawerLink(request()->routeIs('laporan.rooms', 'laporan.room')) }}">{{ __('Peta kamar') }}</a>
+                    @can('room-issues')<a href="{{ route('laporan.rooms') }}" class="{{ $drawerLink(request()->routeIs('laporan.rooms', 'laporan.room')) }}">{{ __('Peta kamar') }}</a>@endcan
                     <a href="{{ route('laporan.data') }}" class="{{ $drawerLink(request()->routeIs('laporan.data', 'laporan.data.export')) }}">{{ __('Data') }}</a>
                 @endcan
                 @canany(['manage-team-tasks', 'manage-tasks'])

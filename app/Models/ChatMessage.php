@@ -11,7 +11,7 @@ class ChatMessage extends Model
     /** Tautan di isi pesan (http / https), tanpa tanda baca penutup. */
     public const URL_PATTERN = '~https?://[^\s<>"\']+[^\s<>"\'.,;:!?)\]]~iu';
 
-    protected $fillable = ['chat_thread_id', 'user_id', 'type', 'body', 'mentions', 'photo_path', 'file_path', 'file_name', 'file_size', 'file_mime', 'reply_to_id', 'room_issue_id', 'checklist_id', 'chronology_report_id', 'deleted_at'];
+    protected $fillable = ['chat_thread_id', 'user_id', 'type', 'body', 'mentions', 'photo_path', 'file_path', 'file_name', 'file_size', 'file_mime', 'reply_to_id', 'room_issue_id', 'checklist_id', 'chronology_report_id', 'guest_request_id', 'deleted_at'];
 
     protected function casts(): array
     {
@@ -49,6 +49,12 @@ class ChatMessage extends Model
     public function sharedReport(): BelongsTo
     {
         return $this->belongsTo(ChronologyReport::class, 'chronology_report_id');
+    }
+
+    /** Permintaan tamu yang dicatat dari obrolan (kartu). */
+    public function sharedRequest(): BelongsTo
+    {
+        return $this->belongsTo(GuestRequest::class, 'guest_request_id');
     }
 
     public function isSystem(): bool
@@ -120,6 +126,9 @@ class ChatMessage extends Model
         }
         if ($this->chronology_report_id) {
             return '📝 '.($text !== '' ? $text : 'Chronology Report · '.($this->sharedReport?->guests->first()?->name ?? '#'.$this->chronology_report_id));
+        }
+        if ($this->guest_request_id) {
+            return '🛎 '.($text !== '' ? $text : __('Permintaan').' · '.($this->sharedRequest ? __('Kamar').' '.$this->sharedRequest->room?->number.' · '.$this->sharedRequest->label() : '#'.$this->guest_request_id));
         }
         if ($this->checklist_id) {
             return '📋 '.($text !== '' ? $text : __('Checklist').' · '.($this->sharedChecklist?->employee?->name ?? '#'.$this->checklist_id));

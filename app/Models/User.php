@@ -94,6 +94,18 @@ class User extends Authenticatable
         });
     }
 
+    /** Permintaan tamu berstatus baru yang diteruskan ke departemen pengguna ini (penanda di menu Permintaan). */
+    public function newGuestRequestCount(): int
+    {
+        return once(function () {
+            if ($this->issueDepartmentIds() === []) {
+                return 0;
+            }
+
+            return \App\Models\GuestRequest::where('status', \App\Models\GuestRequest::STATUS_NEW)->forUser($this)->count();
+        });
+    }
+
     /** Jumlah percakapan yang punya pesan baru dari orang lain (satu query per permintaan; 0 bila obrolan dimatikan). */
     public function unreadChatCount(): int
     {

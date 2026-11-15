@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Chat\ChatPoster;
+use App\Chat\QuickEntry;
+use App\Models\GuestRequest;
 use App\Models\Checklist;
 use App\Models\ChatMessage;
 use App\Models\ChatParticipant;
@@ -317,6 +320,17 @@ class ChatController extends Controller
         return $targets;
     }
 
+    /**
+     * Akhir form yang dibuka di dalam obrolan (Permintaan tamu / Kendala / Chronology Report): memberi tahu halaman obrolan
+     * (jendela induk) untuk menutup jendela form dan memuat kartu baru; tanpa jendela induk langsung ke percakapannya.
+     */
+    public function toolDone(ChatThread $thread): View
+    {
+        Gate::authorize('view', $thread);
+
+        return view('chat.tool-done', ['thread' => $thread]);
+    }
+
     public function forIssue(Request $request, RoomIssue $issue): RedirectResponse
     {
         Gate::authorize('view', $issue);
@@ -338,11 +352,11 @@ class ChatController extends Controller
         $thread->load(['issue.room', 'checklist.employee', 'participants.user.employee.department']);
 
         $participant = $thread->participants->firstWhere('user_id', $me->id);
-        $messages = $thread->messages()->with(['user.employee', 'replyTo.user.employee', 'sharedIssue.room', 'sharedIssue.category', 'sharedChecklist.items', 'sharedChecklist.employee', 'sharedReport.guests', 'sharedReport.entries', 'sharedReport.author.employee'])->latest('id')->limit(self::PAGE)->get()->reverse()->values();
+        $messages = $thread->messages()->with(['user.employee', 'replyTo.user.employee', 'sharedIssue.room', 'sharedIssue.category', 'sharedChecklist.items', 'sharedChecklist.employee', 'sharedReport.guests', 'sharedReport.entries', 'sharedReport.author.employee', 'sharedRequest.room', 'sharedRequest.claimer.employee', 'sharedRequest.completer.employee'])->latest('id')->limit(self::PAGE)->get()->reverse()->values();
         // Dari hasil cari / media: buka di sekitar pesan itu walau sudah lama.
         $target = $request->integer('pesan') ?: null;
         if ($target && ! $messages->contains('id', $target) && $thread->messages()->whereKey($target)->exists()) {
-            $with = ['user.employee', 'replyTo.user.employee', 'sharedIssue.room', 'sharedIssue.category', 'sharedChecklist.items', 'sharedChecklist.employee', 'sharedReport.guests', 'sharedReport.entries', 'sharedReport.author.employee'];
+            $with = ['user.employee', 'replyTo.user.employee', 'sharedIssue.room', 'sharedIssue.category', 'sharedChecklist.items', 'sharedChecklist.employee', 'sharedReport.guests', 'sharedReport.entries', 'sharedReport.author.employee', 'sharedRequest.room', 'sharedRequest.claimer.employee', 'sharedRequest.completer.employee'];
             $messages = $thread->messages()->with($with)->where('id', '<', $target)->latest('id')->limit(100)->get()->reverse()->values()
                 ->concat($thread->messages()->with($with)->where('id', '>=', $target)->orderBy('id')->limit(self::PAGE)->get())->values();
         }
@@ -381,13 +395,58 @@ class ChatController extends Controller
         $after = max(0, $request->integer('after'));
         $since = rescue(fn () => CarbonImmutable::parse((string) $request->query('since')), now()->subMinutes(2), false);
 
-        $new = $thread->messages()->with(['user.employee', 'replyTo.user.employee', 'sharedIssue.room', 'sharedIssue.category', 'sharedChecklist.items', 'sharedChecklist.employee', 'sharedReport.guests', 'sharedReport.entries', 'sharedReport.author.employee'])->where('id', '>', $after)->orderBy('id')->limit(self::PAGE)->get();
-        $changed = $thread->messages()->with(['user.employee', 'replyTo.user.employee', 'sharedIssue.room', 'sharedIssue.category', 'sharedChecklist.items', 'sharedChecklist.employee', 'sharedReport.guests', 'sharedReport.entries', 'sharedReport.author.employee'])->where('id', '<=', $after)
+        $new = $thread->messages()->with(['user.employee', 'replyTo.user.employee', 'sharedIssue.room', 'sharedIssue.category', 'sharedChecklist.items', 'sharedChecklist.employee', 'sharedReport.guests', 'sharedReport.entries', 'sharedReport.author.employee', 'sharedRequest.room', 'sharedRequest.claimer.employee', 'sharedRequest.completer.employee'])->where('id', '>', $after)->orderBy('id')->limit(self::PAGE)->get();
+        $changed = $thread->messages()->with(['user.employee', 'replyTo.user.employee', 'sharedIssue.room', 'sharedIssue.category', 'sharedChecklist.items', 'sharedChecklist.employee', 'sharedReport.guests', 'sharedReport.entries', 'sharedReport.author.employee', 'sharedRequest.room', 'sharedRequest.claimer.employee', 'sharedRequest.completer.employee'])->where('id', '<=', $after)
             ->whereNotNull('deleted_at')->where('deleted_at', '>=', $since)->get();
         $this->markRead($thread, $me, (int) $new->last()?->id);
         ChatPushNotifier::markPresent($thread->id, $me->id);
 
         return response()->json($this->payload($thread, $me, $new, $changed) + ['typing' => $this->typingNames($thread, $me)]);
+    }
+
+    /**
+     * Pratinjau ketik bebas (dipanggil saat mengetik): apakah pesan ini terbaca sebagai permintaan tamu atau kendala.
+     * Permintaan dicatat saat pesan dikirim dengan `catat=1`; kendala dibuka di form Kendala yang sudah terisi.
+     */
+    public function quickPreview(Request $request, ChatThread $thread, QuickEntry $quick): JsonResponse
+    {
+        Gate::authorize('post', $thread);
+        $text = trim((string) ($request->validate(['text' => ['nullable', 'string', 'max:'.self::MAX_BODY]])['text'] ?? ''));
+        $settings = app(\App\Checklists\ChecklistSettings::class);
+        $read = $text !== '' && $settings->quickEntry('quick_entry') ? $quick->read($text) : ['type' => null];
+        $otherDepartmentId = GuestRequest::kinds()->departmentFor('other');
+
+        if ($read['type'] === 'request' && Gate::allows('guest-requests') && $settings->quickEntry('quick_requests')) {
+            return response()->json([
+                'type' => 'request',
+                'ok' => $read['room'] !== null,
+                'room' => $read['room_number'],
+                'items' => collect($read['items'])->map(fn ($item) => (new GuestRequest(['kind' => $item['kind'], 'item_name' => $item['name'] ?? null, 'quantity' => $item['quantity']]))->label())->all(),
+                'urgent' => $read['priority'] === 'mendesak',
+                'warnings' => $read['warnings'],
+                // Barang "Lainnya": tujuan bisa diganti di pratinjau (mis. kabel LAN ke IT); jenis lain tetap ke Housekeeping.
+                'other' => collect($read['items'])->contains('kind', 'other'),
+                'department_id' => $otherDepartmentId,
+                'departments' => collect($read['items'])->contains('kind', 'other') ? \App\Models\Department::where('is_active', true)->orderBy('sort')->orderBy('name')->get(['id', 'name']) : [],
+            ]);
+        }
+        if ($read['type'] === 'issue' && Gate::allows('room-issues') && $settings->quickEntry('quick_issues')) {
+            return response()->json([
+                'type' => 'issue',
+                'ok' => $read['room'] !== null,
+                'room' => $read['room_number'],
+                'category' => $read['category']?->name,
+                'urgent' => $read['priority'] === 'mendesak',
+                'warnings' => $read['warnings'],
+                // Dibuka di jendela form obrolan (form Kendala terisi; setelah disimpan kartunya terkirim ke sini).
+                'url' => route('kamar.issues.index', array_filter([
+                    'obrolan' => $thread->id, 'kamar' => $read['room_number'], 'kategori' => $read['category']?->id,
+                    'deskripsi' => mb_substr($text, 0, 2000), 'mendesak' => $read['priority'] === 'mendesak' ? 1 : null,
+                ])),
+            ]);
+        }
+
+        return response()->json(['type' => null]);
     }
 
     public function send(Request $request, ChatThread $thread): JsonResponse|RedirectResponse
@@ -421,6 +480,30 @@ class ChatController extends Controller
         }
 
         $message = $this->post($thread, $me, $body !== '' ? $body : null, $path, $replyTo);
+        $extra = collect();
+        // Ketik bebas yang dikonfirmasi lewat pratinjau (`catat=1`): pesan yang terbaca sebagai permintaan tamu ikut dicatat.
+        // Pesan teks tetap terkirim; jenis pertama menempel pada pesan itu, jenis lain jadi kartu tersendiri.
+        if ($body !== '' && ! $path && ! $request->hasFile('file') && $request->boolean('catat') && Gate::allows('guest-requests') && app(\App\Checklists\ChecklistSettings::class)->quickEntry('quick_requests')) {
+            $read = app(QuickEntry::class)->read($body);
+            if ($read['type'] === 'request' && $read['room']) {
+                // Tiap jenis ke departemennya (bawaan Housekeeping); "Lainnya" boleh diganti di pratinjau (`departemen`).
+                $otherDepartmentId = \App\Models\Department::where('is_active', true)->whereKey((int) $request->input('departemen'))->value('id')
+                    ?? GuestRequest::kinds()->departmentFor('other');
+                foreach ($read['items'] as $index => $item) {
+                    $guestRequest = GuestRequest::create([
+                        'room_id' => $read['room']->id, 'kind' => $item['kind'], 'item_name' => $item['name'] ?? null,
+                        'quantity' => GuestRequest::kinds()->hasQuantity($item['kind']) ? $item['quantity'] : 1,
+                        'note' => mb_substr($body, 0, 500), 'priority' => $read['priority'], 'source' => 'chat', 'requested_by' => $me->id,
+                        'assigned_department_id' => $item['kind'] === 'other' ? $otherDepartmentId : GuestRequest::kinds()->departmentFor($item['kind']), 'status' => GuestRequest::STATUS_NEW,
+                    ]);
+                    if ($index === 0) {
+                        $message->update(['guest_request_id' => $guestRequest->id]);
+                    } else {
+                        $extra->push(app(ChatPoster::class)->card($thread, $me, ['guest_request_id' => $guestRequest->id]));
+                    }
+                }
+            }
+        }
         if (! $path && $request->hasFile('file')) {
             $message->update($this->storeDocument($thread, $request->file('file')));
         }
@@ -434,7 +517,9 @@ class ChatController extends Controller
         }
         $thread->load('participants.user.employee');
 
-        return response()->json($this->payload($thread, $me, collect([$message->load(['user.employee', 'replyTo.user.employee', 'sharedIssue.room', 'sharedIssue.category', 'sharedChecklist.items', 'sharedChecklist.employee', 'sharedReport.guests', 'sharedReport.entries', 'sharedReport.author.employee'])]), collect()));
+        $with = ['user.employee', 'replyTo.user.employee', 'sharedIssue.room', 'sharedIssue.category', 'sharedChecklist.items', 'sharedChecklist.employee', 'sharedReport.guests', 'sharedReport.entries', 'sharedReport.author.employee', 'sharedRequest.room', 'sharedRequest.claimer.employee', 'sharedRequest.completer.employee'];
+
+        return response()->json($this->payload($thread, $me, collect([$message, ...$extra])->each->load($with), collect()));
     }
 
     /** Hapus untuk semua orang (pengirimnya saja), seperti WhatsApp: gelembung tetap ada dengan tulisan "Pesan ini dihapus". */
@@ -450,7 +535,7 @@ class ChatController extends Controller
         }
         $thread->load('participants.user.employee');
 
-        return response()->json($this->payload($thread, $request->user(), collect(), collect([$message->load(['user.employee', 'replyTo.user.employee', 'sharedIssue.room', 'sharedIssue.category', 'sharedChecklist.items', 'sharedChecklist.employee', 'sharedReport.guests', 'sharedReport.entries', 'sharedReport.author.employee'])])));
+        return response()->json($this->payload($thread, $request->user(), collect(), collect([$message->load(['user.employee', 'replyTo.user.employee', 'sharedIssue.room', 'sharedIssue.category', 'sharedChecklist.items', 'sharedChecklist.employee', 'sharedReport.guests', 'sharedReport.entries', 'sharedReport.author.employee', 'sharedRequest.room', 'sharedRequest.claimer.employee', 'sharedRequest.completer.employee'])])));
     }
 
     public function photo(ChatThread $thread, ChatMessage $message): StreamedResponse
@@ -676,21 +761,7 @@ class ChatController extends Controller
 
     private function post(ChatThread $thread, User $user, ?string $body, ?string $photo = null, ?int $replyTo = null, string $type = 'text'): ChatMessage
     {
-        $message = $thread->messages()->create(['user_id' => $user->id, 'type' => $type, 'body' => $body, 'photo_path' => $photo, 'reply_to_id' => $replyTo]);
-        $thread->forceFill(['last_message_at' => $message->created_at])->save();
-        // Pengirim otomatis jadi peserta (kendala / checklist) dan pesannya sendiri langsung dianggap terbaca. Yang keluar grup tidak ditambahkan lagi.
-        if ($type === 'text' || $thread->isParticipant($user)) {
-            ChatParticipant::updateOrCreate(['chat_thread_id' => $thread->id, 'user_id' => $user->id], ['last_read_message_id' => $message->id]);
-        }
-        // Notifikasi ke perangkat peserta lain: dikirim SESUDAH jawaban ke pengirim (tidak memperlambat kirim pesan); mention
-        // dan lampiran yang dipasang sesudah ini ikut terbaca karena pesan dimuat ulang dari database.
-        if ($type === 'text') {
-            $threadId = $thread->id;
-            $messageId = $message->id;
-            defer(fn () => app(ChatPushNotifier::class)->notify($threadId, $messageId));
-        }
-
-        return $message;
+        return app(ChatPoster::class)->post($thread, $user, $body, $photo, $replyTo, $type);
     }
 
     private function markRead(ChatThread $thread, User $user, int $lastId): void

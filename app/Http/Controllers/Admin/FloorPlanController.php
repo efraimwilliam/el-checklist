@@ -163,10 +163,10 @@ class FloorPlanController extends Controller
         return response()->json(['ok' => true, 'count' => $areas->count()]);
     }
 
-    /** Gambar denah. Terbuka untuk semua pengguna kendala kamar (denah dipakai Peta kamar dan pemilihan kamar). */
+    /** Gambar denah. Terbuka untuk semua pengguna kendala kamar (Peta kamar, pemilihan kamar) dan pengelola Data kamar (editor denah, juga saat Kendala dimatikan). */
     public function image(FloorPlan $plan): Response
     {
-        Gate::authorize('room-issues');
+        abort_unless(Gate::any(['room-issues', 'manage-tasks']), 403);
         $bytes = FloorPlanImage::contents($plan->image_path);
         abort_if($bytes === null, 404);
 

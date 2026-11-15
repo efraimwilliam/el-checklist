@@ -19,6 +19,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->scoped(ChecklistSettings::class);
+        $this->app->scoped(\App\Requests\RequestKinds::class);
     }
 
     public function boot(): void
@@ -38,6 +39,9 @@ class AppServiceProvider extends ServiceProvider
         // Mengisi checklist (GM hanya melihat dan mereview) dan melihat daftar / riwayat checklist.
         Gate::define('fill-checklists', fn (User $user) => $user->canUseApp() && $user->role !== Role::Gm);
         Gate::define('view-checklists', fn (User $user) => $user->canUseApp() && $user->role !== Role::Staff);
+        // Fitur yang bisa dimatikan Administrator (Pengaturan > Fitur); rutenya ditutup EnsureFeatureEnabled.
+        $feature = fn (string $key) => app(\App\Checklists\ChecklistSettings::class)->featureEnabled($key);
+        Gate::define('reports', fn (User $user) => Gate::forUser($user)->allows('view-checklists') && $feature('laporan'));
         // Memilih tugas per pegawai Absensi: Administrator & HR (semua departemen) dan HOD (departemen yang ditugaskan). Tidak untuk diri sendiri, kecuali Administrator.
         Gate::define('manage-team-tasks', fn (User $user) => $user->canUseApp() && $user->role->managesOthers());
         Gate::define('assign-tasks', fn (User $actor, Employee $target) => Gate::forUser($actor)->allows('manage-team-tasks')
@@ -46,15 +50,18 @@ class AppServiceProvider extends ServiceProvider
             && ($target->id !== $actor->employee_id || $actor->role->overridesReview())
             && $actor->canAccessDepartment($target->department_id));
         // Kendala kamar: semua pengguna berakses (termasuk Staff Front Office) boleh mencatat dan melihat yang menjadi bagiannya; hak per kendala ada di RoomIssuePolicy.
-        Gate::define('room-issues', fn (User $user) => $user->canUseApp());
+        Gate::define('room-issues', fn (User $user) => $user->canUseApp() && $feature('kendala'));
         Gate::policy(\App\Models\RoomIssue::class, \App\Policies\RoomIssuePolicy::class);
+        // Permintaan tamu: semua pengguna berakses; hak per permintaan ada di GuestRequestPolicy.
+        Gate::define('guest-requests', fn (User $user) => $user->canUseApp() && $feature('permintaan'));
+        Gate::policy(\App\Models\GuestRequest::class, \App\Policies\GuestRequestPolicy::class);
         // Notifikasi obrolan (Web Push): pengirim bisa diganti di tes.
         $this->app->bind(\App\Push\PushSender::class, \App\Push\WebPushSender::class);
         // Chronology Report (laporan kejadian tamu): semua pengguna berakses boleh membuat; hak per laporan ada di ChronologyReportPolicy.
-        Gate::define('chronology-reports', fn (User $user) => $user->canUseApp());
+        Gate::define('chronology-reports', fn (User $user) => $user->canUseApp() && $feature('chronology'));
         Gate::policy(\App\Models\ChronologyReport::class, \App\Policies\ChronologyReportPolicy::class);
         // Obrolan pekerjaan: hanya bila Administrator menyalakannya (Pengaturan); hak per percakapan ada di ChatThreadPolicy.
-        Gate::define('chat', fn (User $user) => $user->canUseApp() && app(\App\Checklists\ChecklistSettings::class)->chatEnabled());
+        Gate::define('chat', fn (User $user) => $user->canUseApp() && $feature('obrolan'));
         Gate::policy(\App\Models\ChatThread::class, \App\Policies\ChatThreadPolicy::class);
         Gate::define('manage-tasks', fn (User $user) => $user->canUseApp() && in_array($user->role, [Role::Admin, Role::Hr], true));
         Gate::define('manage-access', fn (User $user) => $user->canUseApp() && $user->isAdmin());

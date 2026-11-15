@@ -16,7 +16,7 @@ class ChronologyReportPolicy
 {
     public function before(User $user): ?bool
     {
-        return $user->canUseApp() ? null : false;
+        return \Illuminate\Support\Facades\Gate::forUser($user)->allows('chronology-reports') ? null : false;
     }
 
     public function view(User $user, ChronologyReport $report): bool

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Chat\ChatPoster;
 use App\Chronology\ReportParser;
 use App\Chronology\ReportText;
 use App\Enums\Role;
@@ -45,7 +46,8 @@ class ChronologyReportController extends Controller
     {
         Gate::authorize('chronology-reports');
         $report = new ChronologyReport(['check_in' => CarbonImmutable::today(), 'status' => ChronologyReport::STATUS_DRAFT]);
-        $guests = [['name' => '', 'room_number' => '']];
+        // Tautan pintas (tombol + cepat, QR): ?kamar= mengisi nomor kamar tamu pertama (teks bebas, seperti di form).
+        $guests = [['name' => '', 'room_number' => mb_substr(trim((string) $request->query('kamar', '')), 0, 30)]];
 
         // Dari halaman kendala kamar: nomor kamar dan tautan kendala terisi.
         $issue = $request->filled('kendala') ? RoomIssue::with('room')->find((int) $request->query('kendala')) : null;
@@ -87,6 +89,9 @@ class ChronologyReportController extends Controller
                 'check_in' => $checkIn, 'check_out' => $checkOut,
                 'booking_source' => $parsed['booking_source'] ? mb_substr($parsed['booking_source'], 0, 120) : null,
             ], $guests, $entries, null);
+            if ($done = $this->sendToChat($request, $report)) {
+                return $done;
+            }
 
             return redirect()->route('chronology.show', $report)->with('status', __('Laporan dibaca dan disimpan sebagai draft (:guests tamu, :entries poin). Periksa lalu finalisasi.', ['guests' => $guests->count(), 'entries' => $entries->count()]));
         }
@@ -166,6 +171,19 @@ class ChronologyReportController extends Controller
     }
 
     /** Simpan laporan baru atau yang sudah ada (tamu dan poin diganti seluruhnya sesuai urutan di form). `intent=final` sekaligus mengunci. */
+    /** Laporan baru yang dibuat dari obrolan: kartunya dikirim ke percakapan itu dan jendela form ditutup. */
+    private function sendToChat(Request $request, ChronologyReport $report): ?RedirectResponse
+    {
+        $poster = app(ChatPoster::class);
+        $thread = $poster->target($request);
+        if (! $thread) {
+            return null;
+        }
+        $poster->card($thread, $request->user(), ['chronology_report_id' => $report->id]);
+
+        return $poster->done($thread);
+    }
+
     private function save(Request $request, ChronologyReport $report): RedirectResponse
     {
         $data = $request->validate([
@@ -202,7 +220,11 @@ class ChronologyReportController extends Controller
             $issueId = $issue && $request->user()->can('view', $issue) ? $issue->id : null;
         }
 
+        $isNew = ! $report->exists;
         $this->persist($request->user(), $report, $data, $guests, $entries, $issueId, ($data['intent'] ?? 'draft') === 'final');
+        if ($isNew && ($done = $this->sendToChat($request, $report))) {
+            return $done;
+        }
 
         return redirect()->route('chronology.show', $report)->with('status', $report->isFinal() ? __('Laporan difinalisasi dan dikunci.') : __('Draft disimpan.'));
     }

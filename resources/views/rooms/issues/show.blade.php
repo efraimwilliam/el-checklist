@@ -44,9 +44,11 @@
                     </button>
                 </form>
             @endcan
+            @can('chronology-reports')
             <a href="{{ route('chronology.create', ['kendala' => $issue->id]) }}" class="{{ $iconButton }}" title="{{ __('Buat Chronology Report') }}" aria-label="{{ __('Buat Chronology Report') }}">
                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9l-6-6z" stroke-linejoin="round"/><path d="M14 3v6h6M8 13h8M8 17h5" stroke-linecap="round"/></svg>
             </a>
+            @endcan
         </div>
     </div>
 

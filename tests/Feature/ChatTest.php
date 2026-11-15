@@ -216,17 +216,17 @@ it('lets the Administrator switch chat on and off from settings', function () {
     app(ChecklistSettings::class)->put('chat_enabled', '0');
     chatAs($this->admin);
 
-    $this->get(route('admin.settings.edit'))->assertOk()->assertSee('Aktifkan obrolan pekerjaan');
-    $this->put(route('admin.settings.rules.update'), ['chat_enabled' => '1'])->assertRedirect();
+    $this->get(route('admin.settings.edit'))->assertOk()->assertSee('Obrolan pekerjaan');
+    $this->put(route('admin.settings.features.update'), ['features' => ['obrolan' => '1']])->assertRedirect();
     expect(app(ChecklistSettings::class)->chatEnabled())->toBeTrue();
     $this->get(route('chat.index'))->assertOk();
 
-    $this->put(route('admin.settings.rules.update'), [])->assertRedirect();
+    $this->put(route('admin.settings.features.update'), ['features' => []])->assertRedirect();
     expect(app(ChecklistSettings::class)->chatEnabled())->toBeFalse();
     $this->get(route('chat.index'))->assertForbidden();
 
     chatAs($this->hr);
-    $this->put(route('admin.settings.rules.update'), ['chat_enabled' => '1'])->assertForbidden();
+    $this->put(route('admin.settings.features.update'), ['features' => ['obrolan' => '1']])->assertForbidden();
 });
 
 it('records @mentions of participants, highlights them, and flags the thread for the person mentioned', function () {

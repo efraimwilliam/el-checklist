@@ -684,6 +684,113 @@ if (chat) {
         document.addEventListener('click', (event) => { if (!attachMenu.contains(event.target)) closeAttach(); });
         document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeAttach(); });
 
+        // ---- Form dari obrolan: Permintaan tamu / Kendala / Chronology Report (menu lampiran, atau ketik /p /k /c) ----
+        // Halaman form dimuat di jendela (iframe, ?obrolan=ID). Setelah tersimpan, server mengirim kartunya ke percakapan ini dan
+        // halaman form memberi tahu lewat postMessage ("chat-tool-done"); Batal = "chat-tool-close".
+        const toolDialog = document.querySelector('[data-tool-dialog]');
+        const toolFrame = toolDialog?.querySelector('[data-tool-frame]');
+        const tools = [...attachMenu.querySelectorAll('[data-chat-tool]')];
+        const openToolUrl = (href, title) => {
+            if (!toolDialog) return;
+            closeAttach();
+            toolDialog.setAttribute('aria-label', title);
+            toolFrame.src = href;
+            toolDialog.showModal();
+        };
+        const openTool = (tool, room = '') => {
+            const url = new URL(tool.dataset.chatTool, location.href);
+            if (room) url.searchParams.set('kamar', room);
+            openToolUrl(url.href, tool.dataset.title);
+        };
+        const closeTool = () => { if (toolDialog?.open) toolDialog.close(); };
+        toolDialog?.addEventListener('close', () => { toolFrame.src = 'about:blank'; });
+        tools.forEach((tool) => tool.addEventListener('click', () => openTool(tool)));
+        window.addEventListener('message', (event) => {
+            if (event.origin !== location.origin || !toolFrame || event.source !== toolFrame.contentWindow) return;
+            if (event.data?.type === 'chat-tool-close') closeTool();
+            if (event.data?.type === 'chat-tool-done') {
+                closeTool();
+                poll().then(() => { log.scrollTop = log.scrollHeight; });
+            }
+        });
+
+        // Perintah: "/p", "/k", "/c", boleh diikuti nomor kamar ("/p 1206"). "/" saja = perintah pertama. Teks lain tetap pesan biasa.
+        const commandFor = (text) => {
+            const match = text.match(/^\/([a-z]?)(?:\s+(\S+))?\s*$/i);
+            if (!match) return null;
+            const key = match[1].toLowerCase();
+            const tool = key === '' ? tools[0] : tools.find((item) => item.dataset.command === key);
+            return tool ? { tool, room: match[2] || '' } : null;
+        };
+        const commandList = chat.querySelector('[data-command-list]');
+        let commandMatches = [];
+        let commandActive = 0;
+        const commandOpen = () => commandList && !commandList.hidden && commandMatches.length > 0;
+        const paintCommands = () => {
+            [...commandList.children].forEach((button, index) => {
+                const on = index === commandActive;
+                button.setAttribute('aria-selected', String(on));
+                button.classList.toggle('bg-[#f6efdf]', on);
+            });
+            if (commandOpen()) body.setAttribute('aria-activedescendant', `command-${commandMatches[commandActive].dataset.command}`);
+            else body.removeAttribute('aria-activedescendant');
+        };
+        const renderCommands = () => {
+            if (!commandList) return;
+            const match = body.value.match(/^\/([a-z]?)$/i);
+            commandMatches = match ? tools.filter((item) => item.dataset.command.startsWith(match[1].toLowerCase())) : [];
+            commandActive = Math.min(commandActive, Math.max(commandMatches.length - 1, 0));
+            commandList.replaceChildren(...commandMatches.map((item) => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.id = `command-${item.dataset.command}`;
+                button.setAttribute('role', 'option');
+                button.dataset.commandPick = item.dataset.command;
+                button.className = 'flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-[#faf6ec]';
+                const code = document.createElement('span');
+                code.className = 'w-6 font-mono font-semibold text-[#8a6a22]';
+                code.textContent = `/${item.dataset.command}`;
+                const label = document.createElement('span');
+                label.className = 'flex-1 text-slate-800';
+                label.textContent = item.dataset.title;
+                const hint = document.createElement('span');
+                hint.className = 'text-xs text-slate-400';
+                hint.textContent = `${t('mis.')} /${item.dataset.command} 1206`;
+                button.append(code, label, hint);
+                return button;
+            }));
+            commandList.hidden = commandMatches.length === 0;
+            paintCommands();
+        };
+        const clearCommand = () => { body.value = ''; body.style.height = ''; commandActive = 0; renderCommands(); };
+        const pickCommand = (tool) => { clearCommand(); openTool(tool); };
+        body.addEventListener('input', () => { commandActive = 0; renderCommands(); });
+        // Panah atas / bawah memilih perintah, Enter / Tab membuka yang terpilih, Esc menutup daftar.
+        // Fase capture: jalan sebelum "Enter = kirim".
+        body.addEventListener('keydown', (event) => {
+            if (!commandOpen() || event.isComposing) return;
+            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                event.preventDefault();
+                const step = event.key === 'ArrowDown' ? 1 : -1;
+                commandActive = (commandActive + step + commandMatches.length) % commandMatches.length;
+                paintCommands();
+            } else if (event.key === 'Enter' || event.key === 'Tab') {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                pickCommand(commandMatches[commandActive]);
+            } else if (event.key === 'Escape') {
+                event.preventDefault();
+                commandList.hidden = true;
+                paintCommands();
+            }
+        }, true);
+        commandList?.addEventListener('mousedown', (event) => event.preventDefault()); // fokus tetap di kotak tulis
+        commandList?.addEventListener('click', (event) => {
+            const pick = event.target.closest('[data-command-pick]');
+            const tool = pick && tools.find((item) => item.dataset.command === pick.dataset.commandPick);
+            if (tool) pickCommand(tool);
+        });
+
         const clearReply = () => { replyTo = null; replyBar.hidden = true; };
         const clearPhoto = () => {
             if (photoPreview.src) URL.revokeObjectURL(photoPreview.src);
@@ -767,14 +874,125 @@ if (chat) {
             }
         }));
 
+        // ---- Ketik bebas tetap tercatat: "1206 req 2 mineral water" -> pratinjau "Akan dicatat ..." di atas kotak tulis ----
+        // Server yang membaca (QuickEntry), saat mengetik (pratinjau) dan sekali lagi saat dikirim. Permintaan dicatat bila pesan
+        // dikirim dengan pratinjau tampil (catat=1); × = kirim sebagai pesan biasa. Kendala: tombol membuka form Kendala yang terisi.
+        const quickBox = chat.querySelector('[data-quick-preview]');
+        let quick = null; // { text, type, ok, ... }
+        let quickDismissed = false;
+        let quickTimer = null;
+        const looksQuick = (text) => !text.startsWith('/') && /(^|[^\d])\d{3,4}([^\d]|$)/.test(text);
+        const hideQuick = () => { quick = null; if (quickBox) quickBox.hidden = true; };
+        const el = (tag, className, text) => { const node = document.createElement(tag); if (className) node.className = className; if (text !== undefined) node.textContent = text; return node; };
+        const renderQuick = () => {
+            if (!quickBox) return;
+            if (!quick || !quick.type || quickDismissed) { quickBox.hidden = true; return; }
+            const isRequest = quick.type === 'request';
+            const content = el('div', 'min-w-0 flex-1');
+            const head = el('p', 'font-semibold text-slate-900');
+            head.textContent = isRequest
+                ? `🛎 ${quick.ok ? t('Akan dicatat sebagai permintaan') : t('Permintaan belum bisa dicatat')} · ${t('Kamar')} ${quick.room}`
+                : `🛠 ${t('Sepertinya kendala')} · ${t('Kamar')} ${quick.room}`;
+            content.append(head);
+            const detail = isRequest ? quick.items.join(', ') : (quick.category || t('Kategori belum terbaca'));
+            const line = el('p', 'text-slate-600', detail);
+            if (quick.urgent) line.append(el('span', 'ml-2 rounded-full bg-rose-600 px-2 py-0.5 text-[11px] font-semibold text-white', t('Mendesak')));
+            content.append(line);
+            // Barang "Lainnya" (tidak dikenal): tujuan bisa diganti, mis. kabel LAN ke IT. Bawaan Housekeeping.
+            if (isRequest && quick.ok && quick.other && quick.departments?.length) {
+                const row = el('label', 'mt-1 flex items-center gap-2 text-xs text-slate-600', t('Diteruskan ke'));
+                const select = el('select', 'rounded-lg border border-slate-200 bg-white py-0.5 pl-2 pr-7 text-xs');
+                quick.departments.forEach((department) => {
+                    const option = el('option', '', department.name);
+                    option.value = department.id;
+                    option.selected = Number(department.id) === Number(quick.departmentChoice ?? quick.department_id);
+                    select.append(option);
+                });
+                select.addEventListener('change', () => { quick.departmentChoice = select.value; });
+                row.append(select);
+                content.append(row);
+            }
+            quick.warnings.forEach((warning) => content.append(el('p', 'text-rose-700', warning)));
+            if (isRequest && quick.ok) content.append(el('p', 'text-xs text-slate-400', t('Enter / kirim = pesan terkirim dan permintaan tercatat. × = kirim sebagai pesan biasa.')));
+            if (isRequest && !quick.ok) content.append(el('p', 'text-xs text-slate-400', t('Pesan tetap bisa dikirim, tapi permintaannya tidak dicatat.')));
+            if (!isRequest && quick.ok) content.append(el('p', 'text-xs text-slate-400', t('Ketuk Catat kendala untuk mencatatnya (form sudah terisi). Enter = kirim sebagai pesan biasa.')));
+            const actions = el('div', 'flex shrink-0 items-center gap-1');
+            if (!isRequest && quick.ok && quick.url) {
+                const open = el('button', 'rounded-full bg-[#b08a3e] px-3 py-1 text-xs font-semibold text-white hover:bg-[#9a7733]', t('Catat kendala'));
+                open.type = 'button';
+                open.addEventListener('click', () => {
+                    const url = quick.url;
+                    body.value = '';
+                    body.style.height = '';
+                    hideQuick();
+                    openToolUrl(url, t('Kendala'));
+                });
+                actions.append(open);
+            }
+            const close = el('button', 'inline-flex h-7 w-7 items-center justify-center rounded-full text-lg text-slate-500 hover:bg-slate-100', '×');
+            close.type = 'button';
+            close.setAttribute('aria-label', t('Jangan catat, kirim sebagai pesan biasa'));
+            close.addEventListener('click', () => { quickDismissed = true; renderQuick(); body.focus(); });
+            actions.append(close);
+            quickBox.className = `mb-2 flex items-start gap-2 rounded-lg border-l-4 bg-white px-3 py-2 text-sm ${isRequest ? 'border-sky-600' : 'border-amber-500'}`;
+            quickBox.replaceChildren(content, actions);
+            quickBox.hidden = false;
+        };
+        const readQuick = async (text) => {
+            if (!chat.dataset.quickUrl || !looksQuick(text)) { hideQuick(); return null; }
+            try {
+                const response = await fetch(chat.dataset.quickUrl, {
+                    method: 'POST', credentials: 'same-origin',
+                    headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+                    body: JSON.stringify({ text }),
+                });
+                if (!response.ok) return null;
+                const data = await response.json();
+                if (body.value.trim() !== text) return null; // sudah diketik lagi
+                quick = { text, ...data };
+                renderQuick();
+                return quick;
+            } catch { return null; }
+        };
+        body.addEventListener('input', () => {
+            clearTimeout(quickTimer);
+            const text = body.value.trim();
+            if (text === '') { quickDismissed = false; hideQuick(); return; }
+            if (quick && quick.text !== text && !looksQuick(text)) hideQuick();
+            quickTimer = setTimeout(() => readQuick(text), 250);
+        });
+        body.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && quickBox && !quickBox.hidden) { quickDismissed = true; renderQuick(); }
+        });
+
         const submit = async () => {
             const text = body.value.trim();
+            const command = !photo && !documentFile ? commandFor(text) : null;
+            if (command) {
+                clearCommand();
+                openTool(command.tool, command.room);
+                return;
+            }
             if ((!text && !photo && !documentFile) || sending) return;
+            // Pratinjau belum sempat muncul untuk teks ini: tampilkan dulu, kirim pada Enter berikutnya.
+            let record = false;
+            if (!photo && !documentFile && !quickDismissed && chat.dataset.quickUrl && looksQuick(text)) {
+                if (!quick || quick.text !== text) {
+                    clearTimeout(quickTimer);
+                    const fresh = await readQuick(text);
+                    if (fresh && fresh.type) return;
+                }
+                record = Boolean(quick && quick.text === text && quick.type === 'request' && quick.ok);
+            }
             sending = true;
             button.disabled = true;
             errorBox.hidden = true;
             const data = new FormData();
             data.append('body', text);
+            if (record) {
+                data.append('catat', '1');
+                if (quick.other) data.append('departemen', quick.departmentChoice ?? quick.department_id ?? '');
+            }
             if (replyTo) data.append('reply_to', replyTo);
             if (photo) data.append('photo', photo, 'foto.jpg');
             else if (documentFile) data.append('file', documentFile, documentFile.name);
@@ -791,6 +1009,8 @@ if (chat) {
                 }
                 body.value = '';
                 body.style.height = '';
+                quickDismissed = false;
+                hideQuick();
                 clearReply();
                 clearPhoto();
                 clearFile();
