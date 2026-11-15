@@ -126,11 +126,11 @@ it('adds and renames positions, with unique names per department', function () {
 
 it('shows the management link only to those who can manage tasks', function () {
     loggedIn(userWithRole(Role::Hr));
-    $this->get(route('checklists.index'))->assertSee('Jabatan dan tugas');
+    $this->get(route('team.index'))->assertSee(route('admin.tasks.index'), false);
 
     $this->post('/logout');
     loggedIn(userWithRole(Role::Hod));
-    $this->get(route('checklists.index'))->assertDontSee('Jabatan dan tugas');
+    $this->get(route('team.index'))->assertOk()->assertDontSee(route('admin.tasks.index'), false);
 });
 
 it('moves a task without a page reload when asked for JSON, keeping the order', function () {

@@ -101,9 +101,8 @@
         }
         if ($can('manage-team-tasks') || $can('manage-tasks')) {
             $menu[] = ['label' => __('Tugas'), 'active' => $is('team.*', 'admin.tasks.*', 'admin.positions.*', 'admin.rooms.*', 'admin.categories.*', 'admin.plans.*'), 'count' => 0, 'items' => array_values(array_filter([
-                $can('manage-team-tasks') ? $link(__('Atur tugas pegawai'), 'team.index', $is('team.index', 'team.tasks.*', 'team.positions.*')) : null,
-                $can('manage-team-tasks') ? $link(__('Kamus daftar tugas'), 'team.catalog', $is('team.catalog')) : null,
-                $can('manage-tasks') ? $link(__('Jabatan dan tugas'), 'admin.tasks.index', $is('admin.tasks.*', 'admin.positions.*')) : null,
+                $can('manage-team-tasks') ? $link(__('Tugas & jabatan'), 'team.index', $is('team.index', 'team.tasks.edit', 'team.positions.*', 'team.account.*', 'admin.tasks.*', 'admin.positions.*')) : null,
+                $can('manage-team-tasks') ? $link(__('Kamus daftar tugas'), 'team.catalog', $is('team.catalog*')) : null,
                 $can('manage-tasks') ? $link(__('Data kamar'), 'admin.rooms.index', $is('admin.rooms.*', 'admin.categories.*', 'admin.plans.*'), 0, [], [
                     $link(__('Kamar'), 'admin.rooms.index', $roomsTab === 'kamar' || $is('admin.rooms.import'), 0, ['tab' => 'kamar']),
                     $link(__('Kategori kendala'), 'admin.rooms.index', $roomsTab === 'kategori', 0, ['tab' => 'kategori']),

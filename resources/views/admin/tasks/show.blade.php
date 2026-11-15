@@ -1,6 +1,6 @@
-<x-app-layout :title="'Tugas '.$position->name">
+<x-tugas-page tab="jabatan" :title="$position->name">
     <a href="{{ route('admin.tasks.index') }}" class="link-back"><span aria-hidden="true">‹</span> {{ __('Semua jabatan') }}</a>
-    <h1 class="mt-1 text-page">{{ $position->name }}</h1>
+    <h2 class="mt-1 text-section">{{ $position->name }}</h2>
     <p class="mb-4 text-sm text-slate-500">{{ $position->department->name }}. Perubahan berlaku untuk checklist yang dibuat sesudahnya.</p>
 
     @if ($errors->any())
@@ -289,4 +289,4 @@
         })();
     </script>
 @endif
-</x-app-layout>
+</x-tugas-page>

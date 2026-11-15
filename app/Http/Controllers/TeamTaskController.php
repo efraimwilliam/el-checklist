@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Checklists\ParameterRules;
+use App\Checklists\PositionSuggester;
 use App\Tasks\TaskParameters;
 use App\Models\Department;
 use App\Models\Employee;
@@ -27,17 +28,21 @@ class TeamTaskController extends Controller
         Gate::authorize('manage-team-tasks');
         $allowed = $request->user()->accessibleDepartmentIds();
 
-        $members = Employee::with('department')->withCount('assignedTasks')
+        $members = Employee::with(['department', 'checklistPosition'])->withCount('assignedTasks')
             ->where('is_active', true)->whereNotNull('department_id')
             ->when($allowed !== null, fn ($q) => $q->whereIn('department_id', $allowed))
             ->get()
             ->filter(fn (Employee $employee) => Gate::allows('assign-tasks', $employee))
-            ->sortBy([fn ($a, $b) => strcmp($a->department->name, $b->department->name), fn ($a, $b) => strcmp($a->name, $b->name)]);
+            ->each(fn (Employee $employee) => $employee->setAttribute('position_state', ! $employee->checklist_position_id ? 'none' : ($employee->positionReview() ? 'review' : 'set')))
+            // Per departemen; yang perlu dikerjakan (belum ada jabatan / perlu dicek) di atas, lalu menurut nama.
+            ->sortBy([
+                fn ($a, $b) => strcmp($a->department->name, $b->department->name),
+                fn ($a, $b) => ($a->position_state === 'set') <=> ($b->position_state === 'set'),
+                fn ($a, $b) => strcmp($a->name, $b->name),
+            ]);
 
         return view('team.index', [
             'membersByDepartment' => $members->groupBy(fn (Employee $employee) => $employee->department->name),
-            // HOD dengan satu departemen langsung melihat daftar pegawainya (tanpa kartu departemen).
-            'single' => $allowed !== null && count($allowed) === 1,
         ]);
     }
 
@@ -133,15 +138,23 @@ class TeamTaskController extends Controller
         return array_map(fn ($value) => is_string($value) && trim($value) === '' ? null : (is_string($value) ? trim($value) : $value), collect($data)->only(['section', 'title', 'standard'])->all());
     }
 
-    public function edit(Request $request, Employee $employee): View
+    /** Satu pegawai: jabatan checklist + tugasnya di satu layar, satu tombol Simpan. */
+    public function edit(Request $request, Employee $employee, PositionSuggester $suggester): View
     {
         Gate::authorize('assign-tasks', $employee);
-        $employee->load('department');
+        $employee->load(['department', 'checklistPosition']);
 
-        $groups = $this->positionsWithTasks($employee);
-        $selected = $employee->custom_tasks ? $employee->assignedTasks()->pluck('tasks.id')->all() : [];
+        // Jabatan checklist pegawai ini paling atas (dan terbuka di layar).
+        $groups = $this->positionsWithTasks($employee)->sortBy(fn (Position $position) => $position->id === $employee->checklist_position_id ? 0 : 1)->values();
+        $review = $employee->positionReview();
+        $suggested = (! $employee->checklist_position_id || $review) ? $suggester->suggest($employee, $groups) : null;
+        // Bawaan (belum disesuaikan) = semua tugas departemen, jadi semuanya tampil tercentang.
+        $selected = $employee->custom_tasks ? $employee->assignedTasks()->pluck('tasks.id')->all() : $groups->flatMap->tasks->pluck('id')->all();
 
-        return view('team.edit', ['member' => $employee, 'groups' => $groups, 'selected' => old('tasks', $selected)]);
+        return view('team.edit', [
+            'member' => $employee, 'groups' => $groups, 'selected' => old('tasks', $selected),
+            'review' => $review, 'suggested' => $suggested?->id !== $employee->checklist_position_id ? $suggested : null,
+        ]);
     }
 
     public function update(Request $request, Employee $employee): RedirectResponse
@@ -159,9 +172,19 @@ class TeamTaskController extends Controller
             throw ValidationException::withMessages(['tasks' => __('Ada tugas yang tidak termasuk departemen pegawai ini atau sudah nonaktif.')]);
         }
 
-        DB::transaction(function () use ($employee, $valid) {
-            $employee->assignedTasks()->sync($valid);
-            $employee->update(['custom_tasks' => true]);
+        // Semua tugas departemen tercentang pada pegawai yang belum disesuaikan = tetap bawaan (ikut tugas baru nanti), tidak dikunci jadi daftar tetap.
+        $all = $this->positionsWithTasks($employee)->flatMap->tasks->pluck('id');
+        $keepDefault = ! $employee->custom_tasks && $valid->sort()->values()->all() === $all->sort()->values()->all();
+
+        DB::transaction(function () use ($request, $employee, $valid, $keepDefault) {
+            // Jabatan checklist ikut disimpan bila formulirnya membawa kolom jabatan (halaman satu pegawai).
+            if ($request->has('position')) {
+                TeamPositionController::assign($employee, $request->input('position'), $request->boolean('confirm_position'), 'position');
+            }
+            if (! $keepDefault) {
+                $employee->assignedTasks()->sync($valid);
+                $employee->update(['custom_tasks' => true]);
+            }
         });
 
         return redirect()->route('team.index')->with('status', __('Tugas :name disimpan (:n tugas). Berlaku untuk checklist berikutnya.', ['name' => $employee->name, 'n' => $valid->count()]));

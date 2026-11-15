@@ -53,21 +53,32 @@ class TeamPositionController extends Controller
         foreach ($data['positions'] as $employeeId => $positionId) {
             $employee = Employee::findOrFail($employeeId);
             Gate::authorize('assign-tasks', $employee);
-            if ($positionId !== null && ! Position::where('id', $positionId)->where('is_active', true)->where('department_id', $employee->department_id)->exists()) {
-                throw ValidationException::withMessages(["positions.{$employeeId}" => __('Jabatan harus dari departemen :name.', ['name' => $employee->department->name])]);
-            }
-            $new = $positionId === null ? null : (int) $positionId;
-            $update = [];
-            if ($employee->checklist_position_id !== $new) {
-                $update = ['checklist_position_id' => $new, 'checklist_title' => $new ? $employee->position_title : null];
-                $changed++;
-            } elseif ($new && in_array($employee->id, $confirmed, true)) {
-                // Jabatan checklist dinyatakan tetap benar: teks Absensi yang sekarang jadi acuan baru.
-                $update = ['checklist_title' => $employee->position_title];
-            }
-            $update && $employee->update($update);
+            $changed += (int) self::assign($employee, $positionId, in_array($employee->id, $confirmed, true), "positions.{$employeeId}");
         }
 
         return redirect()->route('team.positions.edit')->with('status', __('Jabatan checklist disimpan (:n diubah).', ['n' => $changed]));
+    }
+
+    /**
+     * Simpan jabatan checklist satu pegawai (dipakai halaman massal ini dan halaman satu pegawai di Tugas pegawai). Jabatan harus aktif dan
+     * dari departemen pegawai. $confirmed = "Jabatan checklist tetap benar": teks jabatan Absensi sekarang jadi acuan, tanda "perlu dicek" hilang.
+     * Mengembalikan true bila jabatannya berubah. Pemanggil sudah memeriksa Gate assign-tasks.
+     */
+    public static function assign(Employee $employee, mixed $positionId, bool $confirmed, string $errorKey): bool
+    {
+        $new = $positionId === null || $positionId === '' ? null : (int) $positionId;
+        if ($new !== null && ! Position::where('id', $new)->where('is_active', true)->where('department_id', $employee->department_id)->exists()) {
+            throw ValidationException::withMessages([$errorKey => __('Jabatan harus dari departemen :name.', ['name' => $employee->department->name])]);
+        }
+        if ($employee->checklist_position_id !== $new) {
+            $employee->update(['checklist_position_id' => $new, 'checklist_title' => $new ? $employee->position_title : null]);
+
+            return true;
+        }
+        if ($new && $confirmed) {
+            $employee->update(['checklist_title' => $employee->position_title]);
+        }
+
+        return false;
     }
 }

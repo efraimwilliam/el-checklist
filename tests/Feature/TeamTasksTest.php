@@ -51,8 +51,10 @@ it('does not accept tasks from another department, inactive tasks, or an empty s
 it('shows the saved choice of tasks', function () {
     loggedIn($this->hod);
 
-    $this->get(route('team.tasks.edit', $this->staff))->assertOk()->assertSee('Memakai semua tugas jabatan')->assertDontSee(' checked>')
-        ->assertDontSee('Centang semua')->assertDontSee('Isi dari tugas jabatan')->assertSee('Cari tugas');
+    // Bawaan = semua tugas departemen (4 tugas Front Office) tampil tercentang.
+    $html = $this->get(route('team.tasks.edit', $this->staff))->assertOk()->assertSee('Tugas bawaan: semua tugas departemen tercentang')
+        ->assertDontSee('Centang semua')->assertDontSee('Isi dari tugas jabatan')->assertSee('Cari tugas')->getContent();
+    expect(substr_count($html, ' checked>'))->toBe(4);
 
     $this->staff->assignedTasks()->sync([$this->dmTask->id]);
     $this->staff->update(['custom_tasks' => true]);
@@ -207,3 +209,26 @@ it('lets HR and Administrator assign tasks to themselves and fill their own chec
         expect(\App\Models\Checklist::where('employee_id', $own->id)->count())->toBe(1);
     }
 })->with([[Role::Admin, true], [Role::Hr, true], [Role::Hod, false]]);
+
+it('sets the checklist position and tasks of one employee on the same page', function () {
+    loggedIn($this->hod);
+
+    // Kartu pegawai menawarkan saran jabatan dari Absensi (GSA) dan daftar Pegawai menandai "Belum ada jabatan".
+    $this->get(route('team.index'))->assertOk()->assertSee('Budi Santoso')->assertSee('data-state="none"', false);
+    $this->get(route('team.tasks.edit', $this->staff))->assertOk()->assertSee('Jabatan checklist')->assertSee('Saran dari Absensi: GSA');
+
+    // Simpan jabatan dengan semua tugas tetap tercentang = jabatan tersimpan, tugas tetap bawaan (tidak dikunci jadi daftar tetap).
+    $all = [...$this->gsaTasks->pluck('id'), $this->dmTask->id];
+    $this->put(route('team.tasks.update', $this->staff), ['position' => $this->gsa->id, 'tasks' => $all])->assertRedirect(route('team.index'));
+    $staff = $this->staff->fresh();
+    expect($staff->checklist_position_id)->toBe($this->gsa->id)->and($staff->checklist_title)->toBe('GSA')
+        ->and($staff->custom_tasks)->toBeFalse()->and($staff->assignedTasks()->count())->toBe(0);
+    $this->get(route('team.index'))->assertSee('Tugas bawaan')->assertSee('data-state="set"', false)->assertDontSee('data-state="none"', false);
+
+    // Hapus satu centang = tugas disesuaikan; jabatan dari departemen lain ditolak dan tidak ada yang tersimpan.
+    $this->put(route('team.tasks.update', $this->staff), ['position' => $this->gsa->id, 'tasks' => [$this->gsaTasks[0]->id]])->assertRedirect();
+    expect($this->staff->fresh()->custom_tasks)->toBeTrue();
+    $housekeeping = Position::where('department_id', $this->hk->id)->first();
+    $this->put(route('team.tasks.update', $this->staff), ['position' => $housekeeping->id, 'tasks' => [$this->dmTask->id]])->assertSessionHasErrors('position');
+    expect($this->staff->fresh()->checklist_position_id)->toBe($this->gsa->id)->and($this->staff->assignedTasks()->pluck('tasks.id')->all())->toBe([$this->gsaTasks[0]->id]);
+});

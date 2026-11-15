@@ -1,4 +1,4 @@
-<x-app-layout title="{{ __('Jabatan dan tugas') }}">
+<x-tugas-page tab="jabatan" :title="__('Jabatan')">
     @php
         $positionCount = $departments->sum(fn ($department) => $department->positions->count());
         $activeTasks = $departments->sum(fn ($department) => $department->positions->sum('active_tasks_count'));
@@ -6,8 +6,7 @@
 
     <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div class="min-w-0">
-            <p class="eyebrow"><span class="h-px w-6 bg-gold-500"></span>{{ __('Jabatan dan tugas') }}</p>
-            <h1 class="mt-1 text-page">{{ __('Jabatan dan tugasnya') }}</h1>
+            <h2 class="text-section">{{ __('Jabatan dan tugasnya') }}</h2>
             <p class="mt-1 max-w-2xl text-sm text-slate-500">{{ __('Pilih jabatan untuk mengubah daftar tugasnya. Perubahan berlaku untuk checklist yang dibuat sesudahnya; checklist yang sudah ada tidak berubah.') }}</p>
         </div>
         <dl class="grid grid-cols-3 gap-3 text-center">
@@ -137,4 +136,4 @@
             deleteDialog.querySelectorAll('[data-close-delete-position]').forEach((button) => button.addEventListener('click', () => deleteDialog.close()));
         })();
     </script>
-</x-app-layout>
+</x-tugas-page>

@@ -6,7 +6,7 @@
         </div>
         <div class="flex flex-wrap gap-2">
             @can('manage-tasks')
-                <a href="{{ route('admin.tasks.index') }}" class="btn-secondary">{{ __('Ubah atau urutkan tugas') }}</a>
+                <a href="{{ route('admin.tasks.index') }}" class="btn-secondary">{{ __('Jabatan & urutan tugas') }}</a>
             @endcan
             @can('manage-team-tasks')
                 <a href="{{ route('team.catalog.export') }}" class="btn-secondary !w-11 !px-0" aria-label="{{ __('Unduh Excel') }}" title="{{ __('Unduh Excel') }}">

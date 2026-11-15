@@ -204,7 +204,7 @@
                                     <button class="btn-primary !px-4 !py-1.5">{{ __('Mulai') }}</button>
                                 </form>
                             @else
-                                <a href="{{ route('team.positions.edit') }}" class="btn-secondary !px-4 !py-1.5">{{ __('Atur jabatan') }}</a>
+                                <a href="{{ Gate::allows('assign-tasks', $e) ? route('team.tasks.edit', $e) : route('team.positions.edit') }}" class="btn-secondary !px-4 !py-1.5">{{ __('Atur jabatan') }}</a>
                             @endif
                         </div>
                     </li>

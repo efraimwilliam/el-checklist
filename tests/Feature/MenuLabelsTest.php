@@ -2,21 +2,26 @@
 
 use App\Enums\Role;
 
-it('names the task menu entries Atur tugas pegawai, Kamus daftar tugas, and Jabatan dan tugas', function () {
+it('merges the task pages into one Tugas & jabatan page, with Kamus daftar tugas as its own menu', function () {
     loggedIn(userWithRole(Role::Admin));
 
-    $this->get(route('team.index'))->assertOk()
-        ->assertSee('Atur tugas pegawai')->assertSee('Kamus daftar tugas')->assertSee('Jabatan dan tugas')
-        ->assertDontSee('Daftar checklist')->assertDontSee('Kelola tugas');
-    $this->get(route('team.catalog'))->assertOk()->assertSee('Kamus daftar tugas');
-    $this->get(route('admin.tasks.index'))->assertOk()->assertSee('Jabatan dan tugas');
+    // Satu entri menu, satu judul, dua tab (Pegawai, Jabatan); tab yang dibuka menyala. Kamus daftar tugas tetap menu sendiri (bukan tab).
+    $html = $this->get(route('team.index'))->assertOk()
+        ->assertSee('Tugas &amp; jabatan', false)->assertSee('Pegawai')->assertSee('Atur jabatan sekaligus')->assertSee('Kamus daftar tugas')
+        ->assertDontSee('Atur tugas pegawai')->assertDontSee('Jabatan pegawai')->assertDontSee('Daftar checklist')->assertDontSee('Kelola tugas')->getContent();
+    expect($html)->toMatch('~aria-current="page"[^>]*>Pegawai</a>~');
+    $catalog = $this->get(route('team.catalog'))->assertOk()->assertSee('Kamus daftar tugas')->assertDontSee('Bagian tugas dan jabatan')->getContent();
+    expect($catalog)->toMatch('~aria-current="page"[^>]*>Kamus daftar tugas</a>~');
+    $this->get(route('admin.tasks.index'))->assertOk()->assertSee('Jabatan dan tugasnya');
+    // Atur jabatan sekaligus bukan tab sendiri, tetapi tab Pegawai tetap menyala.
+    expect($this->get(route('team.positions.edit'))->assertOk()->assertSee('Atur jabatan sekaligus')->getContent())->toMatch('~aria-current="page"[^>]*>Pegawai</a>~');
 });
 
-it('shows the renamed menu entries in English', function () {
+it('shows the merged menu entry in English', function () {
     loggedIn(userWithRole(Role::Admin));
     $this->get(route('locale.update', 'en'))->assertRedirect();
 
-    $this->get(route('team.index'))->assertOk()->assertSee('Manage employee tasks')->assertSee('Task catalog')->assertSee('Positions &amp; tasks', false);
+    $this->get(route('team.index'))->assertOk()->assertSee('Tasks &amp; positions', false)->assertSee('Employee')->assertSee('Set positions in bulk');
 });
 
 it('puts Riwayat checklist inside the Checklist menu, with no separate Riwayat menu', function () {

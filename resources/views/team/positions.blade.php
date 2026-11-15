@@ -1,4 +1,4 @@
-<x-app-layout title="{{ __('Jabatan staff') }}">
+<x-tugas-page tab="pegawai" :title="__('Atur jabatan sekaligus')">
     @php
         $all = $byDepartment->flatten();
         $total = $all->count();
@@ -7,9 +7,9 @@
         $stateOf = fn ($member) => $reviews->has($member->id) ? 'review' : ($member->checklist_position_id ? 'set' : 'none');
     @endphp
 
-    <a href="{{ route('fill.create') }}" class="link-back"><span aria-hidden="true">‹</span> {{ __('Isi checklist') }}</a>
-    <div class="mt-2 mb-5">
-        <h1 class="text-page">{{ __('Jabatan staff') }}</h1>
+    <div class="mb-5">
+        <a href="{{ route('team.index') }}" class="link-back"><span aria-hidden="true">‹</span> {{ __('Pegawai') }}</a>
+        <h2 class="mt-1 text-section">{{ __('Atur jabatan sekaligus') }}</h2>
         <p class="mt-1 max-w-2xl text-sm text-slate-500">{{ __('Atur sekali jabatan checklist tiap staff. Jabatan inilah yang menentukan daftar tugas saat checklist dibuatkan sekaligus. Saran diambil dari jabatan di Absensi; periksa lalu simpan.') }}</p>
     </div>
 
@@ -198,4 +198,4 @@
             refreshDirty();
         })();
     </script>
-</x-app-layout>
+</x-tugas-page>
