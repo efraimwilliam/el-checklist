@@ -352,11 +352,11 @@ class ChatController extends Controller
         $thread->load(['issue.room', 'checklist.employee', 'participants.user.employee.department']);
 
         $participant = $thread->participants->firstWhere('user_id', $me->id);
-        $messages = $thread->messages()->with(['user.employee', 'replyTo.user.employee', 'sharedIssue.room', 'sharedIssue.category', 'sharedChecklist.items', 'sharedChecklist.employee', 'sharedReport.guests', 'sharedReport.entries', 'sharedReport.author.employee', 'sharedRequest.room', 'sharedRequest.claimer.employee', 'sharedRequest.completer.employee'])->latest('id')->limit(self::PAGE)->get()->reverse()->values();
+        $messages = $thread->messages()->with(['user.employee', 'replyTo.user.employee', 'sharedIssue.room', 'sharedIssue.category', 'sharedChecklist.items', 'sharedChecklist.employee', 'sharedReport.guests', 'sharedReport.entries', 'sharedReport.author.employee', 'sharedRequest.room', 'sharedRequest.claimer.employee', 'sharedRequest.completer.employee', 'sharedLost.room', 'sharedLost.finder.employee', 'sharedLost.resolver.employee'])->latest('id')->limit(self::PAGE)->get()->reverse()->values();
         // Dari hasil cari / media: buka di sekitar pesan itu walau sudah lama.
         $target = $request->integer('pesan') ?: null;
         if ($target && ! $messages->contains('id', $target) && $thread->messages()->whereKey($target)->exists()) {
-            $with = ['user.employee', 'replyTo.user.employee', 'sharedIssue.room', 'sharedIssue.category', 'sharedChecklist.items', 'sharedChecklist.employee', 'sharedReport.guests', 'sharedReport.entries', 'sharedReport.author.employee', 'sharedRequest.room', 'sharedRequest.claimer.employee', 'sharedRequest.completer.employee'];
+            $with = ['user.employee', 'replyTo.user.employee', 'sharedIssue.room', 'sharedIssue.category', 'sharedChecklist.items', 'sharedChecklist.employee', 'sharedReport.guests', 'sharedReport.entries', 'sharedReport.author.employee', 'sharedRequest.room', 'sharedRequest.claimer.employee', 'sharedRequest.completer.employee', 'sharedLost.room', 'sharedLost.finder.employee', 'sharedLost.resolver.employee'];
             $messages = $thread->messages()->with($with)->where('id', '<', $target)->latest('id')->limit(100)->get()->reverse()->values()
                 ->concat($thread->messages()->with($with)->where('id', '>=', $target)->orderBy('id')->limit(self::PAGE)->get())->values();
         }
@@ -395,8 +395,8 @@ class ChatController extends Controller
         $after = max(0, $request->integer('after'));
         $since = rescue(fn () => CarbonImmutable::parse((string) $request->query('since')), now()->subMinutes(2), false);
 
-        $new = $thread->messages()->with(['user.employee', 'replyTo.user.employee', 'sharedIssue.room', 'sharedIssue.category', 'sharedChecklist.items', 'sharedChecklist.employee', 'sharedReport.guests', 'sharedReport.entries', 'sharedReport.author.employee', 'sharedRequest.room', 'sharedRequest.claimer.employee', 'sharedRequest.completer.employee'])->where('id', '>', $after)->orderBy('id')->limit(self::PAGE)->get();
-        $changed = $thread->messages()->with(['user.employee', 'replyTo.user.employee', 'sharedIssue.room', 'sharedIssue.category', 'sharedChecklist.items', 'sharedChecklist.employee', 'sharedReport.guests', 'sharedReport.entries', 'sharedReport.author.employee', 'sharedRequest.room', 'sharedRequest.claimer.employee', 'sharedRequest.completer.employee'])->where('id', '<=', $after)
+        $new = $thread->messages()->with(['user.employee', 'replyTo.user.employee', 'sharedIssue.room', 'sharedIssue.category', 'sharedChecklist.items', 'sharedChecklist.employee', 'sharedReport.guests', 'sharedReport.entries', 'sharedReport.author.employee', 'sharedRequest.room', 'sharedRequest.claimer.employee', 'sharedRequest.completer.employee', 'sharedLost.room', 'sharedLost.finder.employee', 'sharedLost.resolver.employee'])->where('id', '>', $after)->orderBy('id')->limit(self::PAGE)->get();
+        $changed = $thread->messages()->with(['user.employee', 'replyTo.user.employee', 'sharedIssue.room', 'sharedIssue.category', 'sharedChecklist.items', 'sharedChecklist.employee', 'sharedReport.guests', 'sharedReport.entries', 'sharedReport.author.employee', 'sharedRequest.room', 'sharedRequest.claimer.employee', 'sharedRequest.completer.employee', 'sharedLost.room', 'sharedLost.finder.employee', 'sharedLost.resolver.employee'])->where('id', '<=', $after)
             ->whereNotNull('deleted_at')->where('deleted_at', '>=', $since)->get();
         $this->markRead($thread, $me, (int) $new->last()?->id);
         ChatPushNotifier::markPresent($thread->id, $me->id);
@@ -415,6 +415,18 @@ class ChatController extends Controller
         $settings = app(\App\Checklists\ChecklistSettings::class);
         $read = $text !== '' && $settings->quickEntry('quick_entry') ? $quick->read($text) : ['type' => null];
         $otherDepartmentId = GuestRequest::kinds()->departmentFor('other');
+
+        // Barang tertinggal (biasanya foto berketerangan "1203 complete tertinggal"): dicatat saat dikirim dengan catat=1.
+        if ($read['type'] === 'lost' && Gate::allows('lost-found')) {
+            return response()->json([
+                'type' => 'lost',
+                'ok' => $read['room'] !== null,
+                'room' => $read['room_number'],
+                'description' => $read['description'] ?? null,
+                'urgent' => false,
+                'warnings' => $read['warnings'],
+            ]);
+        }
 
         if ($read['type'] === 'request' && Gate::allows('guest-requests') && $settings->quickEntry('quick_requests')) {
             return response()->json([
@@ -481,6 +493,18 @@ class ChatController extends Controller
 
         $message = $this->post($thread, $me, $body !== '' ? $body : null, $path, $replyTo);
         $extra = collect();
+        // Barang tertinggal dari obrolan (`catat=1`): foto pesan disalin ke catatan barang, kartu menempel pada pesan itu.
+        if ($body !== '' && ! $request->hasFile('file') && $request->boolean('catat') && Gate::allows('lost-found') && app(\App\Checklists\ChecklistSettings::class)->quickEntry('quick_entry')) {
+            $read = app(QuickEntry::class)->read($body);
+            if ($read['type'] === 'lost' && $read['room']) {
+                $lost = \App\Models\LostItem::create([
+                    'room_id' => $read['room']->id, 'description' => $read['description'] ?? __('Barang tertinggal (lihat foto)'),
+                    'photo_path' => $path && Storage::disk('local')->exists($path) ? \App\Http\Controllers\LostItemController::storePhoto(Storage::disk('local')->get($path)) : null,
+                    'found_by' => $me->id, 'found_at' => now(), 'status' => \App\Models\LostItem::STATUS_STORED, 'source' => 'chat',
+                ]);
+                $message->update(['lost_item_id' => $lost->id]);
+            }
+        }
         // Ketik bebas yang dikonfirmasi lewat pratinjau (`catat=1`): pesan yang terbaca sebagai permintaan tamu ikut dicatat.
         // Pesan teks tetap terkirim; jenis pertama menempel pada pesan itu, jenis lain jadi kartu tersendiri.
         if ($body !== '' && ! $path && ! $request->hasFile('file') && $request->boolean('catat') && Gate::allows('guest-requests') && app(\App\Checklists\ChecklistSettings::class)->quickEntry('quick_requests')) {
@@ -517,7 +541,7 @@ class ChatController extends Controller
         }
         $thread->load('participants.user.employee');
 
-        $with = ['user.employee', 'replyTo.user.employee', 'sharedIssue.room', 'sharedIssue.category', 'sharedChecklist.items', 'sharedChecklist.employee', 'sharedReport.guests', 'sharedReport.entries', 'sharedReport.author.employee', 'sharedRequest.room', 'sharedRequest.claimer.employee', 'sharedRequest.completer.employee'];
+        $with = ['user.employee', 'replyTo.user.employee', 'sharedIssue.room', 'sharedIssue.category', 'sharedChecklist.items', 'sharedChecklist.employee', 'sharedReport.guests', 'sharedReport.entries', 'sharedReport.author.employee', 'sharedRequest.room', 'sharedRequest.claimer.employee', 'sharedRequest.completer.employee', 'sharedLost.room', 'sharedLost.finder.employee', 'sharedLost.resolver.employee'];
 
         return response()->json($this->payload($thread, $me, collect([$message, ...$extra])->each->load($with), collect()));
     }
@@ -535,7 +559,7 @@ class ChatController extends Controller
         }
         $thread->load('participants.user.employee');
 
-        return response()->json($this->payload($thread, $request->user(), collect(), collect([$message->load(['user.employee', 'replyTo.user.employee', 'sharedIssue.room', 'sharedIssue.category', 'sharedChecklist.items', 'sharedChecklist.employee', 'sharedReport.guests', 'sharedReport.entries', 'sharedReport.author.employee', 'sharedRequest.room', 'sharedRequest.claimer.employee', 'sharedRequest.completer.employee'])])));
+        return response()->json($this->payload($thread, $request->user(), collect(), collect([$message->load(['user.employee', 'replyTo.user.employee', 'sharedIssue.room', 'sharedIssue.category', 'sharedChecklist.items', 'sharedChecklist.employee', 'sharedReport.guests', 'sharedReport.entries', 'sharedReport.author.employee', 'sharedRequest.room', 'sharedRequest.claimer.employee', 'sharedRequest.completer.employee', 'sharedLost.room', 'sharedLost.finder.employee', 'sharedLost.resolver.employee'])])));
     }
 
     public function photo(ChatThread $thread, ChatMessage $message): StreamedResponse

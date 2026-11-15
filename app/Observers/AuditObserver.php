@@ -11,6 +11,7 @@ use App\Models\Department;
 use App\Models\Employee;
 use App\Models\GuestRequest;
 use App\Models\QuickTerm;
+use App\Models\LostItem;
 use App\Models\GuestRequestKind;
 use App\Models\ChronologyReport;
 use App\Models\ChronologyReportEntry;
@@ -39,7 +40,7 @@ class AuditObserver
 
     public const MODELS = [
         Checklist::class, ChecklistItem::class, ChecklistItemPhoto::class, ChecklistExtraTask::class,
-        Department::class, Employee::class, Position::class, Task::class, User::class, Setting::class, ReportNote::class, IssueFollowup::class, Room::class, IssueCategory::class, RoomIssue::class, RoomIssueUpdate::class, RoomIssuePhoto::class, GuestRequest::class, QuickTerm::class, GuestRequestKind::class, FloorPlan::class, FloorPlanArea::class, ChronologyReport::class, ChronologyReportGuest::class, ChronologyReportEntry::class,
+        Department::class, Employee::class, Position::class, Task::class, User::class, Setting::class, ReportNote::class, IssueFollowup::class, Room::class, IssueCategory::class, RoomIssue::class, RoomIssueUpdate::class, RoomIssuePhoto::class, GuestRequest::class, QuickTerm::class, GuestRequestKind::class, LostItem::class, FloorPlan::class, FloorPlanArea::class, ChronologyReport::class, ChronologyReportGuest::class, ChronologyReportEntry::class,
     ];
 
     public function created(Model $model): void
@@ -88,6 +89,7 @@ class AuditObserver
             $model instanceof Setting => $model->key,
             $model instanceof RoomIssue => '#'.$model->getKey().' · '.$model->placeTitle().' · '.($model->category?->name ?? '—').' · '.$model->status,
             $model instanceof GuestRequest => '#'.$model->getKey().' · '.$model->room?->number.' · '.$model->label().' · '.$model->status,
+            $model instanceof LostItem => 'Barang tertinggal #'.$model->getKey().' · '.$model->placeTitle().' · '.$model->description.' · '.$model->status,
             $model instanceof GuestRequestKind => 'Jenis permintaan · '.$model->label,
             $model instanceof QuickTerm => 'Kamus ketik bebas · '.$model->group.($model->target ? ' · '.$model->target : '').' · '.$model->term,
             $model instanceof ReportNote => 'Catatan '.($model->period_from?->format('d M Y') ?? ''),

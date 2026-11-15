@@ -63,6 +63,8 @@ class AppServiceProvider extends ServiceProvider
         // Obrolan pekerjaan: hanya bila Administrator menyalakannya (Pengaturan); hak per percakapan ada di ChatThreadPolicy.
         Gate::define('chat', fn (User $user) => $user->canUseApp() && $feature('obrolan'));
         Gate::policy(\App\Models\ChatThread::class, \App\Policies\ChatThreadPolicy::class);
+        // Barang tertinggal: bagian dari Obrolan (tanpa menu sendiri); semua pengguna obrolan boleh mencatat dan memperbarui.
+        Gate::define('lost-found', fn (User $user) => Gate::forUser($user)->allows('chat'));
         Gate::define('manage-tasks', fn (User $user) => $user->canUseApp() && in_array($user->role, [Role::Admin, Role::Hr], true));
         Gate::define('manage-access', fn (User $user) => $user->canUseApp() && $user->isAdmin());
     }

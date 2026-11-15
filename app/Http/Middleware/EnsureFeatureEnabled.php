@@ -20,10 +20,12 @@ class EnsureFeatureEnabled
         'laporan.rooms' => ['kendala'],
         'laporan.room' => ['kendala'],
         'laporan.building' => ['kendala'],
+        'laporan.requests' => ['permintaan'],
         'chat.issue' => ['kendala'],
         'chat.share-issue' => ['kendala'],
         'chronology.' => ['chronology'],
         'chat.share-chronology' => ['chronology'],
+        'lost.' => ['obrolan'],
         'laporan.' => ['laporan'],
     ];
 

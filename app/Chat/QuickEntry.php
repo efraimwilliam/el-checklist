@@ -62,6 +62,17 @@ class QuickEntry
         }
         $result['room_number'] = $result['room']?->number ?? $candidates[0];
 
+        // Barang tertinggal ("1203 complete tertinggal" + foto): didahulukan dari permintaan / kendala.
+        if ($this->matches('lost', $clean)) {
+            $result['type'] = 'lost';
+            $result['description'] = $this->lostDescription($clean);
+            if (! $result['room']) {
+                $result['warnings'][] = __('Kamar :number tidak ada di data kamar. Periksa lagi nomornya.', ['number' => $result['room_number']]);
+            }
+
+            return $result;
+        }
+
         // Permintaan: tiap sebutan barang (yang terpanjang dulu, supaya "bath towel" tidak terbaca sebagai "towel" + sisa).
         $labels = GuestRequest::kinds()->labels(activeOnly: true); // jenis nonaktif tidak dibaca
         $taken = preg_replace('~'.self::NEGATION.'~u', ' ', $clean);
@@ -151,6 +162,19 @@ class QuickEntry
     private function matches(string $group, string $text): bool
     {
         return $this->group($group)->contains(fn (QuickTerm $term) => preg_match('~'.QuickTerm::pattern($term->term).'~u', $text) === 1);
+    }
+
+    /** Uraian barang tertinggal: teks tanpa nomor kamar, kata "tertinggal", dan kata kabar status kamar; null bila tidak tersisa apa pun. */
+    private function lostDescription(string $text): ?string
+    {
+        $rest = preg_replace('~(?<![\d/.:\-])#?\d{3,4}(?![\d/.:\-])~', ' ', $text);
+        foreach ($this->group('lost') as $term) {
+            $rest = preg_replace('~'.QuickTerm::pattern($term->term).'~u', ' ', $rest);
+        }
+        $rest = preg_replace('~\b(?:complete\w*|komplit\w*|complit\w*|komplite|lengkap|done|ready|ok|room|kamar|kmr|ini|ya|hk|team|dibantu|dbntu|info|ada|di|yg|yang|ex|co|c/o|found|ditemukan)\b~u', ' ', $rest);
+        $rest = trim(preg_replace('~\s+~u', ' ', trim($rest, " \t\n,.;:-")));
+
+        return preg_match('~\p{L}{2,}~u', $rest) ? mb_substr($rest, 0, 200) : null;
     }
 
     /** Nama + jumlah barang sesudah kata minta pertama, atau null bila tidak ada nama yang masuk akal. @return array{name: string, quantity: int}|null */

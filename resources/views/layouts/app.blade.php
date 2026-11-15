@@ -90,6 +90,7 @@
                 $link(__('Parameter'), 'laporan.parameters', $is('laporan.parameters')),
                 $link(__('Bulanan'), 'laporan.monthly', $is('laporan.monthly')),
                 $can('room-issues') ? $link(__('Peta kamar'), 'laporan.rooms', $is('laporan.rooms', 'laporan.room')) : null,
+                $can('guest-requests') ? $link(__('Permintaan tamu'), 'laporan.requests', $is('laporan.requests')) : null,
                 $link(__('Data'), 'laporan.data', $is('laporan.data', 'laporan.data.export')),
             ]))];
         }
@@ -164,14 +165,14 @@
                     @isset($entry['items'])
                         <div class="group relative flex shrink-0" data-nav-menu>
                             <button type="button" aria-haspopup="true" aria-expanded="false" aria-controls="nav-menu-{{ $index }}" class="{{ $navLink($entry['active']) }}" @if ($entry['count']) aria-label="{{ $entry['label'] }}, {{ $entry['count'] }} {{ __('baru untuk Anda') }}" @endif>{{ $entry['label'] }}<x-ui.count :n="$entry['count']" class="ml-1.5" /> <span class="text-[10px] opacity-70" aria-hidden="true">▾</span></button>
-                            <div id="nav-menu-{{ $index }}" class="invisible absolute left-0 top-full z-30 w-60 pt-1 opacity-0 transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100 group-data-[suppress]:invisible! group-data-[suppress]:opacity-0!">
+                            <div id="nav-menu-{{ $index }}" class="invisible absolute {{ $loop->remaining < 3 ? 'right-0' : 'left-0' }} top-full z-30 w-60 pt-1 opacity-0 transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100 group-data-[suppress]:invisible! group-data-[suppress]:opacity-0!">
                                 <div class="rounded-2xl bg-[#fffdf9] p-2 shadow-menu ring-1 ring-black/5">
                                     @foreach ($entry['items'] as $item)
                                         @if ($item['children'])
                                             {{-- Submenu: terbuka saat diarahkan kursor / difokus --}}
                                             <div class="group/sub relative">
-                                                <a href="{{ route($item['route'], $item['params']) }}" class="{{ $menuItem($item['active']) }}" aria-haspopup="true" @if ($item['active']) aria-current="page" @endif>{{ $item['label'] }}<span class="text-slate-400" aria-hidden="true">›</span></a>
-                                                <div class="mt-1 space-y-0.5 pl-3 sm:invisible sm:absolute sm:left-full sm:top-0 sm:z-40 sm:mt-0 sm:w-56 sm:pl-1.5 sm:opacity-0 sm:transition sm:group-hover/sub:visible sm:group-hover/sub:opacity-100 sm:group-focus-within/sub:visible sm:group-focus-within/sub:opacity-100">
+                                                <a href="{{ route($item['route'], $item['params']) }}" class="{{ $menuItem($item['active']) }}" aria-haspopup="true" @if ($item['active']) aria-current="page" @endif><span class="text-slate-400 max-sm:hidden" aria-hidden="true">‹</span><span class="mr-auto">{{ $item['label'] }}</span></a>
+                                                <div class="mt-1 space-y-0.5 pl-3 sm:invisible sm:absolute sm:right-full sm:top-0 sm:z-40 sm:mt-0 sm:w-56 sm:pr-1.5 sm:opacity-0 sm:transition sm:group-hover/sub:visible sm:group-hover/sub:opacity-100 sm:group-focus-within/sub:visible sm:group-focus-within/sub:opacity-100">
                                                     <div class="rounded-2xl bg-[#fffdf9] p-2 shadow-menu ring-1 ring-black/5">
                                                         @foreach ($item['children'] as $child)
                                                             <a href="{{ route($child['route'], $child['params']) }}" class="{{ $menuItem($child['active']) }}" @if ($child['active']) aria-current="page" @endif>{{ $child['label'] }}</a>

@@ -705,6 +705,13 @@ if (chat) {
         const closeTool = () => { if (toolDialog?.open) toolDialog.close(); };
         toolDialog?.addEventListener('close', () => { toolFrame.src = 'about:blank'; });
         tools.forEach((tool) => tool.addEventListener('click', () => openTool(tool)));
+        // Tombol di kartu (mis. "Perbarui status" barang tertinggal) membuka halamannya di jendela form yang sama.
+        log.addEventListener('click', (event) => {
+            const button = event.target.closest('[data-open-tool]');
+            if (!button) return;
+            event.preventDefault();
+            openToolUrl(button.dataset.openTool, button.dataset.title || '');
+        });
         window.addEventListener('message', (event) => {
             if (event.origin !== location.origin || !toolFrame || event.source !== toolFrame.contentWindow) return;
             if (event.data?.type === 'chat-tool-close') closeTool();
@@ -867,6 +874,7 @@ if (chat) {
                 if (!photo) throw new Error();
                 photoPreview.src = URL.createObjectURL(photo);
                 photoBar.hidden = false;
+                if (typeof renderQuick === 'function') renderQuick();
                 body.focus();
             } catch {
                 clearPhoto();
@@ -888,13 +896,17 @@ if (chat) {
             if (!quickBox) return;
             if (!quick || !quick.type || quickDismissed) { quickBox.hidden = true; return; }
             const isRequest = quick.type === 'request';
+            const isLost = quick.type === 'lost';
+            if (photo && !isLost) { quickBox.hidden = true; return; } // foto + teks: hanya barang tertinggal yang dibaca
             const content = el('div', 'min-w-0 flex-1');
             const head = el('p', 'font-semibold text-slate-900');
-            head.textContent = isRequest
+            head.textContent = isLost
+                ? `🧳 ${quick.ok ? t('Akan dicatat sebagai barang tertinggal') : t('Barang tertinggal belum bisa dicatat')} · ${t('Kamar')} ${quick.room}`
+                : isRequest
                 ? `🛎 ${quick.ok ? t('Akan dicatat sebagai permintaan') : t('Permintaan belum bisa dicatat')} · ${t('Kamar')} ${quick.room}`
                 : `🛠 ${t('Sepertinya kendala')} · ${t('Kamar')} ${quick.room}`;
             content.append(head);
-            const detail = isRequest ? quick.items.join(', ') : (quick.category || t('Kategori belum terbaca'));
+            const detail = isLost ? (quick.description || t('Barang: lihat foto')) : isRequest ? quick.items.join(', ') : (quick.category || t('Kategori belum terbaca'));
             const line = el('p', 'text-slate-600', detail);
             if (quick.urgent) line.append(el('span', 'ml-2 rounded-full bg-rose-600 px-2 py-0.5 text-[11px] font-semibold text-white', t('Mendesak')));
             content.append(line);
@@ -914,10 +926,11 @@ if (chat) {
             }
             quick.warnings.forEach((warning) => content.append(el('p', 'text-rose-700', warning)));
             if (isRequest && quick.ok) content.append(el('p', 'text-xs text-slate-400', t('Enter / kirim = pesan terkirim dan permintaan tercatat. × = kirim sebagai pesan biasa.')));
+            if (isLost && quick.ok) content.append(el('p', 'text-xs text-slate-400', photo ? t('Kirim = foto terkirim dan barang tercatat. × = kirim sebagai pesan biasa.') : t('Lampirkan foto barangnya bila ada. Kirim = barang tercatat. × = pesan biasa.')));
             if (isRequest && !quick.ok) content.append(el('p', 'text-xs text-slate-400', t('Pesan tetap bisa dikirim, tapi permintaannya tidak dicatat.')));
-            if (!isRequest && quick.ok) content.append(el('p', 'text-xs text-slate-400', t('Ketuk Catat kendala untuk mencatatnya (form sudah terisi). Enter = kirim sebagai pesan biasa.')));
+            if (!isRequest && !isLost && quick.ok) content.append(el('p', 'text-xs text-slate-400', t('Ketuk Catat kendala untuk mencatatnya (form sudah terisi). Enter = kirim sebagai pesan biasa.')));
             const actions = el('div', 'flex shrink-0 items-center gap-1');
-            if (!isRequest && quick.ok && quick.url) {
+            if (!isRequest && !isLost && quick.ok && quick.url) {
                 const open = el('button', 'rounded-full bg-[#b08a3e] px-3 py-1 text-xs font-semibold text-white hover:bg-[#9a7733]', t('Catat kendala'));
                 open.type = 'button';
                 open.addEventListener('click', () => {
@@ -934,7 +947,7 @@ if (chat) {
             close.setAttribute('aria-label', t('Jangan catat, kirim sebagai pesan biasa'));
             close.addEventListener('click', () => { quickDismissed = true; renderQuick(); body.focus(); });
             actions.append(close);
-            quickBox.className = `mb-2 flex items-start gap-2 rounded-lg border-l-4 bg-white px-3 py-2 text-sm ${isRequest ? 'border-sky-600' : 'border-amber-500'}`;
+            quickBox.className = `mb-2 flex items-start gap-2 rounded-lg border-l-4 bg-white px-3 py-2 text-sm ${isLost ? 'border-gold-600' : isRequest ? 'border-sky-600' : 'border-amber-500'}`;
             quickBox.replaceChildren(content, actions);
             quickBox.hidden = false;
         };
@@ -976,13 +989,15 @@ if (chat) {
             if ((!text && !photo && !documentFile) || sending) return;
             // Pratinjau belum sempat muncul untuk teks ini: tampilkan dulu, kirim pada Enter berikutnya.
             let record = false;
-            if (!photo && !documentFile && !quickDismissed && chat.dataset.quickUrl && looksQuick(text)) {
+            if (!documentFile && !quickDismissed && chat.dataset.quickUrl && looksQuick(text)) {
                 if (!quick || quick.text !== text) {
                     clearTimeout(quickTimer);
                     const fresh = await readQuick(text);
-                    if (fresh && fresh.type) return;
+                    // Dengan foto, hanya barang tertinggal yang dicatat; jenis lain langsung terkirim sebagai pesan biasa.
+                    if (fresh && (fresh.type === 'lost' || (fresh.type && !photo))) return;
                 }
-                record = Boolean(quick && quick.text === text && quick.type === 'request' && quick.ok);
+                const current = quick && quick.text === text && quick.ok ? quick.type : null;
+                record = current === 'lost' || (current === 'request' && !photo);
             }
             sending = true;
             button.disabled = true;

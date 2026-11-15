@@ -13,6 +13,7 @@ use App\Reports\IssueService;
 use App\Reports\MonthlyReport;
 use App\Reports\ParameterReport;
 use App\Reports\RoomReport;
+use App\Reports\RequestReport;
 use App\Models\IssueCategory;
 use App\Models\Room;
 use App\Reports\ReportService;
@@ -27,7 +28,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 /** Laporan per rentang tanggal, dengan catatan tindak lanjut yang ditambahkan pengguna (HOD / HR / GM / Administrator). */
 class ReportController extends Controller
 {
-    public function __construct(private ReportService $reports, private IssueService $issues, private DataExplorer $explorer, private MonthlyReport $monthly, private ParameterReport $parameters, private RoomReport $rooms) {}
+    public function __construct(private ReportService $reports, private IssueService $issues, private DataExplorer $explorer, private MonthlyReport $monthly, private ParameterReport $parameters, private RoomReport $rooms, private RequestReport $requests) {}
 
     public function index(Request $request): View
     {
@@ -213,6 +214,26 @@ class ReportController extends Controller
     }
 
     /** Peta kamar: kendala per kamar (per lantai), kamar langganan masalah, per kategori dan departemen penanggung jawab. */
+    /** Tab Permintaan tamu: beban kerja per jam / hari / jenis / petugas dan kecepatan diambil / selesai. */
+    public function requests(Request $request): View
+    {
+        Gate::authorize('view-checklists');
+        abort_unless(Gate::allows('guest-requests'), 404);
+        [$from, $to] = DateRange::fromRequest($request, 7, 92);
+        $ids = $request->user()->role->seesAllDepartments() ? Department::where('is_active', true)->pluck('id')->all() : $request->user()->issueDepartmentIds();
+        $departmentId = $this->departmentFilter($request, $ids);
+
+        return view('laporan.requests', [
+            'from' => $from,
+            'to' => $to,
+            'today' => CarbonImmutable::today(),
+            'departments' => Department::whereIn('id', $ids)->orderBy('sort')->orderBy('name')->get(),
+            'departmentId' => $departmentId,
+            'report' => $this->requests->build($request->user(), $from, $to, $departmentId),
+            'target' => RequestReport::CLAIM_TARGET,
+        ]);
+    }
+
     public function rooms(Request $request): View
     {
         Gate::authorize('view-checklists');

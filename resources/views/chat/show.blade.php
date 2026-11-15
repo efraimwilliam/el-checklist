@@ -15,6 +15,7 @@
     $chatTools = array_values(array_filter([
         Gate::allows('guest-requests') ? ['command' => 'p', 'label' => __('Permintaan tamu'), 'icon' => '🛎', 'tone' => 'bg-sky-100 text-sky-800', 'url' => route('permintaan.index', ['obrolan' => $thread->id])] : null,
         Gate::allows('room-issues') ? ['command' => 'k', 'label' => __('Kendala'), 'icon' => '🛠', 'tone' => 'bg-amber-100 text-amber-800', 'url' => route('kamar.issues.index', ['obrolan' => $thread->id])] : null,
+        Gate::allows('lost-found') ? ['command' => 't', 'label' => __('Barang tertinggal'), 'icon' => '🧳', 'tone' => 'bg-gold-100 text-gold-700', 'url' => route('lost.index', ['obrolan' => $thread->id, 'catat' => 1])] : null,
         Gate::allows('chronology-reports') ? ['command' => 'c', 'label' => 'Chronology Report', 'icon' => '📝', 'tone' => 'bg-violet-100 text-violet-700', 'url' => route('chronology.create', ['obrolan' => $thread->id])] : null,
     ]));
 @endphp

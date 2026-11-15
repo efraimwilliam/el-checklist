@@ -95,6 +95,36 @@
                 @endif
             @endif
 
+            @if ($message->lost_item_id && ! $deleted)
+                @php
+                    $lost = $message->sharedLost;
+                    $lostInfo = ! $lost ? '' : ($lost->isOpen()
+                        ? ($lost->stored_at ? __('Disimpan di :place', ['place' => $lost->stored_at]) : __('Tempat simpan belum dicatat'))
+                        : trim(($lost->resolver?->name() ?? '').($lost->resolution_note ? ' · '.$lost->resolution_note : ''), ' ·'));
+                @endphp
+                @if ($lost)
+                    <div data-shared-lost="{{ $lost->id }}" class="mb-1 flex min-w-60 gap-3 overflow-hidden rounded-lg border-l-4 border-gold-600 bg-white/80 p-2.5 text-left">
+                        @if ($lost->photo_path && ! $message->photo_path)
+                            <a href="{{ route('lost.photo', $lost) }}" data-photo-open data-alt="{{ $lost->description }}" class="shrink-0"><img src="{{ route('lost.photo', $lost) }}" alt="{{ $lost->description }}" loading="lazy" class="h-14 w-14 rounded-md object-cover"></a>
+                        @endif
+                        <span class="min-w-0 flex-1">
+                            <span class="flex items-start justify-between gap-2">
+                                <span class="block text-[11px] font-semibold uppercase tracking-wider text-gold-700">🧳 {{ __('Barang tertinggal') }} #{{ $lost->id }}</span>
+                                <x-ui.badge :tone="$lost->tone()">{{ \App\Models\LostItem::statusLabels()[$lost->status] }}</x-ui.badge>
+                            </span>
+                            <span class="block truncate font-semibold text-slate-900">{{ $lost->placeTitle() }} · {{ $lost->description }}</span>
+                            <span class="block text-xs text-slate-500">{{ $lostInfo }}</span>
+                            {{-- Membuka halaman barang tertinggal di jendela form obrolan, langsung di barang ini. --}}
+                            @if (\Illuminate\Support\Facades\Gate::forUser($me)->allows('post', $thread))
+                                <button type="button" data-open-tool="{{ route('lost.index', ['obrolan' => $thread->id, 'barang' => $lost->id, 'status' => 'all']) }}" data-title="{{ __('Barang tertinggal') }}" class="mt-2 rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-800 ring-1 ring-slate-300 hover:bg-slate-50">{{ __('Perbarui status') }}</button>
+                            @endif
+                        </span>
+                    </div>
+                @else
+                    <p class="mb-1 rounded-lg bg-black/5 px-3 py-2 text-sm italic text-slate-500">🧳 {{ __('Catatan barang ini sudah dihapus.') }}</p>
+                @endif
+            @endif
+
             @if ($message->guest_request_id && ! $deleted)
                 @php
                     $sharedRequest = $message->sharedRequest;

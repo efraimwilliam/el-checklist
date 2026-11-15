@@ -93,6 +93,12 @@ Route::middleware(['auth', EnsureActiveSession::class, VerifySsoSession::class])
     Route::post('/chronology/{report}/final', [ChronologyReportController::class, 'finalize'])->whereNumber('report')->name('chronology.finalize');
     Route::post('/chronology/{report}/buka-lagi', [ChronologyReportController::class, 'reopen'])->whereNumber('report')->name('chronology.reopen');
     Route::delete('/chronology/{report}', [ChronologyReportController::class, 'destroy'])->whereNumber('report')->name('chronology.destroy');
+    // Barang tertinggal: hanya dibuka dari obrolan (menu lampiran / "/t"), tidak ada di menu.
+    Route::get('/tertinggal', [\App\Http\Controllers\LostItemController::class, 'index'])->name('lost.index');
+    Route::post('/tertinggal', [\App\Http\Controllers\LostItemController::class, 'store'])->middleware('throttle:30,1')->name('lost.store');
+    Route::post('/tertinggal/{item}/status', [\App\Http\Controllers\LostItemController::class, 'updateStatus'])->whereNumber('item')->name('lost.status');
+    Route::get('/tertinggal/{item}/foto', [\App\Http\Controllers\LostItemController::class, 'photo'])->whereNumber('item')->name('lost.photo');
+    Route::delete('/tertinggal/{item}', [\App\Http\Controllers\LostItemController::class, 'destroy'])->whereNumber('item')->name('lost.destroy');
     Route::get('/permintaan', [GuestRequestController::class, 'index'])->name('permintaan.index');
     Route::post('/permintaan', [GuestRequestController::class, 'store'])->name('permintaan.store');
     Route::post('/permintaan/{guestRequest}/ambil', [GuestRequestController::class, 'claim'])->whereNumber('guestRequest')->name('permintaan.claim');
@@ -120,6 +126,7 @@ Route::middleware(['auth', EnsureActiveSession::class, VerifySsoSession::class])
     Route::post('/laporan/tindak-lanjut/{item}', [ReportController::class, 'followUp'])->name('laporan.followup');
     Route::get('/laporan/bulanan', [ReportController::class, 'monthly'])->name('laporan.monthly');
     Route::get('/laporan/parameter', [ReportController::class, 'parameters'])->name('laporan.parameters');
+    Route::get('/laporan/permintaan', [ReportController::class, 'requests'])->name('laporan.requests');
     Route::get('/laporan/kamar', [ReportController::class, 'rooms'])->name('laporan.rooms');
     Route::get('/laporan/kamar/gedung', [ReportController::class, 'building'])->name('laporan.building');
     Route::get('/laporan/kamar/{room}', [ReportController::class, 'room'])->whereNumber('room')->name('laporan.room');

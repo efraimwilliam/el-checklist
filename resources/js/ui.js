@@ -161,6 +161,8 @@ document.querySelectorAll('[data-nav-menu]').forEach((menu) => {
         setTimeout(sync);
     });
     button.addEventListener('click', open);
+    // Ketuk / klik di luar menu (layar sentuh tidak punya mouseleave): tandai tertutup.
+    document.addEventListener('pointerdown', (event) => { if (!menu.contains(event.target)) button.setAttribute('aria-expanded', 'false'); });
     menu.addEventListener('keydown', (event) => {
         if (event.key === 'Escape') {
             menu.dataset.suppress = '';
