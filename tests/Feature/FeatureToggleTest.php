@@ -104,7 +104,7 @@ it('opens the request and issue dialogs from shortcut links with the room filled
     $autoOpen = fn (string $id) => '/id="'.$id.'"\s+data-autoopen/';
 
     $html = $this->get(route('permintaan.index', ['catat' => 1, 'kamar' => '1206', 'jenis' => 'towel']))->assertOk()
-        ->assertSee('value="1206"', false)->assertDontSee('req-rooms', false)->assertSee('value="towel" class="h-4 w-4" checked', false)->getContent();
+        ->assertSee('value="1206"', false)->assertDontSee('req-rooms', false)->assertSee('value="towel" class="h-5 w-5" checked', false)->getContent();
     expect($html)->toMatch($autoOpen('request-dialog'));
     expect($this->get(route('permintaan.index'))->assertOk()->getContent())->not->toMatch($autoOpen('request-dialog'));
 

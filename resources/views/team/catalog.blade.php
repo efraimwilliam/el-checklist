@@ -1,7 +1,7 @@
 <x-app-layout title="{{ __('Kamus daftar tugas') }}">
     <div class="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
-            <h1 class="text-3xl text-slate-900">{{ __('Kamus daftar tugas') }}</h1>
+            <h1 class="text-page">{{ __('Kamus daftar tugas') }}</h1>
             <p class="text-sm text-slate-500">{{ __('Semua tugas aktif tiap jabatan. Urutkan dengan mengetuk judul kolom.') }}</p>
         </div>
         <div class="flex flex-wrap gap-2">
@@ -57,7 +57,7 @@
 
         <div class="overflow-x-auto">
             <table class="min-w-full text-sm">
-                <thead class="bg-[#fbf6ea] text-left text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
+                <thead class="bg-gold-50 text-left text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
                     <tr>
                         @foreach (['department' => __('Departemen'), 'position' => __('Jabatan'), 'section' => __('Jenis'), 'title' => __('Nama tugas')] as $key => $label)
                             <th class="px-4 py-3" data-sort-th="{{ $key }}" aria-sort="{{ $key === 'department' ? 'ascending' : 'none' }}">
@@ -87,7 +87,7 @@
                             <td class="px-4 py-2.5 text-slate-900">{{ $task->title }}</td>
                             <td class="max-w-xs px-4 py-2.5 text-slate-500">{{ $task->standard ?? '—' }}</td>
                             <td class="whitespace-nowrap px-4 py-2 text-right">
-                                <button type="button" class="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:bg-[#f6efdf] hover:text-gold-700"
+                                <button type="button" class="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:bg-gold-100 hover:text-gold-700"
                                     data-edit-task data-id="{{ $task->id }}" data-url="{{ route('team.catalog.tasks.update', $task) }}"
                                     data-title="{{ $task->title }}" data-section="{{ $task->section }}" data-standard="{{ $task->standard }}" data-position="{{ $task->position->name }}" data-position-id="{{ $task->position_id }}" data-parameters="{{ json_encode($task->parameters->map(fn ($p) => $p->only(['name', 'type', 'unit', 'min_value', 'max_value', 'options', 'normal_option']))->values()) }}"
                                     aria-label="{{ __('Ubah tugas') }}" title="{{ __('Ubah tugas') }}">
@@ -128,15 +128,15 @@
     </div>
 
     @if ($catalog->flatMap->positions->isNotEmpty())
-        <dialog id="task-dialog" aria-labelledby="task-dialog-title" class="m-auto w-[min(42rem,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl backdrop:bg-[#2a1d12]/50">
+        <dialog id="task-dialog" aria-labelledby="task-dialog-title" class="dialog-panel w-[min(42rem,calc(100vw-2rem))]">
             <form method="POST" action="{{ route('team.tasks.store') }}" class="space-y-4 p-6">
                 @csrf
                 <div class="flex items-start justify-between gap-3">
                     <div>
-                        <h2 id="task-dialog-title" class="font-display text-2xl text-slate-900">{{ __('Tambah tugas') }}</h2>
+                        <h2 id="task-dialog-title" class="text-section">{{ __('Tambah tugas') }}</h2>
                         <p class="text-sm text-slate-500">{{ __('Tugas baru masuk ke checklist yang dibuat sesudahnya.') }}</p>
                     </div>
-                    <button type="button" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-2xl leading-none text-slate-500 hover:bg-[#f6efdf] hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-500" aria-label="{{ __('Tutup') }}" data-close-task-dialog>{{ __('×') }}</button>
+                    <button type="button" class="dialog-close" aria-label="{{ __('Tutup') }}" data-close-task-dialog>{{ __('×') }}</button>
                 </div>
 
                 <div>
@@ -192,17 +192,17 @@
             @endforeach
         </datalist>
 
-        <dialog id="edit-task-dialog" aria-labelledby="edit-task-title" class="m-auto w-[min(42rem,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl backdrop:bg-[#2a1d12]/50">
+        <dialog id="edit-task-dialog" aria-labelledby="edit-task-title" class="dialog-panel w-[min(42rem,calc(100vw-2rem))]">
             <form method="POST" id="edit-task-form" action="" class="space-y-4 p-6">
                 @csrf
                 @method('PUT')
                 <input type="hidden" name="editing" id="edit-task-id" value="{{ old('editing') }}">
                 <div class="flex items-start justify-between gap-3">
                     <div>
-                        <h2 id="edit-task-title" class="font-display text-2xl text-slate-900">{{ __('Ubah tugas') }}</h2>
+                        <h2 id="edit-task-title" class="text-section">{{ __('Ubah tugas') }}</h2>
                         <p class="text-sm text-slate-500" id="edit-task-position"></p>
                     </div>
-                    <button type="button" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-2xl leading-none text-slate-500 hover:bg-[#f6efdf] hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-500" aria-label="{{ __('Tutup') }}" data-close-edit-dialog>{{ __('×') }}</button>
+                    <button type="button" class="dialog-close" aria-label="{{ __('Tutup') }}" data-close-edit-dialog>{{ __('×') }}</button>
                 </div>
 
                 <div>
@@ -250,11 +250,11 @@
             </form>
         </dialog>
 
-        <dialog id="delete-task-dialog" aria-labelledby="delete-task-title" class="m-auto w-[min(28rem,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl backdrop:bg-[#2a1d12]/50">
+        <dialog id="delete-task-dialog" aria-labelledby="delete-task-title" class="dialog-panel w-[min(28rem,calc(100vw-2rem))]">
             <form method="POST" id="delete-task-form" action="" class="space-y-4 p-6">
                 @csrf
                 @method('DELETE')
-                <h2 id="delete-task-title" class="font-display text-2xl text-slate-900">{{ __('Hapus tugas?') }}</h2>
+                <h2 id="delete-task-title" class="text-section">{{ __('Hapus tugas?') }}</h2>
                 <p class="text-sm text-slate-600">"<span id="delete-task-name" class="font-semibold text-slate-900"></span>{{ __('" di') }} <span id="delete-task-position"></span> {{ __('akan dihapus dari daftar. Checklist yang sudah dibuat tidak berubah.') }}</p>
                 <div class="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
                     <button type="button" class="btn-secondary" data-close-delete-dialog autofocus>{{ __('Batal') }}</button>
@@ -410,14 +410,14 @@
     @endif
 
     @can('manage-team-tasks')
-        <dialog id="import-dialog" aria-labelledby="import-dialog-title" class="m-auto w-[min(56rem,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl backdrop:bg-[#2a1d12]/50">
+        <dialog id="import-dialog" aria-labelledby="import-dialog-title" class="dialog-panel w-[min(56rem,calc(100vw-2rem))]">
             <div class="flex max-h-[92vh] flex-col">
                 <div class="flex items-start justify-between gap-3 border-b border-slate-100 px-6 pb-4 pt-6">
                     <div>
-                        <h2 id="import-dialog-title" class="font-display text-2xl text-slate-900">{{ __('Impor kamus daftar tugas') }}</h2>
+                        <h2 id="import-dialog-title" class="text-section">{{ __('Impor kamus daftar tugas') }}</h2>
                         <p class="text-sm text-slate-500">{{ __('Unduh daftar dari Excel, ubah isinya, lalu unggah lagi. Periksa dulu sebelum disimpan.') }}</p>
                     </div>
-                    <button type="button" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-2xl leading-none text-slate-500 hover:bg-[#f6efdf] hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-500" aria-label="{{ __('Tutup') }}" data-close-import-dialog>{{ __('×') }}</button>
+                    <button type="button" class="dialog-close" aria-label="{{ __('Tutup') }}" data-close-import-dialog>{{ __('×') }}</button>
                 </div>
                 <div class="overflow-y-auto px-6 pb-6 pt-4" data-import-body aria-live="polite">
                     <p class="text-sm text-slate-500">{{ __('Memuat…') }}</p>
@@ -462,17 +462,17 @@
                     const zone = event.target.closest('[data-dropzone]');
                     if (!zone) return;
                     event.preventDefault();
-                    zone.classList.add('border-gold-500', 'bg-[#f6efdf]');
+                    zone.classList.add('border-gold-500', 'bg-gold-100');
                 });
                 body.addEventListener('dragleave', (event) => {
                     const zone = event.target.closest('[data-dropzone]');
-                    if (zone) zone.classList.remove('border-gold-500', 'bg-[#f6efdf]');
+                    if (zone) zone.classList.remove('border-gold-500', 'bg-gold-100');
                 });
                 body.addEventListener('drop', (event) => {
                     const zone = event.target.closest('[data-dropzone]');
                     if (!zone) return;
                     event.preventDefault();
-                    zone.classList.remove('border-gold-500', 'bg-[#f6efdf]');
+                    zone.classList.remove('border-gold-500', 'bg-gold-100');
                     const file = event.dataTransfer.files[0];
                     if (!file) return;
                     const input = zone.querySelector('input[type=file]');

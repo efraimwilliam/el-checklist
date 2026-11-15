@@ -1,13 +1,9 @@
 <x-app-layout :title="__('Profil saya')">
     <div class="card mb-4 mt-2 p-5">
         <p class="eyebrow"><span class="h-px w-6 bg-gold-500"></span>{{ __('Akun sistem') }}</p>
-        <h1 class="text-2xl leading-tight text-slate-900 sm:text-3xl">{{ $user->name() }}</h1>
+        <h1 class="text-page">{{ $user->name() }}</h1>
         <p class="text-sm text-slate-500">{{ __('Username :username · password khusus Checklist', ['username' => $user->employee->username]) }}</p>
     </div>
-
-    @if (session('status'))
-        <div class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{{ session('status') }}</div>
-    @endif
 
     <form method="POST" action="{{ route('profile.update') }}" class="card max-w-xl space-y-5 p-6">
         @csrf

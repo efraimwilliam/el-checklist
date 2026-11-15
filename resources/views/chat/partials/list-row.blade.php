@@ -10,7 +10,7 @@
         $prefix = $last && ! $last->isSystem() && ! $mineLast && ! $item->isDirect() ? ($last->user?->name() ?? '—').': ' : '';
     @endphp
     <a href="{{ route('chat.show', $viewingAll ? ['thread' => $item, 'semua' => 1] : $item) }}" data-thread-link data-row-surface
-       @class(['relative z-[1] flex touch-pan-y items-center gap-3 px-3 py-2.5 transition-colors hover:bg-[#faf6ec]', 'bg-[#f6efdf]' => $activeId === $item->id, 'bg-white' => $activeId !== $item->id])
+       @class(['relative z-[1] flex touch-pan-y items-center gap-3 px-3 py-2.5 transition-colors hover:bg-gold-50', 'bg-gold-100' => $activeId === $item->id, 'bg-white' => $activeId !== $item->id])
        @if ($activeId === $item->id) aria-current="page" @endif>
         <span class="relative shrink-0" aria-hidden="true">
             @include('chat.partials.avatar', ['thread' => $item, 'viewer' => $me, 'size' => 'h-12 w-12 text-base'])

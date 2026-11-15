@@ -9,7 +9,7 @@
     @endphp
 
     <div class="mb-5">
-        <h1 class="text-3xl text-slate-900">{{ __('Dashboard') }}</h1>
+        <h1 class="text-page">{{ __('Dashboard') }}</h1>
         <p class="text-sm text-slate-500">{{ __('Progres checklist per departemen, tren, dan hal yang perlu perhatian.') }}</p>
 
         <form method="GET" action="{{ route('dashboard') }}" class="mt-4" data-dashboard-filter>
@@ -53,7 +53,7 @@
     {{-- Status departemen --}}
     <section class="card mb-6 p-5">
         <div class="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-            <h2 class="font-display text-2xl text-slate-900">{{ __('Status departemen') }}</h2>
+            <h2 class="text-section">{{ __('Status departemen') }}</h2>
             <p class="text-sm text-slate-500">{{ __('Jabatan dicek & status isi dalam rentang') }} {{ $from->translatedFormat('d M') }} – {{ $to->translatedFormat('d M Y') }}</p>
         </div>
         <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -86,7 +86,7 @@
     <div class="mb-6 grid gap-6 lg:grid-cols-3">
         {{-- Tren skor harian --}}
         <section class="card p-5 lg:col-span-2">
-            <h2 class="font-display text-xl text-slate-900">{{ __('Tren skor harian') }}</h2>
+            <h2 class="text-section">{{ __('Tren skor harian') }}</h2>
             <p class="mb-3 text-sm text-slate-500">{{ __('Persentase tugas Done per hari. Hari tanpa checklist dilewati.') }}</p>
             @php
                 $w = 640; $h = 220; $padL = 34; $padR = 12; $padT = 12; $padB = 28;
@@ -129,7 +129,7 @@
 
         {{-- Sebaran status tugas --}}
         <section class="card p-5">
-            <h2 class="font-display text-xl text-slate-900">{{ __('Status tugas') }}</h2>
+            <h2 class="text-section">{{ __('Status tugas') }}</h2>
             <p class="mb-3 text-sm text-slate-500">{{ __('Semua tugas dalam periode.') }}</p>
             @if ($distTotal > 0)
                 @php $offset = 0; @endphp
@@ -163,7 +163,7 @@
     <div class="mb-6 grid gap-6 lg:grid-cols-2">
         {{-- Skor per departemen --}}
         <section class="card p-5">
-            <h2 class="font-display text-xl text-slate-900">{{ __('Skor per departemen') }}</h2>
+            <h2 class="text-section">{{ __('Skor per departemen') }}</h2>
             <p class="mb-4 text-sm text-slate-500">{{ __('Rata-rata dalam periode.') }}</p>
             <ul class="space-y-3">
                 @forelse ($deptScores as $row)
@@ -184,7 +184,7 @@
 
         {{-- Tugas sering tertunda --}}
         <section class="card p-5">
-            <h2 class="font-display text-xl text-slate-900">{{ __('Tugas sering tertunda') }}</h2>
+            <h2 class="text-section">{{ __('Tugas sering tertunda') }}</h2>
             <p class="mb-4 text-sm text-slate-500">{{ __('Paling sering berstatus Pending dalam periode.') }}</p>
             @php $maxPending = max(1, collect($topPending)->max('pending') ?? 1); @endphp
             <ul class="space-y-3">
@@ -195,7 +195,7 @@
                             <span class="shrink-0 tabular-nums font-semibold text-rose-700">{{ $row['pending'] }}×</span>
                         </div>
                         <div class="mt-1 h-2 overflow-hidden rounded-full bg-slate-100">
-                            <div class="h-full rounded-full bg-[#a8341f]" style="width: {{ round($row['pending'] / $maxPending * 100) }}%"></div>
+                            <div class="h-full rounded-full bg-rose-700" style="width: {{ round($row['pending'] / $maxPending * 100) }}%"></div>
                         </div>
                     </li>
                 @empty
@@ -207,7 +207,7 @@
 
     {{-- Status review --}}
     <section class="card p-5">
-        <h2 class="font-display text-xl text-slate-900">{{ __('Status review') }}</h2>
+        <h2 class="text-section">{{ __('Status review') }}</h2>
         <p class="mb-4 text-sm text-slate-500">{{ __('Checklist dalam periode berdasarkan tahap review.') }}</p>
         @php
             $reviewTotal = array_sum($reviews);
@@ -240,7 +240,7 @@
     <section class="card mt-6 p-5">
         <div class="mb-4 flex flex-wrap items-end justify-between gap-2">
             <div>
-                <h2 class="font-display text-xl text-slate-900">{{ __('Chronology Report') }}</h2>
+                <h2 class="text-section">{{ __('Chronology Report') }}</h2>
                 <p class="text-sm text-slate-500">{{ __('Laporan kejadian tamu yang dibuat dalam periode.') }}</p>
             </div>
             <a href="{{ route('chronology.index') }}" class="text-sm font-semibold text-sky-700 hover:underline">{{ __('Buka Chronology Report') }} &rsaquo;</a>

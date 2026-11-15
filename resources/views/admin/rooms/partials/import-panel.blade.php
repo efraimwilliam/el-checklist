@@ -6,7 +6,7 @@
 <div class="card mb-4 space-y-3 p-5">
     <form method="POST" action="{{ route('admin.rooms.import.preview') }}" enctype="multipart/form-data" class="space-y-3" data-import-form>
         @csrf
-        <label for="berkas" class="flex cursor-pointer flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-gold-300 bg-[#fbf7ee] px-6 py-8 text-center transition hover:bg-[#f6efdf]" data-dropzone>
+        <label for="berkas" class="flex cursor-pointer flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-gold-300 bg-[#fbf7ee] px-6 py-8 text-center transition hover:bg-gold-100" data-dropzone>
             <span class="font-semibold text-slate-800">{{ __('Seret berkas Excel ke sini') }}</span>
             <span class="text-sm text-slate-500">{{ __('atau klik untuk memilih (.xlsx)') }}</span>
             <span class="text-sm font-medium text-slate-700" data-dropzone-name></span>
@@ -26,12 +26,12 @@
 
 @if ($plan)
     <section class="card mb-4 p-5">
-        <h2 class="font-display text-xl text-slate-900">{{ __('Hasil pemeriksaan') }}</h2>
+        <h2 class="text-section">{{ __('Hasil pemeriksaan') }}</h2>
         @if (! empty($file))<p class="text-sm text-slate-500">{{ __('Berkas: :file', ['file' => $file]) }}</p>@endif
         <dl class="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
             <div><dt class="text-slate-500">{{ __('Kamar baru') }}</dt><dd class="font-display text-2xl text-emerald-800">{{ count($plan['create']) }}</dd></div>
-            <div><dt class="text-slate-500">{{ __('Diperbarui') }}</dt><dd class="font-display text-2xl text-slate-900">{{ count($plan['update']) }}</dd></div>
-            <div><dt class="text-slate-500">{{ __('Tidak berubah') }}</dt><dd class="font-display text-2xl text-slate-900">{{ $plan['same'] }}</dd></div>
+            <div><dt class="text-slate-500">{{ __('Diperbarui') }}</dt><dd class="text-section">{{ count($plan['update']) }}</dd></div>
+            <div><dt class="text-slate-500">{{ __('Tidak berubah') }}</dt><dd class="text-section">{{ $plan['same'] }}</dd></div>
             <div><dt class="text-slate-500">{{ __('Kesalahan') }}</dt><dd class="font-display text-2xl {{ $plan['errors'] ? 'text-rose-700' : 'text-slate-900' }}">{{ count($plan['errors']) }}</dd></div>
         </dl>
 

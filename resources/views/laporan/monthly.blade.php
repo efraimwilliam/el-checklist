@@ -1,8 +1,5 @@
 <x-app-layout title="{{ __('Laporan bulanan') }}">
-    <div class="mb-5">
-        <h1 class="text-3xl text-slate-900">{{ __('Laporan bulanan') }}</h1>
-        <p class="text-sm text-slate-500">{{ __('Dari ringkasan harian yang disimpan tiap malam (12 bulan terakhir), jadi tetap ada walau checklist lama dihapus.') }}</p>
-    </div>
+    <x-ui.page-header :title="__('Laporan bulanan')" :subtitle="__('Dari ringkasan harian yang disimpan tiap malam (12 bulan terakhir), jadi tetap ada walau checklist lama dihapus.')" />
 
     <form method="GET" action="{{ route('laporan.monthly') }}" class="mb-6 print:hidden">
         <label class="text-sm text-slate-600">{{ __('Departemen') }}
@@ -17,7 +14,7 @@
         @if ($months)
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-sm">
-                    <thead class="bg-slate-50 text-xs uppercase text-slate-500"><tr>
+                    <thead class="bg-gold-50 text-left text-xs font-semibold uppercase tracking-[0.08em] text-slate-500"><tr>
                         <th class="px-4 py-2">{{ __('Bulan') }}</th><th class="px-4 py-2 text-right">{{ __('Hari') }}</th><th class="px-4 py-2 text-right">{{ __('Checklist') }}</th>
                         <th class="px-4 py-2 text-right">{{ __('Skor') }}</th><th class="px-4 py-2 text-right">Pending</th><th class="px-4 py-2 text-right">{{ __('% Pending') }}</th><th class="px-4 py-2 text-right">{{ __('Kosong') }}</th>
                     </tr></thead>
@@ -43,7 +40,7 @@
 
     @if ($byDepartment)
         <section class="card mb-6 overflow-hidden">
-            <h2 class="border-b border-slate-100 p-5 font-display text-xl text-slate-900">{{ __('Per departemen') }} · {{ \Carbon\CarbonImmutable::createFromFormat('Y-m-d', $month.'-01')->translatedFormat('F Y') }}</h2>
+            <h2 class="border-b border-slate-100 p-5 text-section">{{ __('Per departemen') }} · {{ \Carbon\CarbonImmutable::createFromFormat('Y-m-d', $month.'-01')->translatedFormat('F Y') }}</h2>
             @foreach ($byDepartment as $row)
                 <div class="flex flex-wrap justify-between gap-2 border-b border-slate-100 px-5 py-2 text-sm last:border-0">
                     <span>{{ $row['name'] }}</span>

@@ -5,7 +5,7 @@
 <div class="card mb-4 space-y-3 p-5">
     <form method="POST" action="{{ route('team.catalog.import.preview') }}" enctype="multipart/form-data" class="space-y-3" data-import-form>
         @csrf
-        <label for="berkas" class="flex cursor-pointer flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-gold-300 bg-[#fbf7ee] px-6 py-8 text-center transition hover:bg-[#f6efdf]" data-dropzone>
+        <label for="berkas" class="flex cursor-pointer flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-gold-300 bg-[#fbf7ee] px-6 py-8 text-center transition hover:bg-gold-100" data-dropzone>
             <span class="font-semibold text-slate-800">{{ __('Seret berkas Excel ke sini') }}</span>
             <span class="text-sm text-slate-500">{{ __('atau klik untuk memilih (.xlsx)') }}</span>
             <span class="text-sm font-medium text-slate-700" data-dropzone-name></span>
@@ -54,7 +54,7 @@
     @if ($changes)
         <div class="card mb-4 overflow-x-auto p-0">
             <table class="min-w-full text-sm">
-                <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
+                <thead class="bg-gold-50 text-left text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
                     <tr>
                         <th class="px-4 py-3">{{ __('Baris') }}</th>
                         <th class="px-4 py-3">{{ __('Aksi') }}</th>

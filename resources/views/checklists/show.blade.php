@@ -9,7 +9,7 @@
     <div class="card mb-4 p-5">
         <div class="flex flex-wrap items-start justify-between gap-3">
             <div>
-                <h1 class="text-3xl leading-tight text-slate-900">{{ $checklist->employee->name }}</h1>
+                <h1 class="text-page">{{ $checklist->employee->name }}</h1>
                 <p class="mt-1 text-sm text-slate-500">{{ $checklist->position_name }} · {{ $checklist->department->name }}</p>
             </div>
             <x-status-badge :status="$checklist->status" />

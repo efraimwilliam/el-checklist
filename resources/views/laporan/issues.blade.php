@@ -36,7 +36,7 @@
     </div>
 
     {{-- Saring: departemen dan pencarian. Pilihan departemen langsung diterapkan. --}}
-    <form method="GET" action="{{ route('laporan.issues') }}" class="card mb-5 grid gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_auto] sm:items-end print:hidden">
+    <form method="GET" action="{{ route('laporan.issues') }}" data-filters class="card mb-5 grid gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_auto] sm:items-end print:hidden">
         <input type="hidden" name="from" value="{{ $from->toDateString() }}">
         <input type="hidden" name="to" value="{{ $to->toDateString() }}">
         <div>
@@ -60,7 +60,7 @@
     @if ($noResults)
         <div class="card mb-6 p-10 text-center">
             <svg class="mx-auto mb-3 text-slate-300" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-            <p class="font-display text-xl text-slate-900">{{ __('Tidak ditemukan') }}</p>
+            <p class="text-section">{{ __('Tidak ditemukan') }}</p>
             <p class="mx-auto mt-1 max-w-md text-sm text-slate-500">{{ __('Tidak ada tugas, alasan, atau staff yang cocok dengan “:q” pada rentang ini. Periksa ejaannya, coba kata yang lebih pendek, atau perluas rentang tanggal.', ['q' => $search]) }}</p>
         </div>
     @else
@@ -77,7 +77,7 @@
     <section id="terbuka" data-tab-panel="terbuka" class="card mb-6 overflow-hidden">
         <div class="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 p-5">
             <div>
-                <h2 class="font-display text-xl text-slate-900">{{ __('Masalah terbuka') }}</h2>
+                <h2 class="text-section">{{ __('Masalah terbuka') }}</h2>
                 <p class="mt-1 text-sm text-slate-500">{{ __('Pending yang belum selesai, tertua dulu. Pending yang esoknya sudah Done ditandai selesai otomatis.') }}</p>
             </div>
             <a class="btn-secondary print:hidden" href="{{ route('laporan.issues', $dateParams + ['department_id' => $departmentId, 'q' => $search, 'all' => $showAll ? null : 1]) }}">{{ $showAll ? __('Sembunyikan yang selesai') : __('Tampilkan yang selesai') }}</a>
@@ -133,7 +133,7 @@
     {{-- 2. Tugas bermasalah: tugas mana yang paling sering bermasalah --}}
     <section id="bermasalah" data-tab-panel="bermasalah" class="card mb-6 overflow-hidden">
         <div class="border-b border-slate-100 p-5">
-            <h2 class="font-display text-xl text-slate-900">{{ __('Tugas paling bermasalah') }}</h2>
+            <h2 class="text-section">{{ __('Tugas paling bermasalah') }}</h2>
             <p class="mt-1 text-sm text-slate-500">{{ __('Bermasalah = Pending, Ongoing, atau kosong. Ketuk tugas untuk melihat setiap kejadiannya.') }}</p>
         </div>
 
@@ -166,7 +166,7 @@
     {{-- 3. Pending berulang --}}
     <section id="berulang" data-tab-panel="berulang" class="card mb-6 overflow-hidden">
         <div class="border-b border-slate-100 p-5">
-            <h2 class="font-display text-xl text-slate-900">{{ __('Pending berulang') }}</h2>
+            <h2 class="text-section">{{ __('Pending berulang') }}</h2>
             <p class="mt-1 text-sm text-slate-500">{{ __('Tugas yang sama dan staff yang sama, Pending :streak hari berturut-turut atau :count kali atau lebih.', ['streak' => $streak, 'count' => $count]) }}</p>
         </div>
 
@@ -192,7 +192,7 @@
     {{-- 4. Peta panas: kapan masalah sering muncul --}}
     <section id="peta" data-tab-panel="peta" class="card mb-6 overflow-hidden">
         <div class="border-b border-slate-100 p-5">
-            <h2 class="font-display text-xl text-slate-900">{{ __('Peta panas: Pending per hari') }}</h2>
+            <h2 class="text-section">{{ __('Peta panas: Pending per hari') }}</h2>
             <p class="mt-1 text-sm text-slate-500">{{ __('Persentase tugas Pending per departemen dan hari dalam seminggu. Makin gelap, makin sering bermasalah.') }}</p>
         </div>
         @if ($heatmap['rows'])
@@ -219,7 +219,7 @@
     {{-- 5. Alasan Pending --}}
     <section id="alasan" data-tab-panel="alasan" class="card mb-6 overflow-hidden">
         <div class="border-b border-slate-100 p-5">
-            <h2 class="font-display text-xl text-slate-900">{{ __('Alasan Pending') }}</h2>
+            <h2 class="text-section">{{ __('Alasan Pending') }}</h2>
             <p class="mt-1 text-sm text-slate-500">{{ __('100 alasan terbaru. Gunakan kotak cari di atas untuk menyaring.') }}</p>
         </div>
         @forelse ($reasons as $reason)

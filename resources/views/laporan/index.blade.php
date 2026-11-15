@@ -6,7 +6,7 @@
 
     <div class="mb-5 flex flex-wrap items-start justify-between gap-4 print:mb-3">
         <div>
-            <h1 class="text-3xl text-slate-900">{{ __('Laporan') }}</h1>
+            <h1 class="text-page">{{ __('Laporan') }}</h1>
             <p class="text-sm text-slate-500">{{ \App\Support\DateRange::label($from, $to) }} · {{ $days }} hari</p>
         </div>
         <div class="flex flex-wrap items-center gap-3 print:hidden">
@@ -73,12 +73,12 @@
     {{-- Per departemen --}}
     <section class="card mb-6 overflow-hidden">
         <div class="border-b border-slate-100 px-5 py-4">
-            <h2 class="font-display text-xl text-slate-900">{{ __('Per departemen') }}</h2>
+            <h2 class="text-section">{{ __('Per departemen') }}</h2>
             <p class="text-sm text-slate-500">{{ __('Kelengkapan, pending, dan review. Staff yang belum punya checklist bisa dibuka.') }}</p>
         </div>
         <div class="overflow-x-auto">
             <table class="min-w-full text-sm">
-                <thead class="bg-[#fbf6ea] text-left text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
+                <thead class="bg-gold-50 text-left text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
                     <tr>
                         <th class="px-4 py-3">{{ __('Departemen') }}</th>
                         <th class="px-4 py-3 text-right">{{ __('Checklist') }}</th>
@@ -129,7 +129,7 @@
     <div class="mb-6 grid gap-6 lg:grid-cols-2">
         {{-- Tugas sering tertunda --}}
         <section class="card p-5">
-            <h2 class="font-display text-xl text-slate-900">{{ __('Tugas sering tertunda') }}</h2>
+            <h2 class="text-section">{{ __('Tugas sering tertunda') }}</h2>
             <p class="mb-4 text-sm text-slate-500">{{ __('Paling sering berstatus Pending dalam rentang ini.') }}</p>
             @php $maxPending = max(1, collect($topPending)->max('pending') ?? 1); @endphp
             <ul class="space-y-3">
@@ -139,7 +139,7 @@
                             <span class="min-w-0 text-slate-800">{{ $row['title'] }} <span class="text-xs text-slate-500">· {{ $row['department'] }}</span></span>
                             <span class="shrink-0 tabular-nums font-semibold text-rose-700">{{ $row['pending'] }}×</span>
                         </div>
-                        <div class="mt-1 h-2 overflow-hidden rounded-full bg-slate-100"><div class="h-full rounded-full bg-[#a8341f]" style="width: {{ round($row['pending'] / $maxPending * 100) }}%"></div></div>
+                        <div class="mt-1 h-2 overflow-hidden rounded-full bg-slate-100"><div class="h-full rounded-full bg-rose-700" style="width: {{ round($row['pending'] / $maxPending * 100) }}%"></div></div>
                     </li>
                 @empty
                     <li class="py-6 text-center text-sm text-slate-500">{{ __('Tidak ada tugas yang tertunda.') }}</li>
@@ -149,7 +149,7 @@
 
         {{-- Alasan Pending terbaru --}}
         <section class="card p-5">
-            <h2 class="font-display text-xl text-slate-900">{{ __('Alasan Pending terbaru') }}</h2>
+            <h2 class="text-section">{{ __('Alasan Pending terbaru') }}</h2>
             <p class="mb-4 text-sm text-slate-500">{{ __('Catatan dari tugas yang Pending, terbaru dulu.') }}</p>
             <ul class="divide-y divide-slate-100 text-sm">
                 @forelse ($reasons as $reason)
@@ -169,11 +169,11 @@
     <div class="mb-6 grid gap-6 lg:grid-cols-2">
         <section class="card overflow-hidden">
             <div class="border-b border-slate-100 px-5 py-4">
-                <h2 class="font-display text-xl text-slate-900">{{ __('Skor per jabatan') }}</h2>
+                <h2 class="text-section">{{ __('Skor per jabatan') }}</h2>
                 <p class="text-sm text-slate-500">{{ __('Terendah dulu. Jabatan dengan skor rendah perlu dibina atau tugasnya ditinjau.') }}</p>
             </div>
             <table class="min-w-full text-sm">
-                <thead class="bg-[#fbf6ea] text-left text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
+                <thead class="bg-gold-50 text-left text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
                     <tr><th class="px-4 py-2.5">{{ __('Jabatan') }}</th><th class="px-4 py-2.5 text-right">{{ __('Checklist') }}</th><th class="px-4 py-2.5 text-right">{{ __('Skor') }}</th><th class="px-4 py-2.5 text-right">{{ __('Pending') }}</th></tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -193,11 +193,11 @@
 
         <section class="card overflow-hidden">
             <div class="border-b border-slate-100 px-5 py-4">
-                <h2 class="font-display text-xl text-slate-900">{{ __('Skor per staff (10 terendah)') }}</h2>
+                <h2 class="text-section">{{ __('Skor per staff (10 terendah)') }}</h2>
                 <p class="text-sm text-slate-500">{{ __('Hanya staff yang sudah punya checklist dalam rentang ini.') }}</p>
             </div>
             <table class="min-w-full text-sm">
-                <thead class="bg-[#fbf6ea] text-left text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
+                <thead class="bg-gold-50 text-left text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
                     <tr><th class="px-4 py-2.5">{{ __('Staff') }}</th><th class="px-4 py-2.5 text-right">{{ __('Checklist') }}</th><th class="px-4 py-2.5 text-right">{{ __('Skor') }}</th><th class="px-4 py-2.5 text-right">{{ __('Pending') }}</th></tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -219,7 +219,7 @@
     <div class="mb-6 grid gap-6 lg:grid-cols-2">
         {{-- Tugas sering dilewati per staff --}}
         <section class="card p-5">
-            <h2 class="font-display text-xl text-slate-900">{{ __('Tugas sering dilewati') }}</h2>
+            <h2 class="text-section">{{ __('Tugas sering dilewati') }}</h2>
             <p class="mb-4 text-sm text-slate-500">{{ __('Tugas yang berulang kali Pending atau dibiarkan kosong untuk satu staff.') }}</p>
             <ul class="divide-y divide-slate-100 text-sm">
                 @forelse ($skipped as $row)
@@ -235,25 +235,25 @@
 
         {{-- Kebiasaan pengisian & review --}}
         <section class="card p-5">
-            <h2 class="font-display text-xl text-slate-900">{{ __('Kebiasaan pengisian & review') }}</h2>
+            <h2 class="text-section">{{ __('Kebiasaan pengisian & review') }}</h2>
             <p class="mb-4 text-sm text-slate-500">{{ __('Checklist diisi di hari yang sama dengan tanggalnya, dan berapa lama sampai direview.') }}</p>
             <dl class="grid grid-cols-2 gap-4 text-sm">
-                <div class="rounded-xl bg-[#fbf6ea] p-4">
+                <div class="rounded-xl bg-gold-50 p-4">
                     <dt class="text-slate-500">{{ __('Diisi di hari yang sama') }}</dt>
                     <dd class="mt-1 font-display text-2xl tabular-nums text-slate-900">{{ $habits['sameDayRate'] !== null ? $habits['sameDayRate'].'%' : '—' }}</dd>
                     <dd class="text-xs text-slate-500">{{ $habits['sameDay'] }} {{ __('dari') }} {{ $habits['total'] }} {{ __('checklist') }}</dd>
                 </div>
-                <div class="rounded-xl bg-[#fbf6ea] p-4">
+                <div class="rounded-xl bg-gold-50 p-4">
                     <dt class="text-slate-500">{{ __('Diisi belakangan') }}</dt>
                     <dd class="mt-1 font-display text-2xl tabular-nums text-slate-900">{{ $habits['later'] }}</dd>
                     <dd class="text-xs text-slate-500">{{ __('Checklist yang baru dibuat setelah tanggalnya') }}</dd>
                 </div>
-                <div class="rounded-xl bg-[#fbf6ea] p-4">
+                <div class="rounded-xl bg-gold-50 p-4">
                     <dt class="text-slate-500">{{ __('Rata-rata sampai direview') }}</dt>
                     <dd class="mt-1 font-display text-2xl tabular-nums text-slate-900">{{ $habits['reviewAvgDays'] !== null ? $habits['reviewAvgDays'].' hari' : '—' }}</dd>
                     <dd class="text-xs text-slate-500">{{ $habits['reviewed'] }} {{ __('checklist sudah direview') }}</dd>
                 </div>
-                <div class="rounded-xl bg-[#fbf6ea] p-4">
+                <div class="rounded-xl bg-gold-50 p-4">
                     <dt class="text-slate-500">{{ __('Paling lama menunggu') }}</dt>
                     <dd class="mt-1 font-display text-2xl tabular-nums text-slate-900">{{ $habits['reviewMaxDays'] !== null ? $habits['reviewMaxDays'].' hari' : '—' }}</dd>
                     <dd class="text-xs text-slate-500">{{ __('Dari tanggal checklist ke review') }}</dd>
@@ -264,13 +264,13 @@
 
     {{-- Pola per hari dalam seminggu --}}
     <section class="card mb-6 p-5">
-        <h2 class="font-display text-xl text-slate-900">{{ __('Pola per hari') }}</h2>
+        <h2 class="text-section">{{ __('Pola per hari') }}</h2>
         <p class="mb-4 text-sm text-slate-500">{{ __('Persentase tugas Pending per hari dalam seminggu. Hari dengan Pending tinggi bisa menandakan beban kerja atau jadwal yang perlu dicek.') }}</p>
         <div class="grid grid-cols-7 gap-2">
             @foreach ($weekdays as $day)
                 <div class="flex flex-col items-center gap-2">
                     <div class="flex h-36 w-full items-end justify-center rounded-xl bg-slate-50 p-1.5">
-                        <div class="w-full rounded-lg bg-gradient-to-t from-[#8a5a2b] to-[#c9a24f]" style="height: {{ max(2, $day['rate'] ?? 0) }}%" title="{{ $day['label'] }}: {{ $day['rate'] !== null ? $day['rate'].'% Pending' : 'tidak ada data' }}"></div>
+                        <div class="w-full rounded-lg bg-gradient-to-t from-[#8a5a2b] to-gold-500" style="height: {{ max(2, $day['rate'] ?? 0) }}%" title="{{ $day['label'] }}: {{ $day['rate'] !== null ? $day['rate'].'% Pending' : 'tidak ada data' }}"></div>
                     </div>
                     <p class="text-xs font-semibold text-slate-600">{{ substr($day['label'], 0, 3) }}</p>
                     <p class="text-xs tabular-nums text-slate-500">{{ $day['rate'] !== null ? $day['rate'].'%' : '—' }}</p>
@@ -281,7 +281,7 @@
 
     {{-- Catatan tindak lanjut: pengguna menambahkan informasi untuk periode ini. --}}
     <section id="catatan" class="card mb-6 p-5">
-        <h2 class="font-display text-xl text-slate-900">{{ __('Catatan tindak lanjut') }}</h2>
+        <h2 class="text-section">{{ __('Catatan tindak lanjut') }}</h2>
         <p class="mb-4 text-sm text-slate-500">{{ __('Tambahkan informasi untuk periode ini, misalnya penyebab, rencana perbaikan, atau keputusan rapat.') }}</p>
 
         <form method="POST" action="{{ route('laporan.notes.store') }}" class="mb-6 grid gap-3 rounded-2xl border border-dashed border-gold-500/60 bg-[#fdfaf3] p-4 print:hidden">

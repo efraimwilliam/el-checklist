@@ -3,7 +3,7 @@
     <div class="flex border-b border-slate-200 text-sm" role="tablist">
         @foreach (['media' => __('Media').' ('.$photos->count().')', 'links' => __('Tautan').' ('.$links->count().')', 'docs' => __('Dokumen').' ('.$documents->count().')'] as $key => $label)
             <button type="button" role="tab" data-media-tab="{{ $key }}" aria-selected="{{ $loop->first ? 'true' : 'false' }}"
-                    class="flex-1 border-b-2 border-transparent px-2 py-2.5 font-medium text-slate-500 aria-selected:border-[#b08a3e] aria-selected:text-slate-900">{{ $label }}</button>
+                    class="flex-1 border-b-2 border-transparent px-2 py-2.5 font-medium text-slate-500 aria-selected:border-gold-600 aria-selected:text-slate-900">{{ $label }}</button>
         @endforeach
     </div>
 

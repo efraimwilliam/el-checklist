@@ -1,6 +1,6 @@
 {
-  "_push-D_xs6dIL.js": {
-    "file": "assets/push-D_xs6dIL.js",
+  "_push-DlGpmux4.js": {
+    "file": "assets/push-DlGpmux4.js",
     "name": "push"
   },
   "node_modules/@fontsource/inter/files/inter-latin-400-normal.woff": {
@@ -55,7 +55,7 @@
     ]
   },
   "resources/css/app.css": {
-    "file": "assets/app-CXFOebQk.css",
+    "file": "assets/app-ITXF2yhf.css",
     "name": "app",
     "names": [
       "app.css"
@@ -74,21 +74,21 @@
     ]
   },
   "resources/js/chat-widget.js": {
-    "file": "assets/chat-widget-lqIDRhUF.js",
+    "file": "assets/chat-widget-Bvr8dtB4.js",
     "name": "chat-widget",
     "src": "resources/js/chat-widget.js",
     "isEntry": true,
     "imports": [
-      "_push-D_xs6dIL.js"
+      "_push-DlGpmux4.js"
     ]
   },
   "resources/js/chat.js": {
-    "file": "assets/chat-C0jrbmm7.js",
+    "file": "assets/chat-ZpKfuEZM.js",
     "name": "chat",
     "src": "resources/js/chat.js",
     "isEntry": true,
     "imports": [
-      "_push-D_xs6dIL.js"
+      "_push-DlGpmux4.js"
     ]
   },
   "resources/js/checklist.js": {
@@ -147,6 +147,12 @@
     "file": "assets/pull-refresh-BH82MLZq.js",
     "name": "pull-refresh",
     "src": "resources/js/pull-refresh.js",
+    "isEntry": true
+  },
+  "resources/js/ui.js": {
+    "file": "assets/ui-BsfXUfxk.js",
+    "name": "ui",
+    "src": "resources/js/ui.js",
     "isEntry": true
   }
 }

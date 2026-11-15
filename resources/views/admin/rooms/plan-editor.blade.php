@@ -1,9 +1,9 @@
 <x-app-layout title="{{ __('Denah') }} {{ $plan->name }}">
     @vite(['resources/js/floor-plan-editor.js'])
 
-    <a href="{{ route('admin.rooms.index', ['tab' => 'denah']) }}" class="text-sm text-sky-700 hover:underline">{{ __('← Semua denah') }}</a>
+    <a href="{{ route('admin.rooms.index', ['tab' => 'denah']) }}" class="link-back"><span aria-hidden="true">‹</span> {{ __('Semua denah') }}</a>
     <div class="mb-4 mt-1">
-        <h1 class="text-3xl text-slate-900">{{ $plan->name }}</h1>
+        <h1 class="text-page">{{ $plan->name }}</h1>
         <p class="text-sm text-slate-500">{{ __('Pilih kamar di daftar, lalu seret di atas gambar untuk menggambar kotaknya. Kotak bisa digeser dan diubah ukurannya.') }}</p>
     </div>
 

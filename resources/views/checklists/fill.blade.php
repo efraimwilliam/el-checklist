@@ -1,6 +1,6 @@
 <x-app-layout title="{{ $staffMode ? __('Checklist saya') : ($mode === 'assign' ? __('Atur checklist harian') : __('Isi checklist')) }}">
     <div class="mb-4">
-        <h1 class="text-3xl text-slate-900">{{ $staffMode ? __('Checklist saya') : ($mode === 'assign' ? __('Atur checklist harian') : __('Isi checklist harian')) }}</h1>
+        <h1 class="text-page">{{ $staffMode ? __('Checklist saya') : ($mode === 'assign' ? __('Atur checklist harian') : __('Isi checklist harian')) }}</h1>
         @unless ($staffMode)
             <p class="mt-0.5 font-medium text-gold-700">{{ $date->translatedFormat('l, d F Y') }}</p>
         @endunless
@@ -90,7 +90,7 @@
 
         {{-- Satu tombol untuk semua staff yang masuk kerja (jadwal Absensi). --}}
         @if ($mode === 'assign' && $department)
-            <div class="card mb-4 flex flex-col gap-3 border-gold-500/40 bg-[#fbf6ea] p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div class="card mb-4 flex flex-col gap-3 border-gold-500/40 bg-gold-50 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div class="min-w-0">
                     <p class="font-semibold text-slate-900">
                         @if ($todo)
@@ -127,7 +127,7 @@
         {{-- Papan tim: ketuk nama staff untuk mulai / melanjutkan. --}}
         <div class="card mb-4">
             <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
-                <h2 class="font-display text-xl text-slate-900">{{ $department?->name }}</h2>
+                <h2 class="text-section">{{ $department?->name }}</h2>
                 @if ($board->count() > 6)
                     <input type="search" data-board-search placeholder="{{ __('Cari nama staff') }}" aria-label="{{ __('Cari nama staff') }}" class="input !w-full !py-2 sm:!w-60">
                 @endif
@@ -276,7 +276,7 @@
     @if ($staffMode && $position && ! $problem)
         <div class="card mb-4 flex flex-wrap items-center justify-between gap-4 p-4">
             <div>
-                <h2 class="font-display text-xl text-slate-900">{{ __('Isi checklist') }}</h2>
+                <h2 class="text-section">{{ __('Isi checklist') }}</h2>
                 <p class="text-sm text-slate-500">{{ __('Buat checklist hari ini untuk jabatan :position.', ['position' => $position->name]) }}</p>
             </div>
             <form method="POST" action="{{ route('fill.start') }}">
@@ -293,7 +293,7 @@
         <section class="card mb-4 p-4 sm:p-5">
             <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
                 <div class="min-w-0">
-                    <h2 class="font-display text-xl text-slate-900">{{ __('Rencana tugas hari berikutnya') }}</h2>
+                    <h2 class="text-section">{{ __('Rencana tugas hari berikutnya') }}</h2>
                     <p class="mt-0.5 text-sm text-slate-500">{{ __('Catatan saja: tugas bisa berubah sebelum harinya tiba.') }}</p>
                 </div>
                 <span class="{{ $futureFill ? 'bg-emerald-50 text-emerald-800' : 'bg-slate-100 text-slate-600' }} rounded-full px-3 py-1 text-xs font-semibold">
@@ -361,17 +361,17 @@
     @endif
 
     @if ($mode === 'assign')
-        <dialog id="plan-dialog" aria-labelledby="plan-title" class="m-auto w-[min(34rem,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl backdrop:bg-[#2a1d12]/50">
+        <dialog id="plan-dialog" aria-labelledby="plan-title" class="dialog-panel w-[min(34rem,calc(100vw-2rem))]">
             <form method="POST" action="{{ route('fill.plan.start') }}" class="space-y-4 p-6">
                 @csrf
                 <input type="hidden" name="employee" data-plan-employee>
                 <input type="hidden" name="date" value="{{ $date->toDateString() }}">
                 <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0">
-                        <h2 id="plan-title" class="font-display text-2xl text-slate-900" data-plan-title></h2>
+                        <h2 id="plan-title" class="text-section" data-plan-title></h2>
                         <p class="text-sm text-slate-500" data-plan-date></p>
                     </div>
-                    <button type="button" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-2xl leading-none text-slate-500 hover:bg-[#f6efdf]" data-plan-close aria-label="{{ __('Tutup') }}">×</button>
+                    <button type="button" class="dialog-close" data-plan-close aria-label="{{ __('Tutup') }}">×</button>
                 </div>
                 <div>
                     <label for="plan-position" class="label">{{ __('Jabatan') }}</label>
@@ -428,7 +428,7 @@
                     box.name = 'tasks[]';
                     box.value = task.id;
                     box.checked = picked.has(String(task.id)) ? picked.get(String(task.id)) : checked;
-                    box.className = 'mt-1 h-5 w-5 accent-[#b08a3e]';
+                    box.className = 'mt-1 h-5 w-5 accent-gold-600';
                     const text = document.createElement('span');
                     text.className = 'min-w-0 flex-1';
                     text.textContent = task.section ? `${task.section} · ${task.title}` : task.title;

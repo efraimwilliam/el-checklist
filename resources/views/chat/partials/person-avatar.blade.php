@@ -1,6 +1,6 @@
 {{-- Foto profil pegawai dari Sistem Absensi bila ada, selain itu inisial berwarna. $person = User, $size = kelas ukuran. --}}
 @php
-    $tones = ['bg-[#f3e6c4] text-[#8a6a22]', 'bg-sky-100 text-sky-800', 'bg-emerald-100 text-emerald-800', 'bg-rose-100 text-rose-800', 'bg-violet-100 text-violet-800', 'bg-orange-100 text-orange-800'];
+    $tones = ['bg-gold-200 text-gold-700', 'bg-sky-100 text-sky-800', 'bg-emerald-100 text-emerald-800', 'bg-rose-100 text-rose-800', 'bg-violet-100 text-violet-800', 'bg-orange-100 text-orange-800'];
     $photoUrl = $person->employee?->photoUrl();
 @endphp
 @if ($photoUrl)

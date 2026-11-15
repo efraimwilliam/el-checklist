@@ -44,6 +44,11 @@ if (root) {
     const setBadge = (count) => {
         badge.hidden = !count;
         badge.textContent = count > 99 ? '99+' : String(count);
+        // Angka Obrolan di navigasi bawah HP ikut diperbarui.
+        document.querySelectorAll('[data-chat-unread]').forEach((element) => {
+            element.hidden = !count;
+            element.querySelector('[data-count]').textContent = count > 99 ? '99+' : String(count);
+        });
     };
     const refreshUnread = async () => {
         if (document.hidden || isOpen()) return;
@@ -84,6 +89,10 @@ if (root) {
         refreshUnread();
     };
 
+    // Obrolan di navigasi bawah HP: catat halaman asal seperti tombol melayang, supaya panah kembali di daftar obrolan muncul.
+    document.querySelectorAll('[data-chat-open]').forEach((link) => link.addEventListener('click', () => {
+        try { sessionStorage.setItem('chat-return', window.location.href); } catch { /* tanpa tombol kembali */ }
+    }));
     fab.addEventListener('click', () => {
         // HP: halaman Obrolan biasa. Gulir, papan ketik, dan tombol kembali bekerja seperti halaman lain.
         if (narrow.matches) {

@@ -14,7 +14,7 @@
 
     <section class="card mb-6 overflow-hidden">
         <div class="border-b border-slate-100 p-5">
-            <h2 class="font-display text-xl text-slate-900">{{ __('Ringkasan nilai angka dan stand meter') }}</h2>
+            <h2 class="text-section">{{ __('Ringkasan nilai angka dan stand meter') }}</h2>
             <p class="mt-1 text-sm text-slate-600">{{ __('Rangkuman angka yang diisi pegawai pada tugas checklist berparameter angka atau stand meter (mis. suhu chiller, stand meter listrik), pada rentang tanggal yang dipilih. Satu baris = satu parameter pada satu tugas.') }}</p>
             <dl class="mt-3 grid gap-x-6 gap-y-1.5 text-xs text-slate-500 sm:grid-cols-2 lg:grid-cols-3">
                 <div><dt class="inline font-semibold text-slate-700">{{ __('Data') }}:</dt> <dd class="inline">{{ __('berapa kali angka itu diisi.') }}</dd></div>
@@ -27,7 +27,7 @@
         @if ($summary)
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-sm">
-                    <thead class="bg-slate-50 text-xs uppercase text-slate-500"><tr>
+                    <thead class="bg-gold-50 text-left text-xs font-semibold uppercase tracking-[0.08em] text-slate-500"><tr>
                         <th class="px-4 py-2">{{ __('Tugas') }}</th><th class="px-4 py-2">{{ __('Parameter') }}</th><th class="px-4 py-2">{{ __('Departemen') }}</th>
                         <th class="px-4 py-2 text-right" title="{{ __('Berapa kali angka diisi') }}">{{ __('Data') }}</th><th class="px-4 py-2 text-right" title="{{ __('Angka terkecil yang diisi') }}">Min</th><th class="px-4 py-2 text-right" title="{{ __('Rata-rata semua angka yang diisi') }}">{{ __('Rata-rata') }}</th><th class="px-4 py-2 text-right" title="{{ __('Angka terbesar yang diisi') }}">Maks</th>
                         <th class="px-4 py-2 text-right" title="{{ __('Jumlah angka yang melewati batas min / maks tugas') }}">{{ __('Di luar batas') }}</th><th class="px-4 py-2 text-right" title="{{ __('Stand meter: angka terakhir dikurangi angka pertama') }}">{{ __('Konsumsi') }}</th><th class="px-4 py-2"><span class="sr-only">{{ __('Riwayat') }}</span></th>
@@ -161,7 +161,7 @@
     </script>
 
     <section class="card mb-6 overflow-hidden">
-        <h2 class="border-b border-slate-100 p-5 font-display text-xl text-slate-900">{{ __('Di luar batas atau bukan nilai normal') }}</h2>
+        <h2 class="border-b border-slate-100 p-5 text-section">{{ __('Di luar batas atau bukan nilai normal') }}</h2>
         @forelse ($exceptions as $event)
             <div class="border-b border-slate-100 px-5 py-3 text-sm last:border-0">
                 <p class="text-slate-900"><a class="underline" href="{{ route('checklists.show', $event['checklist_id']) }}">{{ $event['title'] }}</a> · {{ $event['parameter'] }}: <strong class="text-rose-700">{{ $event['value'] }}</strong> <span class="text-slate-500">({{ $event['expected'] }})</span></p>

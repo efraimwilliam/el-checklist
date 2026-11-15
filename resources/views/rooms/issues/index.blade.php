@@ -15,13 +15,9 @@
     @endphp
 
     @unless (filled($chatThreadId))
-    <div class="mb-5 flex flex-wrap items-start justify-between gap-4">
-        <div>
-            <h1 class="text-3xl text-slate-900">{{ __('Kendala') }}</h1>
-            <p class="text-sm text-slate-500">{{ __('Catat kendala di kamar atau lokasi lain, teruskan ke departemen, jabatan, atau pegawai yang menangani, lalu catat pekerjaannya sampai selesai.') }}</p>
-        </div>
-        <button type="button" class="btn-primary" data-open-issue-dialog>{{ __('+ Catat kendala') }}</button>
-    </div>
+    <x-ui.page-header :title="__('Kendala')" :subtitle="__('Catat kendala di kamar atau lokasi lain, teruskan ke departemen, jabatan, atau pegawai yang menangani, lalu catat pekerjaannya sampai selesai.')">
+        <x-slot:actions><button type="button" class="btn-primary" data-open-issue-dialog>{{ __('+ Catat kendala') }}</button></x-slot:actions>
+    </x-ui.page-header>
 
     @if ($newForMe && $status !== 'baru')
         <a href="{{ route('kamar.issues.index', ['status' => 'baru']) }}" class="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 transition hover:bg-rose-100">
@@ -32,10 +28,10 @@
 
     {{-- Penyaring untuk atasan (HOD, HR, GM, Administrator). Pegawai (Staff) hanya mengisi kendala yang menjadi tugasnya, jadi tidak perlu. --}}
     @if ($me->role !== \App\Enums\Role::Staff)
-    <form method="GET" action="{{ route('kamar.issues.index') }}" class="card mb-5 grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1fr_auto] lg:items-end">
+    <form method="GET" action="{{ route('kamar.issues.index') }}" data-filters class="card mb-5 grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1fr_auto] lg:items-end">
         <div>
             <label for="f-status" class="label">{{ __('Status') }}</label>
-            <select id="f-status" name="status" class="input w-full" onchange="this.form.submit()">
+            <select id="f-status" name="status" data-default="open" class="input w-full" onchange="this.form.submit()">
                 @foreach ($statusLabels as $value => $label)<option value="{{ $value }}" @selected($status === $value)>{{ $label }}</option>@endforeach
             </select>
         </div>
@@ -70,7 +66,7 @@
             <a href="{{ route('kamar.issues.show', $issue) }}" class="flex flex-col gap-2 border-b border-slate-100 p-5 transition last:border-0 hover:bg-amber-50/50 sm:flex-row sm:items-start sm:justify-between {{ $forMe ? 'border-l-4 border-l-rose-500 bg-rose-50/40' : '' }}">
                 <div class="min-w-0">
                     <p class="flex flex-wrap items-center gap-2">
-                        <span class="font-display text-xl text-slate-900">{{ $issue->placeTitle() }}</span>
+                        <span class="text-section">{{ $issue->placeTitle() }}</span>
                         @if ($issue->room?->floor)<span class="text-sm text-slate-500">{{ __('Lantai') }} {{ $issue->room->floor }}</span>@endif
                         @if (! $issue->room_id)<span class="rounded-full bg-sky-50 px-2.5 py-0.5 text-xs text-sky-800">{{ __('Lokasi lain') }}</span>@endif
                         @if ($issue->category)<span class="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs text-slate-700">{{ $issue->category->name }}</span>@endif
@@ -88,41 +84,33 @@
                 <span class="shrink-0 rounded-full px-3 py-1 text-xs font-semibold {{ $tones[$issue->status] }}">{{ $labels[$issue->status] }}</span>
             </a>
         @empty
-            <div class="p-10 text-center">
-                <p class="font-medium text-slate-800">{{ __('Tidak ada kendala.') }}</p>
-                <p class="mt-1 text-sm text-slate-500">{{ ($search || $departmentId || $categoryId || $status !== 'open') ? __('Tidak ada yang cocok dengan filter ini. Ubah filter untuk melihat yang lain.') : __('Belum ada kendala yang belum selesai.') }}</p>
-            </div>
+            @php($filtered = $search || $departmentId || $categoryId || $status !== 'open')
+            <x-ui.empty-state class="m-4" :title="__('Tidak ada kendala.')" :text="$filtered ? __('Tidak ada yang cocok dengan filter ini. Ubah filter untuk melihat yang lain.') : __('Belum ada kendala yang belum selesai.')">
+                @if ($filtered)<a href="{{ route('kamar.issues.index') }}" class="btn-secondary btn-sm">{{ __('Hapus filter') }}</a>@else<button type="button" class="btn-primary btn-sm" data-open-issue-dialog>{{ __('+ Catat kendala') }}</button>@endif
+            </x-ui.empty-state>
         @endforelse
 
-        @if ($issues->hasPages())
-            <div class="flex items-center justify-between border-t border-slate-100 p-4 text-sm">
-                <span class="text-slate-500">{{ __('Halaman') }} {{ $issues->currentPage() }} / {{ $issues->lastPage() }}</span>
-                <span class="flex gap-2">
-                    @if ($issues->previousPageUrl())<a class="btn-secondary" href="{{ $issues->previousPageUrl() }}">&larr; {{ __('Sebelumnya') }}</a>@endif
-                    @if ($issues->hasMorePages())<a class="btn-secondary" href="{{ $issues->nextPageUrl() }}">{{ __('Berikutnya') }} &rarr;</a>@endif
-                </span>
-            </div>
-        @endif
+        <x-ui.pagination :paginator="$issues" />
     </section>
 
     @endunless
 
-    <dialog id="issue-dialog" @if ($openDialog) data-autoopen @endif data-chat-tool-main aria-labelledby="issue-dialog-title" class="m-auto max-h-[calc(100dvh-2rem)] w-[min(40rem,calc(100vw-2rem))] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl backdrop:bg-[#2a1d12]/50">
+    <dialog id="issue-dialog" @if ($openDialog) data-autoopen @endif data-chat-tool-main aria-labelledby="issue-dialog-title" class="dialog-panel max-h-[calc(100dvh-2rem)] w-[min(40rem,calc(100vw-2rem))] overflow-y-auto">
         <form method="POST" action="{{ route('kamar.issues.store') }}" class="space-y-5 p-6">
             @csrf
             @if (filled($chatThreadId))<input type="hidden" name="obrolan" value="{{ $chatThreadId }}">@endif
             <div class="flex items-start justify-between gap-3">
                 <div>
-                    <h2 id="issue-dialog-title" class="font-display text-2xl text-slate-900">{{ __('Catat kendala') }}</h2>
+                    <h2 id="issue-dialog-title" class="text-section">{{ __('Catat kendala') }}</h2>
                     <p class="text-sm text-slate-500">{{ __('Pilih lokasi, kategori, ke siapa diteruskan, lalu tulis kendalanya.') }}</p>
                 </div>
-                <button type="button" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-2xl leading-none text-slate-500 hover:bg-[#f6efdf]" aria-label="{{ __('Tutup') }}" data-close-issue-dialog>×</button>
+                <button type="button" class="dialog-close" aria-label="{{ __('Tutup') }}" data-close-issue-dialog>×</button>
             </div>
 
             {{-- Lokasi: kamar (pilih nomor) atau lokasi lain (pilih saran atau ketik sendiri). --}}
             <fieldset class="space-y-3">
                 <legend class="label">{{ __('Lokasi') }}</legend>
-                <div class="inline-flex rounded-full bg-[#f6efdf] p-1" role="group">
+                <div class="inline-flex rounded-full bg-gold-100 p-1" role="group">
                     <label class="{{ $segment }}"><input type="radio" name="place_type" value="room" class="sr-only" @checked($placeType === 'room') @disabled($rooms->isEmpty())> {{ __('Kamar') }}</label>
                     <label class="{{ $segment }}"><input type="radio" name="place_type" value="location" class="sr-only" @checked($placeType === 'location')> {{ __('Lokasi lain') }}</label>
                 </div>
@@ -162,7 +150,7 @@
             {{-- Diteruskan ke: satu departemen (bawaan dari kategori), satu jabatan, atau satu pegawai. --}}
             <fieldset class="space-y-3">
                 <legend class="label">{{ __('Diteruskan ke') }}</legend>
-                <div class="inline-flex rounded-full bg-[#f6efdf] p-1" role="group">
+                <div class="inline-flex rounded-full bg-gold-100 p-1" role="group">
                     <label class="{{ $segment }}"><input type="radio" name="target_type" value="department" class="sr-only" @checked($targetType === 'department')> {{ __('Departemen') }}</label>
                     <label class="{{ $segment }}"><input type="radio" name="target_type" value="position" class="sr-only" @checked($targetType === 'position')> {{ __('Jabatan') }}</label>
                     <label class="{{ $segment }}"><input type="radio" name="target_type" value="employee" class="sr-only" @checked($targetType === 'employee')> {{ __('Pegawai') }}</label>

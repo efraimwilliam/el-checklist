@@ -1,13 +1,8 @@
 <x-app-layout title="{{ __('Log aplikasi') }}">
-    <div class="mb-5 flex flex-wrap items-start justify-between gap-4">
-        <div>
-            <a href="{{ route('admin.settings.edit') }}" class="text-sm font-semibold text-sky-700 hover:underline">{{ __('← Pengaturan') }}</a>
-            <h1 class="mt-1 text-3xl text-slate-900">{{ __('Log aplikasi') }}</h1>
-            <p class="text-sm text-slate-500">{{ __('Semua aktivitas tercatat: login, perubahan checklist, tugas, jabatan, akses, dan pengaturan. PIN tidak pernah dicatat.') }}</p>
-        </div>
-    </div>
+    <x-ui.page-header :title="__('Log aplikasi')" :back="route('admin.settings.edit')" :back-label="__('Pengaturan')"
+        :subtitle="__('Semua aktivitas tercatat: login, perubahan checklist, tugas, jabatan, akses, dan pengaturan. PIN tidak pernah dicatat.')" />
 
-    <form method="GET" action="{{ route('admin.logs.index') }}" class="card mb-4 grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1.2fr)] lg:items-end">
+    <form method="GET" action="{{ route('admin.logs.index') }}" data-filters class="card mb-4 grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1.2fr)] lg:items-end">
         <div>
             <label for="log-search" class="label">{{ __('Cari') }}</label>
             <input id="log-search" type="search" name="q" value="{{ $search }}" placeholder="{{ __('Pengguna, objek, aksi, atau IP') }}" class="input">
@@ -38,7 +33,7 @@
     <div class="card overflow-hidden">
         <div class="overflow-x-auto">
             <table class="min-w-full text-sm">
-                <thead class="bg-[#fbf6ea] text-left text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
+                <thead class="bg-gold-50 text-left text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
                     <tr>
                         <th class="px-4 py-3">{{ __('Waktu') }}</th>
                         <th class="px-4 py-3">{{ __('Pengguna') }}</th>
@@ -78,21 +73,6 @@
                 </tbody>
             </table>
         </div>
-        <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-sm text-slate-600">
-            <p>{{ $logs->firstItem() ?? 0 }}–{{ $logs->lastItem() ?? 0 }} dari <strong class="text-slate-900">{{ $logs->total() }}</strong> {{ __('catatan') }}</p>
-            <nav class="flex items-center gap-1.5" aria-label="{{ __('Halaman') }}">
-                @if ($logs->onFirstPage())
-                    <span class="rounded-full border border-slate-200 px-4 py-2 text-slate-300">{{ __('← Sebelumnya') }}</span>
-                @else
-                    <a href="{{ $logs->previousPageUrl() }}" class="rounded-full border border-slate-300 bg-white px-4 py-2 font-semibold text-slate-700 hover:border-gold-500">{{ __('← Sebelumnya') }}</a>
-                @endif
-                <span class="px-2 tabular-nums">Halaman {{ $logs->currentPage() }} dari {{ $logs->lastPage() }}</span>
-                @if ($logs->hasMorePages())
-                    <a href="{{ $logs->nextPageUrl() }}" class="rounded-full border border-slate-300 bg-white px-4 py-2 font-semibold text-slate-700 hover:border-gold-500">{{ __('Berikutnya →') }}</a>
-                @else
-                    <span class="rounded-full border border-slate-200 px-4 py-2 text-slate-300">{{ __('Berikutnya →') }}</span>
-                @endif
-            </nav>
-        </div>
+        <x-ui.pagination :paginator="$logs" :unit="__('catatan')" />
     </div>
 </x-app-layout>

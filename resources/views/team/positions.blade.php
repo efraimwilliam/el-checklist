@@ -7,9 +7,9 @@
         $stateOf = fn ($member) => $reviews->has($member->id) ? 'review' : ($member->checklist_position_id ? 'set' : 'none');
     @endphp
 
-    <a href="{{ route('fill.create') }}" class="text-sm text-sky-700 hover:underline">{{ __('← Isi checklist') }}</a>
+    <a href="{{ route('fill.create') }}" class="link-back"><span aria-hidden="true">‹</span> {{ __('Isi checklist') }}</a>
     <div class="mt-2 mb-5">
-        <h1 class="text-3xl text-slate-900">{{ __('Jabatan staff') }}</h1>
+        <h1 class="text-page">{{ __('Jabatan staff') }}</h1>
         <p class="mt-1 max-w-2xl text-sm text-slate-500">{{ __('Atur sekali jabatan checklist tiap staff. Jabatan inilah yang menentukan daftar tugas saat checklist dibuatkan sekaligus. Saran diambil dari jabatan di Absensi; periksa lalu simpan.') }}</p>
     </div>
 
@@ -48,7 +48,7 @@
             <span class="sr-only">{{ __('Cari nama staff') }}</span>
             <input type="search" class="input w-full" placeholder="{{ __('Cari nama staff') }}" data-filter-search>
         </label>
-        <div class="flex flex-wrap gap-1 rounded-full bg-[#f6efdf] p-1" role="group" aria-label="{{ __('Saring staff') }}">
+        <div class="flex flex-wrap gap-1 rounded-full bg-gold-100 p-1" role="group" aria-label="{{ __('Saring staff') }}">
             @foreach (['all' => __('Semua'), 'none' => __('Belum diatur'), 'review' => __('Ditandai'), 'set' => __('Sudah diatur')] as $key => $label)
                 <button type="button" class="rounded-full px-4 py-1.5 text-sm font-medium text-slate-600 transition hover:text-slate-900 aria-pressed:bg-white aria-pressed:text-slate-900 aria-pressed:shadow-sm" aria-pressed="{{ $loop->first ? 'true' : 'false' }}" data-filter="{{ $key }}">{{ $label }}</button>
             @endforeach
@@ -61,7 +61,7 @@
         @forelse ($byDepartment as $department => $members)
             <details open class="card overflow-hidden" data-department>
                 <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 hover:bg-[#fbf7ee]">
-                    <span class="font-display text-xl text-slate-900">{{ $department }}</span>
+                    <span class="text-section">{{ $department }}</span>
                     <span class="text-sm text-slate-500">{{ $members->filter(fn ($m) => $m->checklist_position_id)->count() }}/{{ $members->count() }} {{ __('diatur') }}</span>
                 </summary>
                 <ul class="divide-y divide-slate-100 border-t border-slate-100">
@@ -112,7 +112,7 @@
 
                                 @if ($review && $member->checklist_position_id && $options->contains('id', $member->checklist_position_id))
                                     <label class="flex items-center gap-2 text-sm text-slate-700">
-                                        <input type="checkbox" name="confirm[]" value="{{ $member->id }}" class="h-4 w-4 rounded border-slate-300 accent-[#b08a3e]" data-confirm>
+                                        <input type="checkbox" name="confirm[]" value="{{ $member->id }}" class="rounded border-slate-300 accent-gold-600" data-confirm>
                                         {{ __('Jabatan checklist tetap benar') }}
                                     </label>
                                 @endif

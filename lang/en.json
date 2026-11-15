@@ -840,5 +840,18 @@
     "Kata yang berlaku untuk semua jenis dan kategori.": "Words that apply to every kind and category.",
     "Cara menulis kata": "How to write words",
     "Sebutan barang per jenis. Barang yang tidak ada di daftar tetap tercatat sebagai \"Lainnya\" bila ada kata minta.": "Item words per kind. Items not on the list are still logged as \"Other\" when there is a request word.",
-    "Tanda kendala per kategori. Bila beberapa cocok, yang muncul paling awal di pesan yang dipakai (\"minibar tidak dingin\" = Minibar).": "Issue words per category. When several match, the earliest one in the message wins (\"minibar tidak dingin\" = Minibar)."
+    "Tanda kendala per kategori. Bila beberapa cocok, yang muncul paling awal di pesan yang dipakai (\"minibar tidak dingin\" = Minibar).": "Issue words per category. When several match, the earliest one in the message wins (\"minibar tidak dingin\" = Minibar).",
+    "Anda akan keluar dari aplikasi. Pekerjaan yang sudah tersimpan tetap aman.": "You are about to sign out. Work that is already saved stays safe.",
+    "Keluar dari aplikasi?": "Sign out?",
+    "Permintaan :kind di Kamar :room dihapus permanen.": "The :kind request for Room :room will be deleted permanently.",
+    "Kembali": "Back",
+    "Sebelumnya": "Previous",
+    "Berikutnya": "Next",
+    "Kembali ke checklist": "Back to checklist",
+    "Semua jabatan": "All positions",
+    "Filter": "Filter",
+    "Lepas filter": "Remove filter",
+    "Hapus filter": "Clear filters",
+    "Navigasi cepat": "Quick navigation",
+    "Menu": "Menu"
 }

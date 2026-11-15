@@ -17,7 +17,7 @@
 
         <div class="card mb-4 flex flex-wrap items-start justify-between gap-3 p-5">
             <div>
-                <h1 class="text-3xl leading-tight text-slate-900">{{ $checklist->position_name }}</h1>
+                <h1 class="text-page">{{ $checklist->position_name }}</h1>
                 <p class="mt-1 text-sm text-slate-500">
                     {{ $checklist->department->name }} · {{ $checklist->date->translatedFormat('d M Y') }} ·
                     Staff: <strong class="text-slate-700">{{ $checklist->employee->name }}</strong>

@@ -4,7 +4,7 @@
     $mine = $message->user_id === $me->id;
     $group = ! $thread->isDirect();
     $deleted = $message->isDeleted();
-    $nameTones = ['text-[#8a6a22]', 'text-sky-700', 'text-emerald-700', 'text-rose-700', 'text-violet-700', 'text-orange-700'];
+    $nameTones = ['text-gold-700', 'text-sky-700', 'text-emerald-700', 'text-rose-700', 'text-violet-700', 'text-orange-700'];
     $reply = $message->replyTo;
     $people = $thread->participants->pluck('user')->filter()->keyBy('id');
 @endphp
@@ -26,8 +26,8 @@
             @endif
 
             @if ($reply && ! $deleted)
-                <button type="button" data-jump="{{ $reply->id }}" class="mb-1 block w-full min-w-40 rounded-md border-l-4 border-[#b08a3e] bg-black/5 px-2 py-1 text-left text-[13px] hover:bg-black/10">
-                    <span class="block font-semibold text-[#8a6a22]">{{ $reply->user_id === $me->id ? __('Anda') : $reply->user?->name() }}</span>
+                <button type="button" data-jump="{{ $reply->id }}" class="mb-1 block w-full min-w-40 rounded-md border-l-4 border-gold-600 bg-black/5 px-2 py-1 text-left text-[13px] hover:bg-black/10">
+                    <span class="block font-semibold text-gold-700">{{ $reply->user_id === $me->id ? __('Anda') : $reply->user?->name() }}</span>
                     <span class="block truncate text-slate-600">{{ $reply->snippet(90) }}</span>
                 </button>
             @endif
@@ -46,10 +46,10 @@
                 @endphp
                 @if ($shared)
                     <{{ $canOpen ? 'a' : 'div' }} @if ($canOpen) href="{{ route('kamar.issues.show', $shared) }}" @endif data-shared-issue="{{ $shared->id }}"
-                        class="mb-1 block min-w-60 overflow-hidden rounded-lg border-l-4 border-[#b08a3e] bg-white/80 p-2.5 text-left {{ $canOpen ? 'hover:bg-white' : '' }}">
+                        class="mb-1 block min-w-60 overflow-hidden rounded-lg border-l-4 border-gold-600 bg-white/80 p-2.5 text-left {{ $canOpen ? 'hover:bg-white' : '' }}">
                         <span class="flex items-start justify-between gap-2">
                             <span class="min-w-0">
-                                <span class="block text-[11px] font-semibold uppercase tracking-wider text-[#8a6a22]">🛠 {{ __('Kendala') }} #{{ $shared->id }}</span>
+                                <span class="block text-[11px] font-semibold uppercase tracking-wider text-gold-700">🛠 {{ __('Kendala') }} #{{ $shared->id }}</span>
                                 <span class="block truncate font-semibold text-slate-900">{{ $shared->placeTitle() }}</span>
                             </span>
                             <span class="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold {{ $issueTones[$shared->status] ?? 'bg-slate-100 text-slate-700' }}">{{ \App\Models\RoomIssue::statusLabels()[$shared->status] ?? $shared->status }}</span>
@@ -121,7 +121,7 @@
                                     <form method="POST" action="{{ route('permintaan.claim', $sharedRequest) }}">@csrf<button class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-800 ring-1 ring-slate-300 hover:bg-slate-50">{{ __('Saya ambil') }}</button></form>
                                 @endcan
                                 @can('complete', $sharedRequest)
-                                    <form method="POST" action="{{ route('permintaan.complete', $sharedRequest) }}">@csrf<button class="rounded-full bg-[#b08a3e] px-3 py-1 text-xs font-semibold text-white hover:bg-[#9a7733]">{{ __('Selesai') }}</button></form>
+                                    <form method="POST" action="{{ route('permintaan.complete', $sharedRequest) }}">@csrf<button class="rounded-full bg-gold-600 px-3 py-1 text-xs font-semibold text-white hover:bg-gold-700">{{ __('Selesai') }}</button></form>
                                 @endcan
                             </span>
                         @endif

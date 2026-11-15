@@ -5,7 +5,7 @@
         $initials = collect(explode(' ', $member->name))->filter()->take(2)->map(fn ($word) => mb_substr($word, 0, 1))->implode('');
     @endphp
 
-    <a href="{{ route('team.index') }}" class="text-sm font-semibold text-sky-700 hover:underline">{{ __('← Atur tugas pegawai') }}</a>
+    <a href="{{ route('team.index') }}" class="link-back"><span aria-hidden="true">‹</span> {{ __('Atur tugas pegawai') }}</a>
     @can('manage-tasks')
         <a href="{{ route('team.account.edit', $member) }}" class="ml-4 text-sm font-semibold text-sky-700 hover:underline">{{ __('Ubah akun Sistem Absensi') }}</a>
     @endcan
@@ -13,7 +13,7 @@
     <div class="card mb-4 mt-2 flex flex-wrap items-center gap-4 p-5">
         <span class="hod-avatar !h-14 !w-14 !text-lg" aria-hidden="true">{{ $initials }}</span>
         <div class="min-w-0 flex-1">
-            <h1 class="text-2xl leading-tight text-slate-900 sm:text-3xl">{{ $member->name }}</h1>
+            <h1 class="text-page">{{ $member->name }}</h1>
             <p class="text-sm text-slate-500">{{ $member->department->name }} · {{ $member->position_title ?? 'Jabatan di Absensi belum diisi' }}</p>
         </div>
         <div class="text-right">
@@ -48,8 +48,8 @@
         @forelse ($groups as $group)
             {{-- Kartu per jabatan tertutup; klik judulnya untuk membuka daftar tugas. Isian tetap ikut tersimpan walau tertutup. --}}
             <details class="group card mb-4 overflow-hidden" data-group>
-                <summary class="flex cursor-pointer list-none select-none items-center justify-between gap-3 border-slate-100 bg-[#fbf6ea] px-4 py-3 group-open:border-b [&::-webkit-details-marker]:hidden">
-                    <h2 class="font-display text-xl text-slate-900">{{ $group->name }}</h2>
+                <summary class="flex cursor-pointer list-none select-none items-center justify-between gap-3 border-slate-100 bg-gold-50 px-4 py-3 group-open:border-b [&::-webkit-details-marker]:hidden">
+                    <h2 class="text-section">{{ $group->name }}</h2>
                     <span class="flex shrink-0 items-center gap-3">
                         <span class="text-sm tabular-nums text-slate-500" data-group-count></span>
                         <svg class="h-5 w-5 text-slate-500 transition group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
@@ -66,7 +66,7 @@
                             @foreach ($tasks as $task)
                                 <li data-task data-title="{{ \Illuminate\Support\Str::lower($task->title) }}">
                                     <label class="flex cursor-pointer items-center gap-3 py-3">
-                                        <input type="checkbox" name="tasks[]" value="{{ $task->id }}" class="h-5 w-5 shrink-0 rounded border-slate-300 accent-[#b08a3e]" @checked(in_array($task->id, $selected))>
+                                        <input type="checkbox" name="tasks[]" value="{{ $task->id }}" class="h-5 w-5 shrink-0 rounded border-slate-300 accent-gold-600" @checked(in_array($task->id, $selected))>
                                         <span class="text-base text-slate-800">{{ $task->title }}</span>
                                     </label>
                                 </li>

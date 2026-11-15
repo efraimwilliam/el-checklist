@@ -5,7 +5,7 @@
 @if ($picker ?? false)
     <div class="mb-5 flex flex-wrap items-start justify-between gap-4 print:mb-3">
         <div>
-            <h1 class="text-3xl text-slate-900">{{ $heading }}</h1>
+            <h1 class="text-page">{{ $heading }}</h1>
             <p class="text-sm text-slate-500">{{ \App\Support\DateRange::label($from, $to) }} · {{ (int) $from->diffInDays($to) + 1 }} hari</p>
         </div>
         <form method="GET" action="{{ $action }}" class="print:hidden">

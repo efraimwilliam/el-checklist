@@ -1,6 +1,6 @@
 <x-app-layout title="{{ __('Riwayat checklist') }}">
     <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
-        <h1 class="text-3xl text-slate-900">{{ __('Riwayat checklist') }}</h1>
+        <h1 class="text-page">{{ __('Riwayat checklist') }}</h1>
         <form method="GET" class="flex flex-wrap items-end gap-2">
             <div>
                 <span class="label" id="range-caption">{{ __('Tanggal') }}</span>
@@ -42,7 +42,7 @@
 
     <div class="card overflow-x-auto">
         <table class="min-w-full text-sm">
-            <thead class="bg-slate-50 text-left text-xs uppercase tracking-[0.08em] text-slate-500">
+            <thead class="bg-gold-50 text-left text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
                 <tr>
                     <th class="px-4 py-2.5 font-medium">{{ __('Staff') }}</th>
                     <th class="px-4 py-2.5 font-medium">{{ __('Tanggal') }}</th>
@@ -88,7 +88,11 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="7" class="px-4 py-6 text-center text-slate-500">{{ __('Belum ada checklist pada rentang tanggal ini.') }}</td></tr>
+                    <tr><td colspan="7" class="p-4">
+                        <x-ui.empty-state :title="__('Belum ada checklist pada rentang tanggal ini.')" :text="__('Pilih rentang tanggal lain, atau ubah filter departemen dan status.')">
+                            @can('fill-checklists')<a href="{{ route('fill.create') }}" class="btn-secondary btn-sm">{{ __('Isi checklist') }}</a>@endcan
+                        </x-ui.empty-state>
+                    </td></tr>
                 @endforelse
             </tbody>
         </table>

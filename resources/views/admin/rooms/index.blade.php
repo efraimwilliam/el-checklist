@@ -13,7 +13,7 @@
     {{-- Judul dan aksi utama --}}
     <div class="mb-5 flex flex-wrap items-start justify-between gap-4">
         <div>
-            <h1 class="text-3xl text-slate-900">{{ $heading }}</h1>
+            <h1 class="text-page">{{ $heading }}</h1>
             <p class="text-sm text-slate-500">{{ $intro }}</p>
         </div>
         <div class="flex flex-wrap gap-2">
@@ -43,7 +43,7 @@
 
     @if ($tab === 'kamar')
         {{-- Saring --}}
-        <form method="GET" action="{{ route('admin.rooms.index') }}" class="card mb-5 grid gap-3 p-4 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
+        <form method="GET" action="{{ route('admin.rooms.index') }}" data-filters class="card mb-5 grid gap-3 p-4 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
             <input type="hidden" name="tab" value="kamar">
             <div>
                 <label class="label" for="room-search">{{ __('Cari nomor kamar') }}</label>
@@ -86,7 +86,7 @@
 
         {{-- Daftar kamar: baris rapi, ubah lewat dialog --}}
         <section class="card mb-6 overflow-hidden">
-            <div class="hidden grid-cols-[6rem_5rem_minmax(0,1fr)_minmax(0,1fr)_6rem_5rem_5.5rem] gap-3 border-b border-slate-100 bg-[#fbf6ea] px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 lg:grid">
+            <div class="hidden grid-cols-[6rem_5rem_minmax(0,1fr)_minmax(0,1fr)_6rem_5rem_5.5rem] gap-3 border-b border-slate-100 bg-gold-50 px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 lg:grid">
                 <span>{{ __('Kamar') }}</span><span>{{ __('Lantai') }}</span><span>{{ __('Gedung') }}</span><span>{{ __('Tipe') }}</span><span>{{ __('Status') }}</span><span class="text-right">{{ __('Kendala') }}</span><span class="sr-only">{{ __('Aksi') }}</span>
             </div>
             @forelse ($rooms as $room)
@@ -98,7 +98,7 @@
                     <p class="col-span-2 lg:col-span-1"><span class="rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $room->is_active ? 'bg-emerald-50 text-emerald-800' : 'bg-slate-200 text-slate-600' }}">{{ $room->is_active ? __('Aktif') : __('Nonaktif') }}</span></p>
                     <p class="col-span-2 text-sm tabular-nums text-slate-500 lg:col-span-1 lg:text-right">{{ $room->issues_count }} {{ __('kendala') }}</p>
                     <div class="row-start-1 col-start-2 flex items-center justify-self-end lg:col-start-auto lg:row-start-auto">
-                        <button type="button" class="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:bg-[#f6efdf] hover:text-gold-700" aria-label="{{ __('Ubah kamar :room', ['room' => $room->number]) }}" title="{{ __('Ubah') }}"
+                        <button type="button" class="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:bg-gold-100 hover:text-gold-700" aria-label="{{ __('Ubah kamar :room', ['room' => $room->number]) }}" title="{{ __('Ubah') }}"
                             data-edit-room data-url="{{ route('admin.rooms.update', $room) }}" data-id="{{ $room->id }}" data-number="{{ $room->number }}" data-floor="{{ $room->floor }}" data-building="{{ $room->building }}" data-type="{{ $room->type }}" data-active="{{ $room->is_active ? '1' : '0' }}">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
                         </button>
@@ -125,21 +125,13 @@
                     @if ($filtered)<a href="{{ route('admin.rooms.index', ['tab' => 'kamar']) }}" class="mt-3 inline-block text-sm text-sky-700 hover:underline">{{ __('Hapus filter') }}</a>@endif
                 </div>
             @endforelse
-            @if ($rooms->hasPages())
-                <div class="flex items-center justify-between border-t border-slate-100 p-4 text-sm">
-                    <span class="text-slate-500">{{ __('Halaman') }} {{ $rooms->currentPage() }} / {{ $rooms->lastPage() }} · {{ $rooms->total() }} {{ __('kamar') }}</span>
-                    <span class="flex gap-2">
-                        @if ($rooms->previousPageUrl())<a class="btn-secondary" href="{{ $rooms->previousPageUrl() }}">&larr; {{ __('Sebelumnya') }}</a>@endif
-                        @if ($rooms->hasMorePages())<a class="btn-secondary" href="{{ $rooms->nextPageUrl() }}">{{ __('Berikutnya') }} &rarr;</a>@endif
-                    </span>
-                </div>
-            @endif
+            <x-ui.pagination :paginator="$rooms" :unit="__('kamar')" />
         </section>
     @elseif ($tab === 'denah')
         {{-- Denah: gambar per lantai, kotak area kamar ditandai di editor --}}
         @if ($plans->isEmpty())
             <section class="card mb-6 p-10 text-center">
-                <p class="font-display text-xl text-slate-900">{{ __('Belum ada denah') }}</p>
+                <p class="text-section">{{ __('Belum ada denah') }}</p>
                 <p class="mx-auto mt-1 max-w-md text-sm text-slate-500">{{ __('Unggah PDF atau gambar denah per lantai, lalu tandai kotak tiap kamar di atas gambarnya. Peta kamar di Laporan akan tampil seperti denah hotel.') }}</p>
                 <button type="button" class="btn-primary mt-4" data-open-dialog="upload-plan">{{ __('+ Unggah denah') }}</button>
             </section>
@@ -164,7 +156,7 @@
         {{-- Kategori kendala --}}
         <section class="card mb-6 overflow-hidden">
             <div class="border-b border-slate-100 p-5">
-                <h2 class="font-display text-xl text-slate-900">{{ __('Kategori kendala') }}</h2>
+                <h2 class="text-section">{{ __('Kategori kendala') }}</h2>
                 <p class="mt-1 text-sm text-slate-500">{{ __('Departemen penanggung jawab terisi otomatis saat kategori dipilih di form kendala, dan bisa diganti di sana.') }}</p>
             </div>
             @foreach ($categories as $category)
@@ -175,7 +167,7 @@
                     </div>
                     <div class="flex items-center gap-3">
                         <span class="rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $category->is_active ? 'bg-emerald-50 text-emerald-800' : 'bg-slate-200 text-slate-600' }}">{{ $category->is_active ? __('Aktif') : __('Nonaktif') }}</span>
-                        <button type="button" class="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:bg-[#f6efdf] hover:text-gold-700" aria-label="{{ __('Ubah kategori :name', ['name' => $category->name]) }}" title="{{ __('Ubah') }}"
+                        <button type="button" class="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:bg-gold-100 hover:text-gold-700" aria-label="{{ __('Ubah kategori :name', ['name' => $category->name]) }}" title="{{ __('Ubah') }}"
                             data-edit-category data-url="{{ route('admin.categories.update', $category) }}" data-id="{{ $category->id }}" data-name="{{ $category->name }}" data-department="{{ $category->department_id }}" data-active="{{ $category->is_active ? '1' : '0' }}">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
                         </button>
@@ -186,13 +178,13 @@
     @endif
 
     {{-- Dialog: tambah kamar --}}
-    <dialog id="add-room" aria-labelledby="add-room-title" class="m-auto w-[min(30rem,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl backdrop:bg-[#2a1d12]/50">
+    <dialog id="add-room" aria-labelledby="add-room-title" class="dialog-panel w-[min(30rem,calc(100vw-2rem))]">
         <form method="POST" action="{{ route('admin.rooms.store') }}" class="space-y-4 p-6">
             @csrf
             <input type="hidden" name="_form" value="add-room">
             <div class="flex items-start justify-between gap-3">
-                <h2 id="add-room-title" class="font-display text-2xl text-slate-900">{{ __('Tambah kamar') }}</h2>
-                <button type="button" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-2xl leading-none text-slate-500 hover:bg-[#f6efdf]" aria-label="{{ __('Tutup') }}" data-close-dialog>×</button>
+                <h2 id="add-room-title" class="text-section">{{ __('Tambah kamar') }}</h2>
+                <button type="button" class="dialog-close" aria-label="{{ __('Tutup') }}" data-close-dialog>×</button>
             </div>
             <div><label class="label" for="add-number">{{ __('Nomor kamar') }}</label><input id="add-number" name="number" required maxlength="30" class="input w-full" value="{{ old('_form') === 'add-room' ? old('number') : '' }}"></div>
             <div class="grid grid-cols-2 gap-3">
@@ -209,14 +201,14 @@
     </dialog>
 
     {{-- Dialog: ubah kamar --}}
-    <dialog id="edit-room" aria-labelledby="edit-room-title" class="m-auto w-[min(30rem,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl backdrop:bg-[#2a1d12]/50">
+    <dialog id="edit-room" aria-labelledby="edit-room-title" class="dialog-panel w-[min(30rem,calc(100vw-2rem))]">
         <form method="POST" action="" class="space-y-4 p-6" data-edit-form>
             @csrf @method('PUT')
             <input type="hidden" name="_form" value="edit-room">
             <input type="hidden" name="_id" value="">
             <div class="flex items-start justify-between gap-3">
-                <h2 id="edit-room-title" class="font-display text-2xl text-slate-900">{{ __('Ubah kamar') }}</h2>
-                <button type="button" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-2xl leading-none text-slate-500 hover:bg-[#f6efdf]" aria-label="{{ __('Tutup') }}" data-close-dialog>×</button>
+                <h2 id="edit-room-title" class="text-section">{{ __('Ubah kamar') }}</h2>
+                <button type="button" class="dialog-close" aria-label="{{ __('Tutup') }}" data-close-dialog>×</button>
             </div>
             <div><label class="label" for="edit-number">{{ __('Nomor kamar') }}</label><input id="edit-number" name="number" required maxlength="30" class="input w-full"></div>
             <div class="grid grid-cols-2 gap-3">
@@ -237,13 +229,13 @@
     </dialog>
 
     {{-- Dialog: tambah kategori --}}
-    <dialog id="add-category" aria-labelledby="add-category-title" class="m-auto w-[min(30rem,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl backdrop:bg-[#2a1d12]/50">
+    <dialog id="add-category" aria-labelledby="add-category-title" class="dialog-panel w-[min(30rem,calc(100vw-2rem))]">
         <form method="POST" action="{{ route('admin.categories.store') }}" class="space-y-4 p-6">
             @csrf
             <input type="hidden" name="_form" value="add-category">
             <div class="flex items-start justify-between gap-3">
-                <h2 id="add-category-title" class="font-display text-2xl text-slate-900">{{ __('Tambah kategori') }}</h2>
-                <button type="button" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-2xl leading-none text-slate-500 hover:bg-[#f6efdf]" aria-label="{{ __('Tutup') }}" data-close-dialog>×</button>
+                <h2 id="add-category-title" class="text-section">{{ __('Tambah kategori') }}</h2>
+                <button type="button" class="dialog-close" aria-label="{{ __('Tutup') }}" data-close-dialog>×</button>
             </div>
             <div><label class="label" for="cat-add-name">{{ __('Nama kategori') }}</label><input id="cat-add-name" name="name" required maxlength="100" class="input w-full" value="{{ old('_form') === 'add-category' ? old('name') : '' }}"></div>
             <div>
@@ -262,14 +254,14 @@
     </dialog>
 
     {{-- Dialog: ubah kategori --}}
-    <dialog id="edit-category" aria-labelledby="edit-category-title" class="m-auto w-[min(30rem,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl backdrop:bg-[#2a1d12]/50">
+    <dialog id="edit-category" aria-labelledby="edit-category-title" class="dialog-panel w-[min(30rem,calc(100vw-2rem))]">
         <form method="POST" action="" class="space-y-4 p-6" data-edit-form>
             @csrf @method('PUT')
             <input type="hidden" name="_form" value="edit-category">
             <input type="hidden" name="_id" value="">
             <div class="flex items-start justify-between gap-3">
-                <h2 id="edit-category-title" class="font-display text-2xl text-slate-900">{{ __('Ubah kategori') }}</h2>
-                <button type="button" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-2xl leading-none text-slate-500 hover:bg-[#f6efdf]" aria-label="{{ __('Tutup') }}" data-close-dialog>×</button>
+                <h2 id="edit-category-title" class="text-section">{{ __('Ubah kategori') }}</h2>
+                <button type="button" class="dialog-close" aria-label="{{ __('Tutup') }}" data-close-dialog>×</button>
             </div>
             <div><label class="label" for="cat-edit-name">{{ __('Nama kategori') }}</label><input id="cat-edit-name" name="name" required maxlength="100" class="input w-full"></div>
             <div>
@@ -293,15 +285,15 @@
 
     {{-- Dialog: unggah denah. PDF diubah menjadi gambar di browser (pilih halamannya); yang dikirim ke server hanya gambar. --}}
     @vite(['resources/js/floor-plan-upload.js'])
-    <dialog id="upload-plan" aria-labelledby="upload-plan-title" class="m-auto w-[min(40rem,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl backdrop:bg-[#2a1d12]/50">
+    <dialog id="upload-plan" aria-labelledby="upload-plan-title" class="dialog-panel w-[min(40rem,calc(100vw-2rem))]">
         <form method="POST" action="{{ route('admin.plans.store') }}" enctype="multipart/form-data" class="space-y-4 p-6" data-plan-upload data-pdf-label="{{ __('Halaman') }}">
             @csrf
             <div class="flex items-start justify-between gap-3">
                 <div>
-                    <h2 id="upload-plan-title" class="font-display text-2xl text-slate-900">{{ __('Unggah denah') }}</h2>
+                    <h2 id="upload-plan-title" class="text-section">{{ __('Unggah denah') }}</h2>
                     <p class="text-sm text-slate-500">{{ __('PDF, PNG, atau JPG. Bila PDF punya banyak halaman, pilih halaman denah yang dipakai.') }}</p>
                 </div>
-                <button type="button" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-2xl leading-none text-slate-500 hover:bg-[#f6efdf]" aria-label="{{ __('Tutup') }}" data-close-dialog>×</button>
+                <button type="button" class="dialog-close" aria-label="{{ __('Tutup') }}" data-close-dialog>×</button>
             </div>
             <div>
                 <label class="label" for="plan-file">{{ __('Berkas denah') }}</label>
@@ -374,14 +366,14 @@
         })();
     </script>
     @if ($tab === 'kamar')
-    <dialog id="import-dialog" aria-labelledby="import-dialog-title" class="m-auto w-[min(48rem,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl backdrop:bg-[#2a1d12]/50">
+    <dialog id="import-dialog" aria-labelledby="import-dialog-title" class="dialog-panel w-[min(48rem,calc(100vw-2rem))]">
         <div class="flex max-h-[92vh] flex-col">
             <div class="flex items-start justify-between gap-3 border-b border-slate-100 px-6 pb-4 pt-6">
                 <div>
-                    <h2 id="import-dialog-title" class="font-display text-2xl text-slate-900">{{ __('Impor daftar kamar') }}</h2>
+                    <h2 id="import-dialog-title" class="text-section">{{ __('Impor daftar kamar') }}</h2>
                     <p class="text-sm text-slate-500">{{ __('Seret berkas Excel ke kotak, periksa hasilnya, lalu simpan.') }}</p>
                 </div>
-                <button type="button" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-2xl leading-none text-slate-500 hover:bg-[#f6efdf] hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-500" aria-label="{{ __('Tutup') }}" data-close-import-dialog>{{ __('×') }}</button>
+                <button type="button" class="dialog-close" aria-label="{{ __('Tutup') }}" data-close-import-dialog>{{ __('×') }}</button>
             </div>
             <div class="overflow-y-auto px-6 pb-6 pt-4" data-import-body aria-live="polite">
                 <p class="text-sm text-slate-500">{{ __('Memuat…') }}</p>
@@ -425,17 +417,17 @@
                 const zone = event.target.closest('[data-dropzone]');
                 if (!zone) return;
                 event.preventDefault();
-                zone.classList.add('border-gold-500', 'bg-[#f6efdf]');
+                zone.classList.add('border-gold-500', 'bg-gold-100');
             });
             body.addEventListener('dragleave', (event) => {
                 const zone = event.target.closest('[data-dropzone]');
-                if (zone) zone.classList.remove('border-gold-500', 'bg-[#f6efdf]');
+                if (zone) zone.classList.remove('border-gold-500', 'bg-gold-100');
             });
             body.addEventListener('drop', (event) => {
                 const zone = event.target.closest('[data-dropzone]');
                 if (!zone) return;
                 event.preventDefault();
-                zone.classList.remove('border-gold-500', 'bg-[#f6efdf]');
+                zone.classList.remove('border-gold-500', 'bg-gold-100');
                 const file = event.dataTransfer.files[0];
                 if (!file) return;
                 const input = zone.querySelector('input[type=file]');

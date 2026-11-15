@@ -9,12 +9,12 @@
             <button type="button" hidden data-chat-return class="-ml-2 grid h-10 w-10 shrink-0 place-items-center rounded-full text-slate-700 hover:bg-slate-100 md:hidden" aria-label="{{ __('Kembali') }}">
                 <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
-            <h1 class="text-2xl text-slate-900">{{ __('Obrolan') }}</h1>
+            <h1 class="text-page">{{ __('Obrolan') }}</h1>
         </span>
         <span class="flex items-center gap-1">
         <button type="button" data-push-toggle hidden data-state="unsupported" class="group/bell inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-700 hover:bg-slate-100">
             <svg class="h-5 w-5 group-data-[state=on]/bell:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 9a6 6 0 0112 0c0 5 2 6.5 2 6.5H4S6 14 6 9zM10 19a2 2 0 004 0M4 4l16 16" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <svg class="hidden h-5 w-5 text-[#b08a3e] group-data-[state=on]/bell:block" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M6 9a6 6 0 0112 0c0 5 2 6.5 2 6.5H4S6 14 6 9z" stroke-linejoin="round"/><path d="M10 19a2 2 0 004 0" fill="none" stroke-linecap="round"/></svg>
+            <svg class="hidden h-5 w-5 text-gold-600 group-data-[state=on]/bell:block" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M6 9a6 6 0 0112 0c0 5 2 6.5 2 6.5H4S6 14 6 9z" stroke-linejoin="round"/><path d="M10 19a2 2 0 004 0" fill="none" stroke-linecap="round"/></svg>
         </button>
         <button type="button" data-panel-open="new" class="inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-700 hover:bg-slate-100" aria-label="{{ __('Chat baru') }}" title="{{ __('Chat baru') }}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -23,7 +23,7 @@
     </div>
     <div hidden data-push-banner class="mx-3 mb-2 flex items-center gap-3 rounded-xl bg-[#fbf3dc] px-3 py-2.5 text-sm text-[#5c4514]">
         <span class="min-w-0 flex-1">{{ __('Aktifkan notifikasi agar pesan baru tidak terlewat.') }}</span>
-        <button type="button" data-push-enable class="shrink-0 rounded-full bg-[#b08a3e] px-3 py-1 text-xs font-semibold text-white hover:bg-[#9a7733]">{{ __('Aktifkan') }}</button>
+        <button type="button" data-push-enable class="shrink-0 rounded-full bg-gold-600 px-3 py-1 text-xs font-semibold text-white hover:bg-gold-700">{{ __('Aktifkan') }}</button>
         <button type="button" data-push-later class="shrink-0 rounded-full px-2 py-1 text-xs font-medium text-[#5c4514]/70 hover:bg-black/5">{{ __('Nanti') }}</button>
     </div>
     <div class="px-3 pb-2">
@@ -35,8 +35,8 @@
     </div>
     @if ($canSeeAll)
         <div class="flex gap-2 px-3 pb-2 text-sm">
-            <a href="{{ route('chat.index') }}" @class(['rounded-full px-3 py-1', 'bg-[#f3e6c4] font-semibold text-[#6b5118]' => ! $viewingAll, 'bg-slate-100 text-slate-600 hover:bg-slate-200' => $viewingAll])>{{ __('Obrolan saya') }}</a>
-            <a href="{{ route('chat.index', ['semua' => 1]) }}" @class(['rounded-full px-3 py-1', 'bg-[#f3e6c4] font-semibold text-[#6b5118]' => $viewingAll, 'bg-slate-100 text-slate-600 hover:bg-slate-200' => ! $viewingAll])>{{ __('Semua percakapan') }}</a>
+            <a href="{{ route('chat.index') }}" @class(['rounded-full px-3 py-1', 'bg-gold-200 font-semibold text-[#6b5118]' => ! $viewingAll, 'bg-slate-100 text-slate-600 hover:bg-slate-200' => $viewingAll])>{{ __('Obrolan saya') }}</a>
+            <a href="{{ route('chat.index', ['semua' => 1]) }}" @class(['rounded-full px-3 py-1', 'bg-gold-200 font-semibold text-[#6b5118]' => $viewingAll, 'bg-slate-100 text-slate-600 hover:bg-slate-200' => ! $viewingAll])>{{ __('Semua percakapan') }}</a>
         </div>
     @endif
     @if (session('status'))
@@ -65,18 +65,18 @@
             <input type="search" data-contact-search placeholder="{{ __('Cari nama atau departemen') }}" class="w-full rounded-lg border-0 bg-slate-100 px-3 py-2 text-sm focus:bg-white focus:ring-2 focus:ring-gold-500 focus:outline-none">
         </div>
         <div class="min-h-0 flex-1 overflow-y-auto">
-            <button type="button" data-panel-open="group" class="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-[#faf6ec]">
-                <span class="flex h-12 w-12 items-center justify-center rounded-full bg-[#b08a3e] text-white" aria-hidden="true">
+            <button type="button" data-panel-open="group" class="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-gold-50">
+                <span class="flex h-12 w-12 items-center justify-center rounded-full bg-gold-600 text-white" aria-hidden="true">
                     <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.5 3.3-5.5 6.5-5.5s5.9 2 6.5 5.5M16 4.5a3.5 3.5 0 010 7M18 14.8c2 .7 3.2 2.5 3.5 5.2" stroke-linecap="round"/></svg>
                 </span>
                 <span class="font-medium text-slate-900">{{ __('Grup baru') }}</span>
             </button>
-            <p class="px-4 pb-1 pt-3 text-xs font-semibold uppercase tracking-wider text-[#8a6a22]">{{ __('Kontak') }}</p>
+            <p class="px-4 pb-1 pt-3 text-xs font-semibold uppercase tracking-wider text-gold-700">{{ __('Kontak') }}</p>
             <form id="direct-form" method="POST" class="hidden">@csrf</form>
             @foreach ($people as $person)
                 <button type="submit" form="direct-form" formaction="{{ route('chat.direct', $person) }}" data-contact
                         data-name="{{ mb_strtolower($person->name().' '.($person->employee?->department?->name ?? '')) }}"
-                        class="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-[#faf6ec]">
+                        class="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-gold-50">
                     @include('chat.partials.person-avatar', ['person' => $person, 'size' => 'h-11 w-11 text-sm'])
                     <span class="min-w-0">
                         <span class="block truncate text-[15px] text-slate-900">{{ $person->name() }}</span>
@@ -108,13 +108,13 @@
         </div>
         <div class="min-h-0 flex-1 overflow-y-auto">
             @foreach ($people as $person)
-                <label data-member data-name="{{ mb_strtolower($person->name().' '.($person->employee?->department?->name ?? '')) }}" class="flex cursor-pointer items-center gap-3 px-3 py-2 hover:bg-[#faf6ec]">
+                <label data-member data-name="{{ mb_strtolower($person->name().' '.($person->employee?->department?->name ?? '')) }}" class="flex cursor-pointer items-center gap-3 px-3 py-2 hover:bg-gold-50">
                     @include('chat.partials.person-avatar', ['person' => $person, 'size' => 'h-11 w-11 text-sm'])
                     <span class="min-w-0 flex-1">
                         <span class="block truncate text-[15px] text-slate-900">{{ $person->name() }}</span>
                         <span class="block truncate text-xs text-slate-500">{{ $person->employee?->department?->name ?? '—' }}</span>
                     </span>
-                    <input type="checkbox" name="users[]" value="{{ $person->id }}" class="h-5 w-5 rounded-full accent-[#b08a3e]" @checked(in_array($person->id, (array) old('users', [])))>
+                    <input type="checkbox" name="users[]" value="{{ $person->id }}" class="h-5 w-5 rounded-full accent-gold-600" @checked(in_array($person->id, (array) old('users', [])))>
                 </label>
             @endforeach
         </div>

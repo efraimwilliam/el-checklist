@@ -60,10 +60,10 @@
         @if (session('quick_slot') === $slot && $errors->quick->has('term'))<p class="mt-1 text-sm text-rose-700">{{ $errors->quick->first('term') }}</p>@endif
 
         @if ($kind)
-            <form method="POST" action="{{ route('admin.quick-terms.kinds.update', $kind) }}" class="mt-4 grid gap-3 rounded-lg bg-[#faf6ec] p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
+            <form method="POST" action="{{ route('admin.quick-terms.kinds.update', $kind) }}" class="mt-4 grid gap-3 rounded-lg bg-gold-50 p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
                 @csrf @method('PUT')
                 <input type="hidden" name="kind_form" value="{{ $kind->key }}">
-                <p class="text-xs font-semibold uppercase tracking-wider text-[#8a6a2b] sm:col-span-3">{{ __('Ubah jenis') }}</p>
+                <p class="text-xs font-semibold uppercase tracking-wider text-gold-700 sm:col-span-3">{{ __('Ubah jenis') }}</p>
                 <div>
                     <label class="label" for="kind-label-{{ $kind->key }}">{{ __('Nama jenis') }}</label>
                     <input id="kind-label-{{ $kind->key }}" name="label" maxlength="80" required class="input w-full" value="{{ $kindOpen ? old('label') : $kind->label }}">
@@ -80,9 +80,9 @@
                 </div>
                 <button class="btn-primary !px-4 !py-2 text-sm">{{ __('Simpan') }}</button>
                 <div class="flex flex-wrap gap-x-5 gap-y-2 text-sm sm:col-span-3">
-                    <label class="flex items-center gap-2"><input type="checkbox" name="has_quantity" value="1" class="h-4 w-4" @checked($kindOpen ? old('has_quantity') : $kind->has_quantity)> {{ __('Pakai jumlah (mis. "2 mineral water")') }}</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" name="has_quantity" value="1" class="h-5 w-5" @checked($kindOpen ? old('has_quantity') : $kind->has_quantity)> {{ __('Pakai jumlah (mis. "2 mineral water")') }}</label>
                     @if ($kind->key !== 'other')
-                        <label class="flex items-center gap-2"><input type="checkbox" name="is_active" value="1" class="h-4 w-4" @checked($kindOpen ? old('is_active') : $kind->is_active)> {{ __('Aktif (bisa dipilih dan dibaca dari obrolan)') }}</label>
+                        <label class="flex items-center gap-2"><input type="checkbox" name="is_active" value="1" class="h-5 w-5" @checked($kindOpen ? old('is_active') : $kind->is_active)> {{ __('Aktif (bisa dipilih dan dibaca dari obrolan)') }}</label>
                     @endif
                 </div>
                 @if ($kindOpen && $errors->kind->any())<p class="text-sm text-rose-700 sm:col-span-3">{{ $errors->kind->first() }}</p>@endif
@@ -91,7 +91,7 @@
             <form method="POST" action="{{ route('admin.quick-terms.categories.update', $category) }}" class="mt-4 grid gap-3 rounded-lg bg-[#fbf5e8] p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
                 @csrf @method('PUT')
                 <input type="hidden" name="category_form" value="{{ $category->id }}">
-                <p class="text-xs font-semibold uppercase tracking-wider text-[#8a6a2b] sm:col-span-3">{{ __('Ubah kategori') }}</p>
+                <p class="text-xs font-semibold uppercase tracking-wider text-gold-700 sm:col-span-3">{{ __('Ubah kategori') }}</p>
                 <div>
                     <label class="label" for="category-name-{{ $category->id }}">{{ __('Nama kategori') }}</label>
                     <input id="category-name-{{ $category->id }}" name="name" maxlength="100" required class="input w-full" value="{{ $categoryOpen ? old('name') : $category->name }}">
@@ -106,7 +106,7 @@
                     </select>
                 </div>
                 <button class="btn-primary !px-4 !py-2 text-sm">{{ __('Simpan') }}</button>
-                <label class="flex items-center gap-2 text-sm sm:col-span-3"><input type="checkbox" name="is_active" value="1" class="h-4 w-4" @checked($categoryOpen ? old('is_active') : $category->is_active)> {{ __('Aktif (bisa dipilih dan dibaca dari obrolan)') }}</label>
+                <label class="flex items-center gap-2 text-sm sm:col-span-3"><input type="checkbox" name="is_active" value="1" class="h-5 w-5" @checked($categoryOpen ? old('is_active') : $category->is_active)> {{ __('Aktif (bisa dipilih dan dibaca dari obrolan)') }}</label>
                 @if ($categoryOpen && $errors->category->any())<p class="text-sm text-rose-700 sm:col-span-3">{{ $errors->category->first() }}</p>@endif
             </form>
         @endif

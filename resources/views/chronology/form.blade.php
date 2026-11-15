@@ -11,9 +11,9 @@
     @if (filled($chatThreadId))
         <button type="button" data-chat-tool-close class="text-sm text-sky-700 hover:underline">{{ __('← Kembali ke obrolan') }}</button>
     @else
-        <a href="{{ $report->exists ? route('chronology.show', $report) : route('chronology.index') }}" class="text-sm text-sky-700 hover:underline">{{ __('← Kembali') }}</a>
+        <a href="{{ $report->exists ? route('chronology.show', $report) : route('chronology.index') }}" class="link-back"><span aria-hidden="true">‹</span> {{ __('Kembali') }}</a>
     @endif
-    <h1 class="mb-1 mt-1 text-3xl text-slate-900">{{ $report->exists ? __('Ubah Chronology Report') : __('Chronology Report baru') }}</h1>
+    <h1 class="mb-1 mt-1 text-page">{{ $report->exists ? __('Ubah Chronology Report') : __('Chronology Report baru') }}</h1>
     <p class="mb-5 text-sm text-slate-500">{{ __('Isi laporan dalam bahasa Inggris. Simpan sebagai draft dulu; setelah Finalisasi laporan terkunci.') }}</p>
 
     @if ($errors->any())
@@ -23,7 +23,7 @@
     {{-- Tempel satu kali: seluruh teks laporan dibaca otomatis (data tamu, tanggal, sumber booking, poin bernomor). --}}
     @unless ($report->exists)
         <section class="card mb-6 p-5">
-            <h2 class="font-display text-xl text-slate-900">{{ __('Tempel dari WhatsApp / Word') }}</h2>
+            <h2 class="text-section">{{ __('Tempel dari WhatsApp / Word') }}</h2>
             <p class="mt-1 text-sm text-slate-500">{{ __('Salin laporan yang sudah ditulis, tempel di sini sekali saja. Sistem membaca Guest Name, Room Number, Nationality, Length of stay, Source of Booking, dan poin bernomor.') }}</p>
             <form method="POST" action="{{ route('chronology.paste') }}" class="mt-3 space-y-3">
                 @csrf
@@ -59,7 +59,7 @@
 
         {{-- Data tamu --}}
         <section class="card p-5">
-            <h2 class="font-display text-xl text-slate-900">{{ __('Data tamu') }}</h2>
+            <h2 class="text-section">{{ __('Data tamu') }}</h2>
             @if ($issue)
                 <p class="mt-1 text-sm text-slate-500">{{ __('Terhubung ke kendala') }} <a class="underline" @can('room-issues') href="{{ route('kamar.issues.show', $issue) }}" @endcan>#{{ $issue->id }} · {{ $issue->placeName() }}</a></p>
             @endif
@@ -94,7 +94,7 @@
 
         {{-- Kronologi --}}
         <section class="card p-5">
-            <h2 class="font-display text-xl text-slate-900">{{ __('Kronologi') }}</h2>
+            <h2 class="text-section">{{ __('Kronologi') }}</h2>
             <p class="mt-1 text-sm text-slate-500">{{ __('Satu poin satu kejadian, urut dari yang pertama. Geser dengan panah; nomor mengikuti urutan.') }}</p>
 
             <div class="mt-4" data-repeater data-min="1">

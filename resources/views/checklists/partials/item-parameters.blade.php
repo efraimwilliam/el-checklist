@@ -27,7 +27,7 @@
             @endif
         @elseif ($parameter->type === 'checkbox')
             <label class="flex cursor-pointer items-center gap-3 text-base text-slate-800">
-                <input type="checkbox" class="h-5 w-5 accent-[#b08a3e]" data-param-id="{{ $parameter->id }}" data-param-check @checked($parameter->value === '1')>
+                <input type="checkbox" class="h-5 w-5 accent-gold-600" data-param-id="{{ $parameter->id }}" data-param-check @checked($parameter->value === '1')>
                 <span>{{ $parameter->name }}</span>
             </label>
         @else

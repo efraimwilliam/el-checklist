@@ -6,7 +6,7 @@
 
     @if ($rooms->isNotEmpty())
         <section class="card mb-6 p-5">
-            <h2 class="font-display text-xl text-slate-900">{{ __('Kamar di sini') }}</h2>
+            <h2 class="text-section">{{ __('Kamar di sini') }}</h2>
             <div class="mt-3 flex flex-wrap gap-1.5">
                 @foreach ($rooms as $room)
                     @php $n = $byRoom[$room->id] ?? 0; @endphp

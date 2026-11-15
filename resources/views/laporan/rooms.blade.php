@@ -10,7 +10,7 @@
         <div class="card p-4"><p class="text-sm text-slate-500">{{ __('Rata-rata penanganan') }}</p><p class="mt-1 font-display text-3xl tabular-nums text-slate-900">{{ $report['avgHours'] !== null ? $report['avgHours'].' '.__('jam') : '—' }}</p><p class="mt-1 text-xs text-slate-500">{{ __('Dari dicatat sampai selesai') }}</p></div>
     </div>
 
-    <form method="GET" action="{{ route('laporan.rooms') }}" class="card mb-5 grid gap-3 p-4 sm:grid-cols-2 print:hidden">
+    <form method="GET" action="{{ route('laporan.rooms') }}" data-filters class="card mb-5 grid gap-3 p-4 sm:grid-cols-2 print:hidden">
         <input type="hidden" name="from" value="{{ $from->toDateString() }}"><input type="hidden" name="to" value="{{ $to->toDateString() }}">
         <div>
             <label class="label" for="rooms-department">{{ __('Departemen penanggung jawab') }}</label>
@@ -42,7 +42,7 @@
         <section class="card mb-6 overflow-hidden">
             <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 p-5">
                 <div>
-                    <h2 class="font-display text-xl text-slate-900">{{ $plan->name }}</h2>
+                    <h2 class="text-section">{{ $plan->name }}</h2>
                     <p class="mt-1 text-sm text-slate-500">{{ __('Makin merah, makin sering bermasalah. Ketuk kamar untuk melihat riwayatnya.') }}</p>
                 </div>
                 @if ($plans->count() > 1)
@@ -115,7 +115,7 @@
     @else
     <section class="card mb-6 overflow-hidden">
         <div class="border-b border-slate-100 p-5">
-            <h2 class="font-display text-xl text-slate-900">{{ __('Peta per lantai') }}</h2>
+            <h2 class="text-section">{{ __('Peta per lantai') }}</h2>
             <p class="mt-1 text-sm text-slate-500">{{ __('Satu kotak satu kamar. Makin merah, makin sering bermasalah. Ketuk kamar untuk melihat riwayatnya.') }}</p>
         </div>
         @forelse ($report['floors'] as $floor)
@@ -150,7 +150,7 @@
     <div class="mb-6 grid gap-6 lg:grid-cols-2">
         <section class="card overflow-hidden">
             <div class="border-b border-slate-100 p-5">
-                <h2 class="font-display text-xl text-slate-900">{{ __('Kamar langganan masalah') }}</h2>
+                <h2 class="text-section">{{ __('Kamar langganan masalah') }}</h2>
                 <p class="mt-1 text-sm text-slate-500">{{ __('Kamar dengan :n kendala atau lebih pada rentang ini.', ['n' => $threshold]) }}</p>
             </div>
             @forelse ($report['repeat'] as $room)
@@ -166,7 +166,7 @@
         <div class="space-y-6">
             @foreach ([['categories', __('Per kategori')], ['departments', __('Per departemen penanggung jawab')]] as [$key, $title])
                 <section class="card overflow-hidden">
-                    <h2 class="border-b border-slate-100 p-5 font-display text-xl text-slate-900">{{ $title }}</h2>
+                    <h2 class="border-b border-slate-100 p-5 text-section">{{ $title }}</h2>
                     @php $maxCount = max(1, collect($report[$key])->max('count')); @endphp
                     @forelse ($report[$key] as $row)
                         <div class="border-b border-slate-100 px-5 py-3 text-sm last:border-0">

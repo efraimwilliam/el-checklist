@@ -60,7 +60,7 @@
             @if ($issue->recurrence > 1)<span class="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-900">{{ __('Berulang ke-:n', ['n' => $issue->recurrence]) }}</span>@endif
             <span class="text-xs text-slate-400">#{{ $issue->id }}</span>
         </div>
-        <h1 class="mt-1.5 text-3xl text-slate-900">{{ $issue->placeTitle() }}</h1>
+        <h1 class="mt-1.5 text-page">{{ $issue->placeTitle() }}</h1>
         <p class="mt-0.5 text-sm text-slate-500">
             @if ($issue->room?->floor){{ __('Lantai') }} {{ $issue->room->floor }} · @endif{{ $issue->room?->type ? $issue->room->type.' · ' : '' }}{{ $issue->room_id ? '' : __('Lokasi lain').' · ' }}{{ $issue->category?->name ?? __('Tanpa kategori') }}
         </p>
@@ -116,7 +116,7 @@
     {{-- Status pekerjaan di paling atas: yang mengambil langsung mengisinya. --}}
     @can('work', $issue)
         <section class="card mb-6 border-gold-500/40 p-5">
-            <h2 class="font-display text-xl text-slate-900">{{ __('Status pekerjaan') }}</h2>
+            <h2 class="text-section">{{ __('Status pekerjaan') }}</h2>
             @if ($issue->claimer)
                 <p class="mt-1 text-sm text-slate-500"><span class="font-semibold text-slate-700">{{ $issue->claimer->name() }}</span> {{ __('sedang mengerjakan kendala ini') }}@if ($issue->claimed_at) {{ __('sejak') }} {{ $issue->claimed_at->translatedFormat('d M Y H:i') }}@endif.</p>
             @endif
@@ -267,7 +267,7 @@
             @endcannot
         @else
             @can('claim', $issue)
-                <section class="card mb-6 border-gold-500/40 bg-[#fbf6ea] p-5">
+                <section class="card mb-6 border-gold-500/40 bg-gold-50 p-5">
                     <p class="font-semibold text-slate-900">{{ __('Belum ada yang mengambil') }}</p>
                     <p class="mt-0.5 text-sm text-slate-600">{{ __('Ambil bila Anda yang akan mengerjakannya, supaya rekan lain tahu.') }}</p>
                     <form method="POST" action="{{ route('kamar.issues.claim', $issue) }}" class="mt-3">
@@ -280,7 +280,7 @@
     @endif
 
     <section class="card mb-6 p-5">
-        <h2 class="font-display text-xl text-slate-900">{{ __('Riwayat pekerjaan') }}</h2>
+        <h2 class="text-section">{{ __('Riwayat pekerjaan') }}</h2>
         @if ($issue->updates->isEmpty())
             <p class="mt-3 text-sm text-slate-500">{{ __('Belum ada pekerjaan yang dicatat.') }}</p>
         @else
@@ -307,7 +307,7 @@
         <details class="card group mb-6 overflow-hidden" @if (! $issue->claimed_by && ! $doneStatus) open @endif>
             <summary class="flex cursor-pointer list-none items-start justify-between gap-3 p-5">
                 <span>
-                    <span class="block font-display text-xl text-slate-900">{{ __('Track record :place', ['place' => $issue->placeTitle()]) }}</span>
+                    <span class="block text-section">{{ __('Track record :place', ['place' => $issue->placeTitle()]) }}</span>
                     <span class="mt-1 block text-sm text-slate-500">{{ __('Cek dulu apakah masalah ini pernah terjadi dan apa yang sudah dikerjakan, sebelum mengambil.') }}</span>
                 </span>
                 <span class="mt-1 text-slate-400 transition group-open:rotate-180" aria-hidden="true">▾</span>
@@ -342,7 +342,7 @@
         {{-- Setelah diambil: hanya track record yang dikerjakan departemen ini (mis. Engineering), tersembunyi sampai dibuka. --}}
         <details class="card group mb-6 overflow-hidden">
             <summary class="flex cursor-pointer list-none items-center justify-between gap-3 p-5">
-                <span class="font-display text-xl text-slate-900">{{ __('Track record :place', ['place' => $issue->placeTitle()]) }}
+                <span class="text-section">{{ __('Track record :place', ['place' => $issue->placeTitle()]) }}
                     <span class="text-sm font-normal text-slate-500">({{ $record['department']->count() }})</span></span>
                 <span class="text-slate-400 transition group-open:rotate-180" aria-hidden="true">▾</span>
             </summary>

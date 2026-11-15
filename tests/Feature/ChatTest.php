@@ -377,7 +377,7 @@ it('sends a checklist to chat as a reminder for its owner', function () {
     chatAs($hod);
     // Pemilik checklist sudah dicentang di dialog.
     $this->get(route('checklists.show', $checklist))->assertOk()->assertSee('Kirim ke obrolan')
-        ->assertSee('value="'.$this->ani->id.'" class="h-5 w-5 rounded-full accent-[#b08a3e]" data-share-pick checked', false);
+        ->assertSee('value="'.$this->ani->id.'" class="h-5 w-5 rounded-full accent-gold-600" data-share-pick checked', false);
     $this->post(route('chat.share-checklist', $checklist), ['people' => [$this->ani->id], 'body' => 'Tolong diselesaikan sebelum jam 3'])->assertRedirect();
     $thread = ChatThread::where('direct_key', ChatThread::directKey($hod->id, $this->ani->id))->firstOrFail();
     expect($thread->messages()->latest('id')->first()->checklist_id)->toBe($checklist->id);

@@ -12,14 +12,10 @@
         <span class="hod-avatar !h-14 !w-14 !text-lg" aria-hidden="true">{{ $initials }}</span>
         <div class="min-w-0 flex-1">
             <p class="eyebrow"><span class="h-px w-6 bg-gold-500"></span>{{ $self ? __('Profil saya') : __('Akun pegawai') }}</p>
-            <h1 class="text-2xl leading-tight text-slate-900 sm:text-3xl">{{ $employee->name }}</h1>
+            <h1 class="text-page">{{ $employee->name }}</h1>
             <p class="text-sm text-slate-500">{{ $employee->department?->name }} · {{ $employee->position_title ?? __('Jabatan di Absensi belum diisi') }}</p>
         </div>
     </div>
-
-    @if (session('status'))
-        <div class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{{ session('status') }}</div>
-    @endif
 
     <form method="POST" action="{{ $action }}" class="card max-w-xl space-y-5 p-6">
         @csrf

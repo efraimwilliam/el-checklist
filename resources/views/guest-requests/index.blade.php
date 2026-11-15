@@ -13,24 +13,20 @@
     @endphp
 
     @unless (filled($chatThreadId))
-    <div class="mb-5 flex flex-wrap items-start justify-between gap-4">
-        <div>
-            <h1 class="text-3xl text-slate-900">{{ __('Permintaan tamu') }}</h1>
-            <p class="text-sm text-slate-500">{{ __('Catat permintaan tamu (air mineral, handuk, laundry, MUR, dll.). Departemen tujuan menekan Saya ambil lalu Selesai.') }}</p>
-        </div>
-        <button type="button" class="btn-primary" data-open-request-dialog>{{ __('+ Catat permintaan') }}</button>
-    </div>
+    <x-ui.page-header :title="__('Permintaan tamu')" :subtitle="__('Catat permintaan tamu (air mineral, handuk, laundry, MUR, dll.). Departemen tujuan menekan Saya ambil lalu Selesai.')">
+        <x-slot:actions><button type="button" class="btn-primary" data-open-request-dialog>{{ __('+ Catat permintaan') }}</button></x-slot:actions>
+    </x-ui.page-header>
 
-    <div class="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-5">
+    <div class="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-5 [&>:last-child]:col-span-2 lg:[&>:last-child]:col-span-1">
         @foreach ([[__('Menunggu'), $summary['waiting'], 'text-rose-700'], [__('Sedang diambil'), $summary['claimed'], 'text-sky-800'], [__('Selesai hari ini'), $summary['done_today'], 'text-emerald-800'], [__('Rata-rata sampai diambil'), $minutes($summary['avg_claim']), 'text-slate-900'], [__('Rata-rata sampai selesai'), $minutes($summary['avg_done']), 'text-slate-900']] as [$label, $value, $tone])
             <div class="card p-4"><p class="text-xs text-slate-500">{{ $label }}</p><p class="font-display text-2xl tabular-nums {{ $tone }}">{{ $value }}</p></div>
         @endforeach
     </div>
 
-    <form method="GET" action="{{ route('permintaan.index') }}" class="card mb-5 grid gap-3 p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+    <form method="GET" action="{{ route('permintaan.index') }}" data-filters class="card mb-5 grid gap-3 p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
         <div>
             <label for="f-status" class="label">{{ __('Status') }}</label>
-            <select id="f-status" name="status" class="input w-full" onchange="this.form.submit()">
+            <select id="f-status" name="status" data-default="open" class="input w-full" onchange="this.form.submit()">
                 @foreach ($statusLabels as $value => $label)<option value="{{ $value }}" @selected($status === $value)>{{ $label }}</option>@endforeach
             </select>
         </div>
@@ -50,7 +46,7 @@
             <div class="flex flex-col gap-3 border-b border-slate-100 p-5 last:border-0 sm:flex-row sm:items-start sm:justify-between {{ $late }}">
                 <div class="min-w-0">
                     <p class="flex flex-wrap items-center gap-2">
-                        <span class="font-display text-xl text-slate-900">{{ __('Kamar') }} {{ $item->room->number }}</span>
+                        <span class="text-section">{{ __('Kamar') }} {{ $item->room->number }}</span>
                         <span class="rounded-full bg-slate-100 px-2.5 py-0.5 text-sm font-medium text-slate-800">{{ $item->label() }}</span>
                         @if ($item->priority === 'mendesak')<span class="rounded-full bg-rose-600 px-2.5 py-0.5 text-xs font-semibold text-white">{{ __('Mendesak') }}</span>@endif
                         <span class="rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $tones[$item->status] }}">{{ $labels[$item->status] }}</span>
@@ -74,40 +70,32 @@
                         <form method="POST" action="{{ route('permintaan.release', $item) }}">@csrf<button class="btn-secondary">{{ __('Lepas') }}</button></form>
                     @endcan
                     @can('delete', $item)
-                        <form method="POST" action="{{ route('permintaan.destroy', $item) }}" onsubmit="return confirm('{{ __('Hapus permintaan ini?') }}')">@csrf @method('DELETE')<button class="btn-secondary">{{ __('Hapus') }}</button></form>
+                        <form method="POST" action="{{ route('permintaan.destroy', $item) }}" data-confirm="{{ __('Permintaan :kind di Kamar :room dihapus permanen.', ['kind' => $item->label(), 'room' => $item->room->number]) }}" data-confirm-title="{{ __('Hapus permintaan ini?') }}" data-confirm-ok="{{ __('Hapus') }}">@csrf @method('DELETE')<button class="btn-secondary">{{ __('Hapus') }}</button></form>
                     @endcan
                 </div>
             </div>
         @empty
-            <div class="p-10 text-center">
-                <p class="font-medium text-slate-800">{{ __('Tidak ada permintaan.') }}</p>
-                <p class="mt-1 text-sm text-slate-500">{{ ($search || $status !== 'open') ? __('Tidak ada yang cocok dengan filter ini.') : __('Belum ada permintaan yang belum selesai.') }}</p>
-            </div>
+            @php($filtered = $search || $status !== 'open')
+            <x-ui.empty-state class="m-4" :title="__('Tidak ada permintaan.')" :text="$filtered ? __('Tidak ada yang cocok dengan filter ini.') : __('Belum ada permintaan yang belum selesai.')">
+                @if ($filtered)<a href="{{ route('permintaan.index') }}" class="btn-secondary btn-sm">{{ __('Hapus filter') }}</a>@else<button type="button" class="btn-primary btn-sm" data-open-request-dialog>{{ __('+ Catat permintaan') }}</button>@endif
+            </x-ui.empty-state>
         @endforelse
 
-        @if ($requests->hasPages())
-            <div class="flex items-center justify-between border-t border-slate-100 p-4 text-sm">
-                <span class="text-slate-500">{{ __('Halaman') }} {{ $requests->currentPage() }} / {{ $requests->lastPage() }}</span>
-                <span class="flex gap-2">
-                    @if ($requests->previousPageUrl())<a class="btn-secondary" href="{{ $requests->previousPageUrl() }}">&larr; {{ __('Sebelumnya') }}</a>@endif
-                    @if ($requests->hasMorePages())<a class="btn-secondary" href="{{ $requests->nextPageUrl() }}">{{ __('Berikutnya') }} &rarr;</a>@endif
-                </span>
-            </div>
-        @endif
+        <x-ui.pagination :paginator="$requests" />
     </section>
 
     @endunless
 
-    <dialog id="request-dialog" @if ($openDialog) data-autoopen @endif data-chat-tool-main aria-labelledby="request-dialog-title" class="m-auto max-h-[calc(100dvh-2rem)] w-[min(36rem,calc(100vw-2rem))] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl backdrop:bg-[#2a1d12]/50">
+    <dialog id="request-dialog" @if ($openDialog) data-autoopen @endif data-chat-tool-main aria-labelledby="request-dialog-title" class="dialog-panel max-h-[calc(100dvh-2rem)] w-[min(36rem,calc(100vw-2rem))] overflow-y-auto">
         <form method="POST" action="{{ route('permintaan.store') }}" class="space-y-5 p-6">
             @csrf
             @if (filled($chatThreadId))<input type="hidden" name="obrolan" value="{{ $chatThreadId }}">@endif
             <div class="flex items-start justify-between gap-3">
                 <div>
-                    <h2 id="request-dialog-title" class="font-display text-2xl text-slate-900">{{ __('Catat permintaan tamu') }}</h2>
+                    <h2 id="request-dialog-title" class="text-section">{{ __('Catat permintaan tamu') }}</h2>
                     <p class="text-sm text-slate-500">{{ __('Ketik nomor kamar, centang yang diminta tamu.') }}</p>
                 </div>
-                <button type="button" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-2xl leading-none text-slate-500 hover:bg-[#f6efdf]" aria-label="{{ __('Tutup') }}" data-close-request-dialog>×</button>
+                <button type="button" class="dialog-close" aria-label="{{ __('Tutup') }}" data-close-request-dialog>×</button>
             </div>
 
             <div>
@@ -122,7 +110,7 @@
                 <div class="grid gap-2 sm:grid-cols-2">
                     @foreach ($kinds as $key => [$label, $hasQty])
                         <label class="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm has-checked:border-gold-500 has-checked:bg-amber-50">
-                            <input type="checkbox" name="kinds[]" value="{{ $key }}" class="h-4 w-4" @checked(in_array($key, $presetKinds, true))>
+                            <input type="checkbox" name="kinds[]" value="{{ $key }}" class="h-5 w-5" @checked(in_array($key, $presetKinds, true))>
                             <span class="flex-1">{{ __($label) }}</span>
                             @if ($hasQty)<input type="number" name="qty[{{ $key }}]" value="{{ old('qty.'.$key, 1) }}" min="1" max="20" class="input w-16 py-1 text-center" aria-label="{{ __('Jumlah') }} {{ __($label) }}">@endif
                         </label>

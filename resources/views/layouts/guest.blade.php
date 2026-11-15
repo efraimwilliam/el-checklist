@@ -22,7 +22,7 @@
     <script>
         window.__i18n = @json(\App\Support\Translations::forJs());
     </script>
-    @vite(['resources/css/app.css', 'resources/js/password-toggle.js'])
+    @vite(['resources/css/app.css', 'resources/js/password-toggle.js', 'resources/js/ui.js'])
 </head>
 <body class="min-h-screen bg-white text-slate-800 antialiased">
 {{ $slot }}

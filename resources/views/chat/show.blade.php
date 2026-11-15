@@ -112,9 +112,9 @@
                     <div hidden data-mention-list role="listbox" aria-label="{{ __('Sebut anggota') }}" class="absolute inset-x-2 bottom-full z-20 mb-1 max-h-64 overflow-y-auto rounded-xl bg-white py-1 shadow-xl ring-1 ring-black/10"></div>
                     {{-- Pratinjau ketik bebas: "1206 req 2 mineral water" -> akan dicatat sebagai permintaan saat dikirim (lihat chat.js). --}}
                     <div hidden data-quick-preview aria-live="polite" class="mb-2 flex items-start gap-2 rounded-lg border-l-4 bg-white px-3 py-2 text-sm"></div>
-                    <div hidden data-reply-bar class="mb-2 flex items-start gap-2 rounded-lg border-l-4 border-[#b08a3e] bg-white px-3 py-2 text-sm">
+                    <div hidden data-reply-bar class="mb-2 flex items-start gap-2 rounded-lg border-l-4 border-gold-600 bg-white px-3 py-2 text-sm">
                         <div class="min-w-0 flex-1">
-                            <p class="font-semibold text-[#8a6a22]" data-reply-author></p>
+                            <p class="font-semibold text-gold-700" data-reply-author></p>
                             <p class="truncate text-slate-600" data-reply-text></p>
                         </div>
                         <button type="button" data-reply-cancel class="inline-flex h-7 w-7 items-center justify-center rounded-full text-lg text-slate-500 hover:bg-slate-100" aria-label="{{ __('Batal membalas') }}">×</button>
@@ -135,7 +135,7 @@
                     <p hidden class="mb-2 rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-700" data-error></p>
                     <form class="flex items-end gap-2" data-form method="POST" action="{{ route('chat.send', $thread) }}" enctype="multipart/form-data">
                         @csrf
-                        <div class="relative flex min-w-0 flex-1 items-end rounded-3xl bg-white shadow-sm ring-[#b08a3e]/40 transition focus-within:ring-2">
+                        <div class="relative flex min-w-0 flex-1 items-end rounded-3xl bg-white shadow-sm ring-gold-600/40 transition focus-within:ring-2">
                             <button type="button" data-attach-open aria-haspopup="menu" aria-expanded="false" class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-slate-500 hover:text-slate-800" aria-label="{{ __('Lampirkan') }}" title="{{ __('Lampirkan') }}">
                                 <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M20 11.5l-7.8 7.8a5 5 0 01-7.1-7.1l8.1-8.1a3.4 3.4 0 014.8 4.8l-8 8a1.7 1.7 0 01-2.4-2.4l7.4-7.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
                             </button>
@@ -163,7 +163,7 @@
                             <label class="sr-only" for="chat-body">{{ __('Pesan') }}</label>
                             <textarea id="chat-body" name="body" rows="1" maxlength="4000" class="max-h-36 min-h-11 flex-1 resize-none border-0 bg-transparent py-2.5 pr-4 text-[15px] outline-none focus:outline-none focus:ring-0" data-body aria-autocomplete="list"></textarea>
                         </div>
-                        <button class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#b08a3e] text-white shadow-sm hover:bg-[#9a7733] disabled:opacity-60" data-send aria-label="{{ __('Kirim') }}">
+                        <button class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gold-600 text-white shadow-sm hover:bg-gold-700 disabled:opacity-60" data-send aria-label="{{ __('Kirim') }}">
                             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3.4 20.4l17.4-7.5a1 1 0 000-1.8L3.4 3.6a1 1 0 00-1.4 1.1L3.8 11l9.2 1-9.2 1-1.8 6.3a1 1 0 001.4 1.1z"/></svg>
                         </button>
                     </form>
@@ -192,10 +192,10 @@
     @endif
 
     {{-- Info obrolan: anggota, tambah anggota, keluar grup. --}}
-    <dialog data-info-dialog class="m-auto w-[min(28rem,calc(100vw-2rem))] rounded-2xl p-0 shadow-2xl backdrop:bg-black/40">
+    <dialog data-info-dialog class="dialog-panel w-[min(28rem,calc(100vw-2rem))]">
         <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-            <h2 class="font-display text-xl text-slate-900">{{ $thread->isDirect() ? __('Info kontak') : __('Info grup') }}</h2>
-            <button type="button" data-info-close class="inline-flex h-8 w-8 items-center justify-center rounded-full text-xl text-slate-500 hover:bg-slate-100" aria-label="{{ __('Tutup') }}">×</button>
+            <h2 class="text-section">{{ $thread->isDirect() ? __('Info kontak') : __('Info grup') }}</h2>
+            <button type="button" data-info-close class="dialog-close" aria-label="{{ __('Tutup') }}">×</button>
         </div>
         <div class="max-h-[70vh] overflow-y-auto">
             <div class="flex flex-col items-center gap-2 px-5 py-5 text-center">
@@ -239,11 +239,11 @@
             </div>
 
             @unless ($thread->isDirect())
-                <p class="px-5 pb-1 pt-4 text-xs font-semibold uppercase tracking-wider text-[#8a6a22]">{{ __('Anggota') }}</p>
+                <p class="px-5 pb-1 pt-4 text-xs font-semibold uppercase tracking-wider text-gold-700">{{ __('Anggota') }}</p>
                 @if ($canInvite && $candidates->isNotEmpty())
                     <details class="px-3">
-                        <summary class="flex cursor-pointer list-none items-center gap-3 rounded-lg px-2 py-2 hover:bg-[#faf6ec]">
-                            <span class="flex h-10 w-10 items-center justify-center rounded-full bg-[#b08a3e] text-xl text-white" aria-hidden="true">+</span>
+                        <summary class="flex cursor-pointer list-none items-center gap-3 rounded-lg px-2 py-2 hover:bg-gold-50">
+                            <span class="flex h-10 w-10 items-center justify-center rounded-full bg-gold-600 text-xl text-white" aria-hidden="true">+</span>
                             <span class="font-medium text-slate-900">{{ __('Tambah anggota') }}</span>
                         </summary>
                         <form method="POST" action="{{ route('chat.invite', $thread) }}" class="pb-3 pl-2">
@@ -252,7 +252,7 @@
                             <div class="mt-2 max-h-52 space-y-0.5 overflow-y-auto">
                                 @foreach ($candidates as $person)
                                     <label class="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 text-sm hover:bg-slate-50" data-invite-person data-name="{{ mb_strtolower($person->name()) }}">
-                                        <input type="checkbox" name="users[]" value="{{ $person->id }}" class="h-4 w-4 accent-[#b08a3e]">
+                                        <input type="checkbox" name="users[]" value="{{ $person->id }}" class="accent-gold-600">
                                         <span>{{ $person->name() }} <span class="text-xs text-slate-500">· {{ $person->employee?->department?->name ?? '—' }}</span></span>
                                     </label>
                                 @endforeach

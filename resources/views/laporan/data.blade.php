@@ -2,7 +2,7 @@
     @include('laporan.partials.head', ['active' => 'data', 'picker' => true, 'heading' => __('Data tugas'), 'action' => route('laporan.data'), 'keep' => $filters])
     @php $statusLabels = ['done' => 'Done', 'ongoing' => 'Ongoing', 'pending' => 'Pending', 'empty' => __('Belum diisi')]; @endphp
 
-    <form method="GET" action="{{ route('laporan.data') }}" class="card mb-6 grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4 print:hidden">
+    <form method="GET" action="{{ route('laporan.data') }}" data-filters class="card mb-6 grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4 print:hidden">
         <input type="hidden" name="from" value="{{ $from->toDateString() }}">
         <input type="hidden" name="to" value="{{ $to->toDateString() }}">
         <label class="text-sm text-slate-600">{{ __('Departemen') }}
@@ -47,7 +47,7 @@
         @if ($rows->count())
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-sm">
-                    <thead class="bg-slate-50 text-xs uppercase text-slate-500"><tr>
+                    <thead class="bg-gold-50 text-left text-xs font-semibold uppercase tracking-[0.08em] text-slate-500"><tr>
                         <th class="px-4 py-2">{{ __('Tanggal') }}</th><th class="px-4 py-2">{{ __('Departemen') }}</th><th class="px-4 py-2">{{ __('Staff') }}</th><th class="px-4 py-2">{{ __('Jabatan') }}</th>
                         <th class="px-4 py-2">{{ __('Tugas') }}</th><th class="px-4 py-2">{{ __('Status') }}</th><th class="px-4 py-2">{{ __('Catatan / nilai') }}</th><th class="px-4 py-2 text-right">{{ __('Foto') }}</th>
                     </tr></thead>
@@ -65,13 +65,7 @@
                     </tbody>
                 </table>
             </div>
-            <div class="flex items-center justify-between p-4 text-sm print:hidden">
-                <span class="text-slate-500">{{ __('Halaman') }} {{ $rows->currentPage() }} / {{ $rows->lastPage() }}</span>
-                <span class="flex gap-2">
-                    @if ($rows->previousPageUrl())<a class="btn-secondary" href="{{ $rows->previousPageUrl() }}">&larr; {{ __('Sebelumnya') }}</a>@endif
-                    @if ($rows->hasMorePages())<a class="btn-secondary" href="{{ $rows->nextPageUrl() }}">{{ __('Berikutnya') }} &rarr;</a>@endif
-                </span>
-            </div>
+            <x-ui.pagination :paginator="$rows" class="print:hidden" />
         @else
             <p class="p-5 text-sm text-slate-500">{{ __('Tidak ada data untuk filter ini.') }}</p>
         @endif

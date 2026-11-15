@@ -1,7 +1,7 @@
 {{-- Daftar obrolan (panel kiri). Dimuat ulang lewat chat.list tiap beberapa detik. --}}
 @php
     $me = auth()->user();
-    $tones = ['bg-[#f3e6c4] text-[#8a6a22]', 'bg-sky-100 text-sky-800', 'bg-emerald-100 text-emerald-800', 'bg-rose-100 text-rose-800', 'bg-violet-100 text-violet-800', 'bg-orange-100 text-orange-800'];
+    $tones = ['bg-gold-200 text-gold-700', 'bg-sky-100 text-sky-800', 'bg-emerald-100 text-emerald-800', 'bg-rose-100 text-rose-800', 'bg-violet-100 text-violet-800', 'bg-orange-100 text-orange-800'];
     $when = function ($time) {
         if (! $time) {
             return '';
@@ -21,7 +21,7 @@
 @endphp
 @if ($pinnedItems->isNotEmpty())
     <div class="flex items-center justify-between px-4 pb-1 pt-2">
-        <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8a6a22]">📌 {{ __('Disematkan') }}</p>
+        <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-gold-700">📌 {{ __('Disematkan') }}</p>
         @if ($pinnedItems->count() > 1)
             <button type="button" data-pin-reorder class="rounded-full px-2.5 py-1 text-xs font-medium text-sky-700 hover:bg-slate-100" data-label-edit="{{ __('Urutkan') }}" data-label-done="{{ __('Selesai') }}">{{ __('Urutkan') }}</button>
         @endif

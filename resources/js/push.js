@@ -152,6 +152,8 @@ if (config) {
     document.addEventListener('submit', (event) => {
         const form = event.target;
         if (cleaned || !supported || !(form instanceof HTMLFormElement) || !/\/logout$/.test(new URL(form.action, location.href).pathname)) return;
+        // Masih menunggu jawaban dialog konfirmasi Keluar (layouts/app): biarkan dialognya tampil dulu.
+        if (form.dataset.confirm && form.dataset.confirmed !== '1') return;
         event.preventDefault();
         const finish = () => { cleaned = true; form.submit(); };
         Promise.race([disable().catch(() => {}), new Promise((resolve) => setTimeout(resolve, 2000))]).finally(finish);

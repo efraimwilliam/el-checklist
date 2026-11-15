@@ -1,6 +1,6 @@
 <x-app-layout :title="'Tugas '.$position->name">
-    <a href="{{ route('admin.tasks.index') }}" class="text-sm text-sky-700 hover:underline">{{ __('← Semua jabatan') }}</a>
-    <h1 class="mt-1 text-3xl text-slate-900">{{ $position->name }}</h1>
+    <a href="{{ route('admin.tasks.index') }}" class="link-back"><span aria-hidden="true">‹</span> {{ __('Semua jabatan') }}</a>
+    <h1 class="mt-1 text-page">{{ $position->name }}</h1>
     <p class="mb-4 text-sm text-slate-500">{{ $position->department->name }}. Perubahan berlaku untuk checklist yang dibuat sesudahnya.</p>
 
     @if ($errors->any())
@@ -62,7 +62,7 @@
                         @foreach ($tasks->groupBy('position_id') as $positionId => $positionTasks)
                             <div class="space-y-1" data-pick-list data-department-id="{{ $positionTasks->first()->position->department_id }}" data-position-id="{{ $positionId }}" hidden>
                                 @foreach ($positionTasks as $task)
-                                    <label class="flex items-start gap-2 rounded-lg px-2 py-1 text-sm hover:bg-[#f6efdf]">
+                                    <label class="flex items-start gap-2 rounded-lg px-2 py-1 text-sm hover:bg-gold-100">
                                         <input type="checkbox" name="tasks[]" value="{{ $task->id }}" class="mt-1">
                                         <span>{{ $task->title }}@if ($task->section) <span class="text-xs text-slate-500">· {{ $task->section }}</span>@endif</span>
                                     </label>
@@ -132,7 +132,7 @@
             <span class="text-xs text-slate-500" data-move-status aria-live="polite"></span>
             @if ($position->tasks->isNotEmpty())
                 <label class="flex items-center gap-2 text-sm text-slate-600">
-                    <input type="checkbox" class="h-4 w-4" data-select-all-tasks>
+                    <input type="checkbox" class="h-5 w-5" data-select-all-tasks>
                     {{ __('Pilih semua') }}
                 </label>
                 <span class="text-xs text-slate-500" data-selected-count>0 {{ __('dipilih') }}</span>
@@ -151,7 +151,7 @@
         @forelse ($position->tasks as $task)
             <div class="card p-3 {{ $task->is_active ? '' : 'bg-slate-50' }}" data-task-item>
                 <div class="flex items-start gap-3">
-                    <input type="checkbox" name="task_ids[]" value="{{ $task->id }}" form="bulk-tasks-form" class="mt-1 h-4 w-4 shrink-0" data-task-check aria-label="{{ __('Pilih tugas') }}">
+                    <input type="checkbox" name="task_ids[]" value="{{ $task->id }}" form="bulk-tasks-form" class="mt-1 shrink-0" data-task-check aria-label="{{ __('Pilih tugas') }}">
                     <div class="flex flex-col gap-1">
                         <button type="button" class="btn-secondary !px-2 !py-0.5" data-move="up" data-url="{{ route('admin.tasks.move', $task) }}" @disabled($loop->first) aria-label="{{ __('Naikkan') }}">↑</button>
                         <button type="button" class="btn-secondary !px-2 !py-0.5" data-move="down" data-url="{{ route('admin.tasks.move', $task) }}" @disabled($loop->last) aria-label="{{ __('Turunkan') }}">↓</button>
@@ -187,15 +187,15 @@
         @endforelse
     </div>
 
-    <dialog id="add-task-dialog" aria-labelledby="add-task-title" class="m-auto w-[min(42rem,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl backdrop:bg-[#2a1d12]/50">
+    <dialog id="add-task-dialog" aria-labelledby="add-task-title" class="dialog-panel w-[min(42rem,calc(100vw-2rem))]">
         <form method="POST" action="{{ route('admin.tasks.store', $position) }}" class="space-y-4 p-6">
             @csrf
             <div class="flex items-start justify-between gap-3">
                 <div>
-                    <h2 id="add-task-title" class="font-display text-2xl text-slate-900">{{ __('Tambah tugas') }}</h2>
+                    <h2 id="add-task-title" class="text-section">{{ __('Tambah tugas') }}</h2>
                     <p class="text-sm text-slate-500">{{ $position->name }} · tugas baru masuk ke checklist yang dibuat sesudahnya.</p>
                 </div>
-                <button type="button" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-2xl leading-none text-slate-500 hover:bg-[#f6efdf] hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-500" aria-label="{{ __('Tutup') }}" data-close-add>{{ __('×') }}</button>
+                <button type="button" class="dialog-close" aria-label="{{ __('Tutup') }}" data-close-add>{{ __('×') }}</button>
             </div>
             @include('admin.tasks.fields', ['task' => null])
             <div class="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">

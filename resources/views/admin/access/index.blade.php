@@ -1,7 +1,7 @@
 <x-app-layout title="{{ __('Akses pengguna') }}">
     <div class="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
-            <h1 class="text-3xl text-slate-900">{{ __('Akses pengguna') }}</h1>
+            <h1 class="text-page">{{ __('Akses pengguna') }}</h1>
             <p class="text-sm text-slate-500">
                 Data pegawai dari Sistem Absensi.
                 @if ($lastSync)
@@ -52,7 +52,7 @@
 
         <div class="overflow-x-auto">
             <table class="min-w-full text-sm">
-                <thead class="bg-[#fbf6ea] text-left text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
+                <thead class="bg-gold-50 text-left text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
                     <tr>
                         @foreach (['name' => __('Pegawai'), 'department' => __('Departemen'), 'role' => __('Peran'), 'position' => __('Jabatan checklist')] as $key => $label)
                             <th class="px-4 py-3" data-sort-th="{{ $key }}" aria-sort="none">

@@ -1,6 +1,6 @@
 <x-app-layout :title="__('Atur tugas hari ini')">
-    <a href="{{ route('checklists.fill', $checklist) }}" class="text-sm font-semibold text-sky-700 hover:underline">{{ __('← Kembali ke checklist') }}</a>
-    <h1 class="mb-1 mt-2 text-3xl text-slate-900">{{ __('Atur tugas hari ini') }}</h1>
+    <a href="{{ route('checklists.fill', $checklist) }}" class="link-back"><span aria-hidden="true">‹</span> {{ __('Kembali ke checklist') }}</a>
+    <h1 class="mb-1 mt-2 text-page">{{ __('Atur tugas hari ini') }}</h1>
     <p class="text-sm text-slate-500">
         {{ $checklist->employee->name }} · {{ $checklist->position_name }} · {{ $checklist->date->translatedFormat('d M Y') }}
     </p>
@@ -21,9 +21,9 @@
                             <label class="flex cursor-pointer items-start gap-3 {{ $row['locked'] ? 'cursor-not-allowed text-slate-500' : '' }}">
                                 @if ($row['locked'])
                                     <input type="hidden" name="tasks[]" value="{{ $row['id'] }}">
-                                    <input type="checkbox" checked disabled class="mt-1 h-5 w-5 accent-[#b08a3e]">
+                                    <input type="checkbox" checked disabled class="mt-1 h-5 w-5 accent-gold-600">
                                 @else
-                                    <input type="checkbox" name="tasks[]" value="{{ $row['id'] }}" @checked($row['checked']) class="mt-1 h-5 w-5 accent-[#b08a3e]">
+                                    <input type="checkbox" name="tasks[]" value="{{ $row['id'] }}" @checked($row['checked']) class="mt-1 h-5 w-5 accent-gold-600">
                                 @endif
                                 <span class="min-w-0 flex-1">
                                     <span class="block text-base text-slate-800">{{ $row['title'] }}</span>
@@ -58,9 +58,9 @@
                                     <label class="flex cursor-pointer items-start gap-3 {{ $row['locked'] ? 'cursor-not-allowed text-slate-500' : '' }}">
                                         @if ($row['locked'])
                                             <input type="hidden" name="tasks[]" value="{{ $row['id'] }}">
-                                            <input type="checkbox" checked disabled class="mt-1 h-5 w-5 accent-[#b08a3e]">
+                                            <input type="checkbox" checked disabled class="mt-1 h-5 w-5 accent-gold-600">
                                         @else
-                                            <input type="checkbox" name="tasks[]" value="{{ $row['id'] }}" @checked($row['checked']) class="mt-1 h-5 w-5 accent-[#b08a3e]">
+                                            <input type="checkbox" name="tasks[]" value="{{ $row['id'] }}" @checked($row['checked']) class="mt-1 h-5 w-5 accent-gold-600">
                                         @endif
                                         <span class="min-w-0 flex-1">
                                             <span class="block text-base text-slate-800">{{ $row['title'] }}</span>

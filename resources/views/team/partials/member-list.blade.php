@@ -3,7 +3,7 @@
 <ul class="divide-y divide-slate-100">
     @foreach ($members as $member)
         <li>
-            <a href="{{ route('team.tasks.edit', $member) }}" class="flex items-center gap-3 px-5 py-3 hover:bg-[#fbf6ea]">
+            <a href="{{ route('team.tasks.edit', $member) }}" class="flex items-center gap-3 px-5 py-3 hover:bg-gold-50">
                 <span class="hod-avatar !h-10 !w-10 shrink-0 !text-sm" aria-hidden="true">{{ $initials($member->name) }}</span>
                 <span class="min-w-0 flex-1">
                     <span class="block truncate font-semibold text-slate-900">{{ $member->name }}</span>

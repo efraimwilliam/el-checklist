@@ -16,14 +16,14 @@
     @endphp
 
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3 print:hidden">
-        <a href="{{ route('kamar.issues.show', $issue) }}" class="text-sm text-sky-700 hover:underline">{{ __('← Kembali ke kendala') }}</a>
+        <a href="{{ route('kamar.issues.show', $issue) }}" class="link-back"><span aria-hidden="true">‹</span> {{ __('Kembali ke kendala') }}</a>
         <button type="button" class="btn-primary" onclick="window.print()">{{ __('Cetak / simpan PDF') }}</button>
     </div>
 
     <article class="card mx-auto max-w-4xl p-6 sm:p-8 print:max-w-none print:border-0 print:p-0 print:shadow-none">
         <header class="border-b border-slate-200 pb-4">
             <p class="text-xs font-semibold uppercase tracking-[0.12em] text-gold-700">eL Hotel &amp; Resort Sanur</p>
-            <h1 class="mt-1 text-2xl text-slate-900 sm:text-3xl">{{ __('Riwayat Penanganan Kendala') }}</h1>
+            <h1 class="mt-1 text-page sm:text-3xl">{{ __('Riwayat Penanganan Kendala') }}</h1>
             <p class="mt-1 text-sm text-slate-500">{{ __('Kendala') }} #{{ $issue->id }} · {{ $issue->placeTitle() }}</p>
         </header>
 
@@ -44,7 +44,7 @@
         </div>
 
         {{-- Kronologi --}}
-        <h2 class="mt-7 font-display text-xl text-slate-900">{{ __('Kronologi') }}</h2>
+        <h2 class="mt-7 text-section">{{ __('Kronologi') }}</h2>
         <ol class="mt-3">
             @foreach ($events as $event)
                 @php [$label, $dot] = $kinds[$event['kind']] ?? [$event['kind'], 'bg-slate-300']; $previous = $loop->first ? null : $events[$loop->index - 1]['at']; @endphp

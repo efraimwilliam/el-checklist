@@ -22,10 +22,10 @@
         $row = fn (array $extra) => $extra + ['kind' => null, 'category' => null, 'help' => null]; // isi yang diberikan menang
     @endphp
 
-    <a href="{{ route('admin.settings.edit') }}#ketik" class="text-sm text-sky-700 hover:underline">&larr; {{ __('Pengaturan') }}</a>
+    <a href="{{ route('admin.settings.edit') }}#ketik" class="link-back"><span aria-hidden="true">‹</span> {{ __('Pengaturan') }}</a>
     <div class="mb-5 mt-1 flex flex-wrap items-end justify-between gap-3">
         <div class="max-w-3xl">
-            <h1 class="text-3xl text-slate-900">{{ __('Kamus ketik bebas') }}</h1>
+            <h1 class="text-page">{{ __('Kamus ketik bebas') }}</h1>
             <p class="mt-1 text-sm text-slate-500">{{ __('Kata yang dibaca sistem saat petugas mengetik di obrolan, mis. "1206 req 2 mw" atau "305 ac tidak dingin". Perubahan langsung berlaku.') }}</p>
         </div>
         <p class="flex flex-wrap gap-2 text-xs text-slate-600">
@@ -62,7 +62,7 @@
 
     {{-- Tab + cari kata. --}}
     <div class="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between" data-kamus-tabs data-active="{{ $tab }}">
-        <div class="grid grid-cols-3 gap-1 rounded-2xl bg-[#f6efdf] p-1" role="tablist">
+        <div class="grid grid-cols-3 gap-1 rounded-2xl bg-gold-100 p-1" role="tablist">
             @foreach ($tabs as $key => [$icon, $label, $short, $meta])
                 <button type="button" role="tab" data-tab="{{ $key }}" aria-selected="{{ $tab === $key ? 'true' : 'false' }}"
                         class="rounded-xl px-2 py-2 text-center text-sm transition aria-selected:bg-white aria-selected:shadow-sm sm:px-4 sm:text-left">
@@ -133,16 +133,16 @@
 
     {{-- Dialog: jenis permintaan baru. --}}
     @php($newKindOpen = old('kind_form') === 'new')
-    <dialog id="kind-dialog" @if ($newKindOpen) data-autoopen @endif aria-labelledby="kind-dialog-title" class="m-auto w-[min(32rem,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl backdrop:bg-[#2a1d12]/50">
+    <dialog id="kind-dialog" @if ($newKindOpen) data-autoopen @endif aria-labelledby="kind-dialog-title" class="dialog-panel w-[min(32rem,calc(100vw-2rem))]">
         <form method="POST" action="{{ route('admin.quick-terms.kinds.store') }}" class="space-y-4 p-6">
             @csrf
             <input type="hidden" name="kind_form" value="new">
             <div class="flex items-start justify-between gap-3">
                 <div>
-                    <h2 id="kind-dialog-title" class="font-display text-2xl text-slate-900">🛎 {{ __('Jenis permintaan baru') }}</h2>
+                    <h2 id="kind-dialog-title" class="text-section">🛎 {{ __('Jenis permintaan baru') }}</h2>
                     <p class="text-sm text-slate-500">{{ __('Langsung muncul di dialog Catat permintaan, ketik bebas di obrolan, kartu obrolan, dan halaman Permintaan.') }}</p>
                 </div>
-                <button type="button" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-2xl leading-none text-slate-500 hover:bg-[#f6efdf]" aria-label="{{ __('Tutup') }}" data-dialog-close>×</button>
+                <button type="button" class="dialog-close" aria-label="{{ __('Tutup') }}" data-dialog-close>×</button>
             </div>
             <div>
                 <label class="label" for="new-kind-label">{{ __('Nama jenis') }}</label>
@@ -162,7 +162,7 @@
                 <label class="label" for="new-kind-terms">{{ __('Kata yang dibaca (pisahkan dengan koma)') }}</label>
                 <input id="new-kind-terms" name="terms" maxlength="500" class="input w-full" value="{{ $newKindOpen ? old('terms') : '' }}" placeholder="{{ __('mis. lan cable, kabel lan, lan') }}">
             </div>
-            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="has_quantity" value="1" class="h-4 w-4" @checked($newKindOpen ? old('has_quantity') : true)> {{ __('Pakai jumlah (mis. "2 lan cable")') }}</label>
+            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="has_quantity" value="1" class="h-5 w-5" @checked($newKindOpen ? old('has_quantity') : true)> {{ __('Pakai jumlah (mis. "2 lan cable")') }}</label>
             @if ($newKindOpen && $errors->kind->any())<p class="text-sm text-rose-700">{{ $errors->kind->first() }}</p>@endif
             <div class="flex justify-end gap-2">
                 <button type="button" class="btn-secondary" data-dialog-close>{{ __('Batal') }}</button>
@@ -173,16 +173,16 @@
 
     {{-- Dialog: kategori kendala baru (tabel yang sama dengan Data kamar > Kategori kendala). --}}
     @php($newCategoryOpen = old('category_form') === 'new')
-    <dialog id="category-dialog" @if ($newCategoryOpen) data-autoopen @endif aria-labelledby="category-dialog-title" class="m-auto w-[min(32rem,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl backdrop:bg-[#2a1d12]/50">
+    <dialog id="category-dialog" @if ($newCategoryOpen) data-autoopen @endif aria-labelledby="category-dialog-title" class="dialog-panel w-[min(32rem,calc(100vw-2rem))]">
         <form method="POST" action="{{ route('admin.quick-terms.categories.store') }}" class="space-y-4 p-6">
             @csrf
             <input type="hidden" name="category_form" value="new">
             <div class="flex items-start justify-between gap-3">
                 <div>
-                    <h2 id="category-dialog-title" class="font-display text-2xl text-slate-900">🛠 {{ __('Kategori kendala baru') }}</h2>
+                    <h2 id="category-dialog-title" class="text-section">🛠 {{ __('Kategori kendala baru') }}</h2>
                     <p class="text-sm text-slate-500">{{ __('Langsung muncul di dialog Catat kendala, ketik bebas di obrolan, Peta kamar, dan Data kamar.') }}</p>
                 </div>
-                <button type="button" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-2xl leading-none text-slate-500 hover:bg-[#f6efdf]" aria-label="{{ __('Tutup') }}" data-dialog-close>×</button>
+                <button type="button" class="dialog-close" aria-label="{{ __('Tutup') }}" data-dialog-close>×</button>
             </div>
             <div>
                 <label class="label" for="new-category-name">{{ __('Nama kategori') }}</label>

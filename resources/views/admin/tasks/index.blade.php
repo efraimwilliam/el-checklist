@@ -7,7 +7,7 @@
     <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div class="min-w-0">
             <p class="eyebrow"><span class="h-px w-6 bg-gold-500"></span>{{ __('Jabatan dan tugas') }}</p>
-            <h1 class="mt-1 text-3xl text-slate-900">{{ __('Jabatan dan tugasnya') }}</h1>
+            <h1 class="mt-1 text-page">{{ __('Jabatan dan tugasnya') }}</h1>
             <p class="mt-1 max-w-2xl text-sm text-slate-500">{{ __('Pilih jabatan untuk mengubah daftar tugasnya. Perubahan berlaku untuk checklist yang dibuat sesudahnya; checklist yang sudah ada tidak berubah.') }}</p>
         </div>
         <dl class="grid grid-cols-3 gap-3 text-center">
@@ -32,7 +32,7 @@
         @foreach ($departments as $department)
             <section class="card flex flex-col p-5">
                 <header class="mb-2 flex items-center justify-between gap-3">
-                    <h2 class="font-display text-xl text-slate-900">{{ $department->name }}</h2>
+                    <h2 class="text-section">{{ $department->name }}</h2>
                     <span class="pill-neutral">{{ __(':n jabatan', ['n' => $department->positions->count()]) }}</span>
                 </header>
 
@@ -49,7 +49,7 @@
                                 </p>
                             </div>
                             <div class="flex shrink-0 items-center gap-1">
-                                <button type="button" class="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition hover:bg-[#f6efdf] hover:text-gold-700"
+                                <button type="button" class="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition hover:bg-gold-100 hover:text-gold-700"
                                     data-edit-position data-url="{{ route('admin.positions.update', $position) }}" data-name="{{ $position->name }}" data-active="{{ $position->is_active ? '1' : '0' }}"
                                     aria-label="{{ __('Ubah jabatan') }}" title="{{ __('Ubah jabatan') }}">
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
@@ -77,13 +77,13 @@
         @endforeach
     </div>
 
-    <dialog id="edit-position-dialog" aria-labelledby="edit-position-title" class="m-auto w-[min(32rem,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl backdrop:bg-[#2a1d12]/50">
+    <dialog id="edit-position-dialog" aria-labelledby="edit-position-title" class="dialog-panel w-[min(32rem,calc(100vw-2rem))]">
         <form method="POST" id="edit-position-form" action="" class="space-y-4 p-6">
             @csrf
             @method('PUT')
             <div class="flex items-start justify-between gap-3">
-                <h2 id="edit-position-title" class="font-display text-2xl text-slate-900">{{ __('Ubah jabatan') }}</h2>
-                <button type="button" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-2xl leading-none text-slate-500 hover:bg-[#f6efdf] hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-500" aria-label="{{ __('Tutup') }}" data-close-edit-position>{{ __('×') }}</button>
+                <h2 id="edit-position-title" class="text-section">{{ __('Ubah jabatan') }}</h2>
+                <button type="button" class="dialog-close" aria-label="{{ __('Tutup') }}" data-close-edit-position>{{ __('×') }}</button>
             </div>
             <div>
                 <label for="edit-position-name" class="label">{{ __('Nama jabatan') }}</label>
@@ -91,7 +91,7 @@
             </div>
             <input type="hidden" name="is_active" value="0">
             <label class="flex items-center gap-2 text-sm text-slate-700">
-                <input type="checkbox" name="is_active" value="1" id="edit-position-active" class="h-4 w-4 accent-[#b08a3e]">
+                <input type="checkbox" name="is_active" value="1" id="edit-position-active" class="h-5 w-5 accent-gold-600">
                 {{ __('Jabatan aktif (muncul di pilihan checklist)') }}
             </label>
             <div class="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
@@ -101,11 +101,11 @@
         </form>
     </dialog>
 
-    <dialog id="delete-position-dialog" aria-labelledby="delete-position-title" class="m-auto w-[min(28rem,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl backdrop:bg-[#2a1d12]/50">
+    <dialog id="delete-position-dialog" aria-labelledby="delete-position-title" class="dialog-panel w-[min(28rem,calc(100vw-2rem))]">
         <form method="POST" id="delete-position-form" action="" class="space-y-4 p-6">
             @csrf
             @method('DELETE')
-            <h2 id="delete-position-title" class="font-display text-2xl text-slate-900">{{ __('Hapus jabatan?') }}</h2>
+            <h2 id="delete-position-title" class="text-section">{{ __('Hapus jabatan?') }}</h2>
             <p class="text-sm text-slate-600">"<span id="delete-position-name" class="font-semibold text-slate-900"></span>{{ __('" beserta semua tugasnya akan dihapus. Pegawai yang memakai jabatan ini dilepas dari jabatan checklist-nya.') }}</p>
             <div class="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
                 <button type="button" class="btn-secondary" data-close-delete-position autofocus>{{ __('Batal') }}</button>
