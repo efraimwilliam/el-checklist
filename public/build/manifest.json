@@ -55,7 +55,7 @@
     ]
   },
   "resources/css/app.css": {
-    "file": "assets/app-DYyWEbPv.css",
+    "file": "assets/app-CPVOmMQU.css",
     "name": "app",
     "names": [
       "app.css"
@@ -150,7 +150,7 @@
     "isEntry": true
   },
   "resources/js/ui.js": {
-    "file": "assets/ui-BpgDlOx3.js",
+    "file": "assets/ui-TQAREmHo.js",
     "name": "ui",
     "src": "resources/js/ui.js",
     "isEntry": true

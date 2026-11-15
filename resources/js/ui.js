@@ -146,6 +146,18 @@ document.querySelectorAll('form[data-filters]').forEach((form, index) => {
 
 // 5. Dropdown menu atas (layouts/app, data-nav-menu): tetap terbuka saat kursor di atasnya / fokus di dalamnya (CSS), dan di sini
 //    aria-expanded diperbarui untuk pembaca layar, Esc menutup dan mengembalikan fokus ke tombolnya, panah bawah masuk ke daftar.
+// Submenu (mis. Tugas > Data kamar) terbuka ke KANAN; bila tidak muat di layar, dibalik ke kiri (data-flip).
+document.querySelectorAll('[data-submenu]').forEach((item) => {
+    const panel = item.querySelector(':scope > div');
+    const place = () => {
+        delete item.dataset.flip;
+        const rect = panel.getBoundingClientRect();
+        if (rect.right > window.innerWidth - 8) item.dataset.flip = '';
+    };
+    item.addEventListener('mouseenter', place);
+    item.addEventListener('focusin', place);
+});
+
 document.querySelectorAll('[data-nav-menu]').forEach((menu) => {
     const button = menu.querySelector('button');
     const links = () => [...menu.querySelectorAll('a')];
