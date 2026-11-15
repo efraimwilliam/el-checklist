@@ -65,15 +65,20 @@
         if ($can('view-checklists')) {
             $menu[] = $link(__('Dashboard'), 'dashboard', $is('dashboard'));
         }
+        // Riwayat checklist ada di dalam menu Checklist (staff: Checklist saya + Riwayat checklist); yang tidak mengisi checklist (GM)
+        // tidak punya menu Checklist, jadi Riwayat checklist berdiri sendiri.
+        $history = $link(__('Riwayat checklist'), 'checklists.index', $is('checklists.index', 'checklists.show'));
         if ($can('fill-checklists')) {
-            $menu[] = $isStaff
-                ? $link(__('Checklist saya'), 'fill.create', $is('fill.*', 'checklists.today'))
-                : ['label' => __('Checklist'), 'active' => $is('fill.*', 'checklists.today', 'checklists.tasks.*', 'checklists.fill'), 'count' => 0, 'items' => [
+            $menu[] = ['label' => $isStaff ? __('Checklist saya') : __('Checklist'), 'active' => $is('fill.*', 'checklists.*'), 'count' => 0, 'items' => $isStaff
+                ? [$link(__('Checklist saya'), 'fill.create', $is('fill.*', 'checklists.today', 'checklists.fill')), $history]
+                : [
                     $link(__('Atur checklist'), 'fill.assign', $is('fill.assign', 'checklists.tasks.*')),
                     $link(__('Isi checklist'), 'fill.create', $is('fill.create', 'checklists.today', 'checklists.fill')),
+                    $history,
                 ]];
+        } else {
+            $menu[] = $history;
         }
-        $menu[] = $link(__('Riwayat'), 'checklists.index', $is('checklists.index', 'checklists.show'));
         $service = array_map(fn ($item) => $link($item['label'], $item['route'], $is(...$item['active']), $item['count']), $serviceItems);
         if (count($service) > 1) {
             $menu[] = ['label' => __('Operasional'), 'active' => $serviceActive, 'count' => $newService, 'items' => $service];

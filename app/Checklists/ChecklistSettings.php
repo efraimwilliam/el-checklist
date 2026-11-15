@@ -43,7 +43,7 @@ class ChecklistSettings
 
     /**
      * Fitur yang bisa dinyalakan / dimatikan Administrator (Pengaturan > Fitur): kunci => [nama, keterangan, bawaan].
-     * Checklist, Dashboard, dan Riwayat adalah inti aplikasi, jadi tidak ada di sini. Mematikan fitur menyembunyikan menunya dan
+     * Checklist, Dashboard, dan Riwayat checklist adalah inti aplikasi, jadi tidak ada di sini. Mematikan fitur menyembunyikan menunya dan
      * menutup rutenya (404, lihat EnsureFeatureEnabled); datanya tetap tersimpan dan kembali saat dinyalakan.
      */
     public const FEATURES = [

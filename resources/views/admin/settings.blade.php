@@ -80,7 +80,7 @@
                         @method('PUT')
                         <header class="pb-5">
                             <h2 class="text-section">{{ __('Fitur') }}</h2>
-                            <p class="mt-1 text-sm text-slate-500">{{ __('Nyalakan atau matikan fitur untuk semua pengguna. Fitur yang dimatikan hilang dari menu dan halamannya tidak bisa dibuka; datanya tetap tersimpan dan kembali saat dinyalakan. Checklist, Dashboard, dan Riwayat selalu aktif.') }}</p>
+                            <p class="mt-1 text-sm text-slate-500">{{ __('Nyalakan atau matikan fitur untuk semua pengguna. Fitur yang dimatikan hilang dari menu dan halamannya tidak bisa dibuka; datanya tetap tersimpan dan kembali saat dinyalakan. Checklist, Dashboard, dan Riwayat checklist selalu aktif.') }}</p>
                         </header>
                         @foreach ($features as $key => [$label, $help, $default])
                             <div class="grid gap-4 border-t border-slate-100 py-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">

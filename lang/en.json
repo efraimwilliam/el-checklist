@@ -739,7 +739,7 @@
     "Menyala": "On",
     "Menyala secara bawaan.": "On by default.",
     "Pengaturan fitur disimpan.": "Feature settings saved.",
-    "Nyalakan atau matikan fitur untuk semua pengguna. Fitur yang dimatikan hilang dari menu dan halamannya tidak bisa dibuka; datanya tetap tersimpan dan kembali saat dinyalakan. Checklist, Dashboard, dan Riwayat selalu aktif.": "Turn features on or off for everyone. A feature that is off disappears from the menu and its pages cannot be opened; its data is kept and comes back when it is turned on again. Checklist, Dashboard and History are always on.",
+    "Nyalakan atau matikan fitur untuk semua pengguna. Fitur yang dimatikan hilang dari menu dan halamannya tidak bisa dibuka; datanya tetap tersimpan dan kembali saat dinyalakan. Checklist, Dashboard, dan Riwayat checklist selalu aktif.": "Turn features on or off for everyone. A feature that is off disappears from the menu and its pages cannot be opened; its data is kept and comes back when it is turned on again. Checklist, Dashboard and Checklist history are always on.",
     "Menu Permintaan: Front Office mencatat permintaan tamu (air mineral, handuk, laundry, MUR), departemen tujuan mengambil dan menyelesaikannya.": "Requests menu: Front Office logs guest requests (mineral water, towels, laundry, MUR); the target department takes and completes them.",
     "Menu Kendala, track record kamar, dan Peta kamar di Laporan. Data kamar dan denah tetap bisa diatur.": "Issues menu, room track record, and the room map in Reports. Room data and floor plans can still be managed.",
     "Menu Chronology Report (laporan kejadian dengan tamu) dan ringkasannya di Dashboard.": "Chronology Report menu (guest incident reports) and its summary on the Dashboard.",
