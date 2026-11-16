@@ -42,36 +42,54 @@ class AttendanceLoginController extends Controller
 
     public function store(Request $request, AttendanceApiService $api): RedirectResponse
     {
-        if (! PortalClient::allowsPasswordLogin()) {
-            return $this->failed(__('Silakan masuk lewat portal.'));
-        }
-
         $data = $request->validate([
             'username' => ['required', 'string', 'max:100'],
             'pin' => ['required', 'string', 'max:255'], // PIN atau password dashboard
         ]);
-        $username = mb_strtolower(trim($data['username']));
+        $user = $this->attempt($request, $api, $data['username'], $data['pin']);
+        if (is_string($user)) {
+            return $this->failed($user);
+        }
+
+        Auth::login($user);
+        $request->session()->regenerate();
+        $request->session()->put('auth.logged_in_at', now()->timestamp);
+
+        return redirect()->intended(route('home'));
+    }
+
+    /**
+     * Memeriksa username + PIN/password (dipakai form web dan aplikasi Android, `Api\AuthController`).
+     * Mengembalikan pengguna yang boleh masuk, atau pesan gagal untuk ditampilkan.
+     */
+    public function attempt(Request $request, AttendanceApiService $api, string $username, string $secret): User|string
+    {
+        if (! PortalClient::allowsPasswordLogin()) {
+            return __('Silakan masuk lewat portal.');
+        }
+
+        $username = mb_strtolower(trim($username));
         $key = 'login-failures:'.sha1($username.'|'.$request->ip());
 
         if (RateLimiter::tooManyAttempts($key, self::MAX_FAILURES)) {
             $this->log($request, $username, 'throttled');
 
-            return $this->failed(__('Terlalu banyak percobaan login. Coba lagi dalam :n menit.', ['n' => (int) ceil(RateLimiter::availableIn($key) / 60)]));
+            return __('Terlalu banyak percobaan login. Coba lagi dalam :n menit.', ['n' => (int) ceil(RateLimiter::availableIn($key) / 60)]);
         }
 
         // Akun sistem dengan password Checklist sendiri (checklist:admin-lokal): tidak ke Absensi.
         if ($account = $this->passwordAccount($username)) {
-            if (! Hash::check($data['pin'], $account->password)) {
+            if (! Hash::check($secret, $account->password)) {
                 RateLimiter::hit($key, self::FAILURE_DECAY);
                 $this->log($request, $username, 'invalid_credentials');
 
-                return $this->failed(__('Username atau PIN/password tidak sesuai.'));
+                return __('Username atau PIN/password tidak sesuai.');
             }
 
-            return $this->signIn($request, $account, $username, $key);
+            return $this->accept($request, $account, $username, $key);
         }
 
-        $result = $this->authenticateSecret($api, $username, $data['pin']);
+        $result = $this->authenticateSecret($api, $username, $secret);
 
         if (! $result->succeeded()) {
             // Gangguan API bukan kesalahan pegawai: tidak menambah hitungan gagal, dan PIN tidak pernah diterima dari data lama.
@@ -80,18 +98,17 @@ class AttendanceLoginController extends Controller
             }
             $this->log($request, $username, $result->outcome->value);
 
-            return $this->failed($this->message($result));
+            return $this->message($result);
         }
 
-        $employee = $this->resolveEmployee($result->employee);
-        $user = $employee->user;
+        $user = $this->resolveEmployee($result->employee)->user;
         if (! $user) {
             $this->log($request, $username, 'no_access');
 
-            return $this->failed(__('Anda belum memiliki akses ke aplikasi ini. Hubungi HR / Administrator.'));
+            return __('Anda belum memiliki akses ke aplikasi ini. Hubungi HR / Administrator.');
         }
 
-        return $this->signIn($request, $user, $username, $key);
+        return $this->accept($request, $user, $username, $key);
     }
 
     /** Akun sistem yang punya password di Checklist (bukan pegawai absensi). */
@@ -102,22 +119,19 @@ class AttendanceLoginController extends Controller
             ->first();
     }
 
-    private function signIn(Request $request, User $user, string $username, string $key): RedirectResponse
+    private function accept(Request $request, User $user, string $username, string $key): User|string
     {
         if (! $user->canUseApp()) {
             $this->log($request, $username, 'no_access');
 
-            return $this->failed(__('Anda belum memiliki akses ke aplikasi ini. Hubungi HR / Administrator.'));
+            return __('Anda belum memiliki akses ke aplikasi ini. Hubungi HR / Administrator.');
         }
 
         RateLimiter::clear($key);
-        Auth::login($user);
-        $request->session()->regenerate();
-        $request->session()->put('auth.logged_in_at', now()->timestamp);
         $user->forceFill(['last_login_at' => now()])->save();
         $this->log($request, $username, 'success');
 
-        return redirect()->intended(route('home'));
+        return $user;
     }
 
     public function destroy(Request $request): RedirectResponse

@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Support\Facades\Gate;
+use Laravel\Sanctum\HasApiTokens;
 
 /**
  * Akses aplikasi seorang pegawai. Tidak ada password/PIN: login diverifikasi Sistem Absensi,
@@ -14,7 +16,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
  */
 class User extends Authenticatable
 {
-    use HasFactory;
+    use HasApiTokens, HasFactory;
 
     protected $fillable = ['employee_id', 'role', 'position_id', 'is_active', 'last_login_at'];
 
@@ -90,7 +92,7 @@ class User extends Authenticatable
                 return 0;
             }
 
-            return \App\Models\RoomIssue::where('status', \App\Models\RoomIssue::STATUS_NEW)->forUser($this)->count();
+            return RoomIssue::where('status', RoomIssue::STATUS_NEW)->forUser($this)->count();
         });
     }
 
@@ -102,7 +104,7 @@ class User extends Authenticatable
                 return 0;
             }
 
-            return \App\Models\GuestRequest::where('status', \App\Models\GuestRequest::STATUS_NEW)->forUser($this)->count();
+            return GuestRequest::where('status', GuestRequest::STATUS_NEW)->forUser($this)->count();
         });
     }
 
@@ -110,11 +112,11 @@ class User extends Authenticatable
     public function unreadChatCount(): int
     {
         return once(function () {
-            if (! \Illuminate\Support\Facades\Gate::forUser($this)->allows('chat')) {
+            if (! Gate::forUser($this)->allows('chat')) {
                 return 0;
             }
 
-            return \App\Models\ChatParticipant::where('user_id', $this->id)
+            return ChatParticipant::where('user_id', $this->id)
                 ->where(fn ($outer) => $outer->where('marked_unread', true)
                     ->orWhereExists(fn ($q) => $q->selectRaw('1')->from('chat_messages')
                         ->whereColumn('chat_messages.chat_thread_id', 'chat_participants.chat_thread_id')

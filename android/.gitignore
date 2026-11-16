@@ -1,0 +1,13 @@
+# Kunci tanda tangan: JANGAN masuk Git. Cadangkan di tempat aman (hilang = aplikasi tidak bisa diperbarui).
+*.keystore
+*.jks
+keystore.properties
+.gradle/
+.kotlin/
+build/
+app/build/
+local.properties
+.idea/
+*.iml
+*.apk
+*.aab

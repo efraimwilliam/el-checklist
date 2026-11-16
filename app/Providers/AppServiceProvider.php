@@ -4,14 +4,26 @@ namespace App\Providers;
 
 use App\Checklists\ChecklistSettings;
 use App\Enums\Role;
-use App\Observers\AuditObserver;
+use App\Models\ChatThread;
+use App\Models\ChronologyReport;
 use App\Models\Employee;
+use App\Models\GuestRequest;
+use App\Models\RoomIssue;
 use App\Models\User;
+use App\Observers\AuditObserver;
+use App\Policies\ChatThreadPolicy;
+use App\Policies\ChronologyReportPolicy;
+use App\Policies\GuestRequestPolicy;
+use App\Policies\RoomIssuePolicy;
+use App\Push\PushSender;
+use App\Push\WebPushSender;
+use App\Requests\RequestKinds;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Sanctum\Sanctum;
 use RuntimeException;
 
 class AppServiceProvider extends ServiceProvider
@@ -19,7 +31,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->scoped(ChecklistSettings::class);
-        $this->app->scoped(\App\Requests\RequestKinds::class);
+        $this->app->scoped(RequestKinds::class);
     }
 
     public function boot(): void
@@ -27,6 +39,10 @@ class AppServiceProvider extends ServiceProvider
         if ($this->app->isProduction() && ! config('attendance.verify_tls')) {
             throw new RuntimeException('ATTENDANCE_API_VERIFY_TLS tidak boleh false di produksi.');
         }
+
+        // Token aplikasi Android ikut batas diam sesi web: tidak dipakai lebih lama dari session.lifetime = tidak berlaku.
+        Sanctum::authenticateAccessTokensUsing(fn ($token, bool $valid) => $valid
+            && ($token->last_used_at ?? $token->created_at)->gt(now()->subMinutes((int) config('session.lifetime'))));
 
         // Log aplikasi: setiap perubahan data utama dicatat otomatis (lihat AuditObserver).
         foreach (AuditObserver::MODELS as $model) {
@@ -40,7 +56,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('fill-checklists', fn (User $user) => $user->canUseApp() && $user->role !== Role::Gm);
         Gate::define('view-checklists', fn (User $user) => $user->canUseApp() && $user->role !== Role::Staff);
         // Fitur yang bisa dimatikan Administrator (Pengaturan > Fitur); rutenya ditutup EnsureFeatureEnabled.
-        $feature = fn (string $key) => app(\App\Checklists\ChecklistSettings::class)->featureEnabled($key);
+        $feature = fn (string $key) => app(ChecklistSettings::class)->featureEnabled($key);
         Gate::define('reports', fn (User $user) => Gate::forUser($user)->allows('view-checklists') && $feature('laporan'));
         // Memilih tugas per pegawai Absensi: Administrator & HR (semua departemen) dan HOD (departemen yang ditugaskan). Tidak untuk diri sendiri, kecuali Administrator.
         Gate::define('manage-team-tasks', fn (User $user) => $user->canUseApp() && $user->role->managesOthers());
@@ -51,18 +67,18 @@ class AppServiceProvider extends ServiceProvider
             && $actor->canAccessDepartment($target->department_id));
         // Kendala kamar: semua pengguna berakses (termasuk Staff Front Office) boleh mencatat dan melihat yang menjadi bagiannya; hak per kendala ada di RoomIssuePolicy.
         Gate::define('room-issues', fn (User $user) => $user->canUseApp() && $feature('kendala'));
-        Gate::policy(\App\Models\RoomIssue::class, \App\Policies\RoomIssuePolicy::class);
+        Gate::policy(RoomIssue::class, RoomIssuePolicy::class);
         // Permintaan tamu: semua pengguna berakses; hak per permintaan ada di GuestRequestPolicy.
         Gate::define('guest-requests', fn (User $user) => $user->canUseApp() && $feature('permintaan'));
-        Gate::policy(\App\Models\GuestRequest::class, \App\Policies\GuestRequestPolicy::class);
+        Gate::policy(GuestRequest::class, GuestRequestPolicy::class);
         // Notifikasi obrolan (Web Push): pengirim bisa diganti di tes.
-        $this->app->bind(\App\Push\PushSender::class, \App\Push\WebPushSender::class);
+        $this->app->bind(PushSender::class, WebPushSender::class);
         // Chronology Report (laporan kejadian tamu): semua pengguna berakses boleh membuat; hak per laporan ada di ChronologyReportPolicy.
         Gate::define('chronology-reports', fn (User $user) => $user->canUseApp() && $feature('chronology'));
-        Gate::policy(\App\Models\ChronologyReport::class, \App\Policies\ChronologyReportPolicy::class);
+        Gate::policy(ChronologyReport::class, ChronologyReportPolicy::class);
         // Obrolan pekerjaan: hanya bila Administrator menyalakannya (Pengaturan); hak per percakapan ada di ChatThreadPolicy.
         Gate::define('chat', fn (User $user) => $user->canUseApp() && $feature('obrolan'));
-        Gate::policy(\App\Models\ChatThread::class, \App\Policies\ChatThreadPolicy::class);
+        Gate::policy(ChatThread::class, ChatThreadPolicy::class);
         // Barang tertinggal: bagian dari Obrolan (tanpa menu sendiri); semua pengguna obrolan boleh mencatat dan memperbarui.
         Gate::define('lost-found', fn (User $user) => Gate::forUser($user)->allows('chat'));
         Gate::define('manage-tasks', fn (User $user) => $user->canUseApp() && in_array($user->role, [Role::Admin, Role::Hr], true));
