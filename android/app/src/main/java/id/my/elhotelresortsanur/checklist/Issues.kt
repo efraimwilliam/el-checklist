@@ -9,6 +9,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -104,7 +106,7 @@ fun IssuesScreen(repo: Repo, onOpen: (Long) -> Unit, onNew: () -> Unit) {
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Ink, titleContentColor = Color.White))
         },
         floatingActionButton = {
-            ExtendedFloatingActionButton(onClick = onNew, containerColor = Ink, contentColor = Color.White) { Text("+ Catat kendala") }
+            AddButton("Catat kendala", onNew)
         },
         containerColor = Cream,
     ) { padding ->
@@ -117,8 +119,8 @@ fun IssuesScreen(repo: Repo, onOpen: (Long) -> Unit, onNew: () -> Unit) {
             PullToRefreshBox(isRefreshing = refreshing, onRefresh = { load() }, modifier = Modifier.fillMaxSize()) {
                 LazyColumn(contentPadding = PaddingValues(16.dp, 16.dp, 16.dp, 96.dp), verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxSize()) {
                     when {
-                        issues == null -> item { Text(if (refreshing) "Memuat…" else "Belum bisa memuat. Tarik ke bawah untuk mencoba lagi.", color = Muted) }
-                        issues!!.isEmpty() -> item { Text(if (done) "Belum ada kendala yang selesai." else "Tidak ada kendala terbuka untuk Anda.", color = Muted) }
+                        issues == null -> item { LoadingOr(refreshing) }
+                        issues!!.isEmpty() -> item { EmptyState(androidx.compose.ui.res.painterResource(R.drawable.ic_build), if (done) "Belum ada kendala yang selesai" else "Tidak ada kendala terbuka", if (done) null else "Kendala yang diteruskan kepada Anda atau departemen Anda tampil di sini.") }
                     }
                     items(issues.orEmpty(), key = { it.getLong("id") }) { issue -> IssueCard(issue) { onOpen(issue.getLong("id")) } }
                 }
@@ -181,7 +183,7 @@ fun IssueScreen(repo: Repo, id: Long, onBack: () -> Unit) {
         topBar = {
             TopAppBar(
                 title = { Text(issue?.s("place") ?: "Kendala", fontWeight = FontWeight.SemiBold) },
-                navigationIcon = { TextButton(onClick = onBack) { Text("‹ Kembali", color = Color.White) } },
+                navigationIcon = { BackButton(onBack) },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Ink, titleContentColor = Color.White),
             )
         },
@@ -192,7 +194,7 @@ fun IssueScreen(repo: Repo, id: Long, onBack: () -> Unit) {
             PullToRefreshBox(isRefreshing = refreshing, onRefresh = { load() }, modifier = Modifier.fillMaxSize()) {
                 val i = issue
                 if (i == null) {
-                    Text(if (refreshing) "Memuat…" else "Belum bisa memuat. Tarik ke bawah untuk mencoba lagi.", color = Muted, modifier = Modifier.padding(16.dp))
+                    LoadingOr(refreshing)
                     return@PullToRefreshBox
                 }
                 val can = i.optJSONObject("can") ?: JSONObject()
@@ -236,9 +238,17 @@ fun IssueScreen(repo: Repo, id: Long, onBack: () -> Unit) {
                     item { Text("Riwayat pekerjaan", fontWeight = FontWeight.SemiBold, color = Ink) }
                     val updates = i.optJSONArray("updates").objects()
                     if (updates.isEmpty()) item { Text("Belum ada catatan pekerjaan.", color = Muted, fontSize = 14.sp) }
-                    items(updates, key = { it.getLong("id") }) { u ->
-                        Column(Modifier.fillMaxWidth().background(Color.White, RoundedCornerShape(12.dp)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(KINDS[u.s("kind")] ?: u.s("kind").orEmpty(), fontWeight = FontWeight.SemiBold, color = statusColor(mapOf("selesai" to "selesai", "tunda" to "tertunda", "catatan" to "dikerjakan")[u.s("kind")]))
+                    itemsIndexed(updates, key = { _, u -> u.getLong("id") }) { index, u ->
+                        // Garis waktu: titik berwarna menurut jenis, garis penghubung ke kejadian berikutnya.
+                        val color = statusColor(mapOf("selesai" to "selesai", "tunda" to "tertunda", "catatan" to "dikerjakan")[u.s("kind")])
+                        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+                            Column(Modifier.width(24.dp).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
+                                Box(Modifier.padding(top = 14.dp).size(12.dp).background(color, CircleShape))
+                                if (index < updates.lastIndex) Box(Modifier.width(2.dp).weight(1f).background(Color(0xFFE6DCCB)))
+                            }
+                            Spacer(Modifier.width(8.dp))
+                        Column(Modifier.weight(1f).padding(bottom = 10.dp).background(Color.White, RoundedCornerShape(12.dp)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(KINDS[u.s("kind")] ?: u.s("kind").orEmpty(), fontWeight = FontWeight.SemiBold, color = color)
                             u.s("body")?.let { Text(it, color = Ink, fontSize = 14.sp) }
                             Text(listOfNotNull(u.s("user"), u.s("department"), time(u.s("at"))).joinToString(" · "), color = Muted, fontSize = 12.sp)
                             val photos = u.optJSONArray("photos").objects()
@@ -248,6 +258,7 @@ fun IssueScreen(repo: Repo, id: Long, onBack: () -> Unit) {
                                     RemoteImage("issue-$pid@256", Modifier.size(72.dp).clickable { viewing = pid }) { Photos.thumbnail(repo.api.bytes("/kendala/$id/foto/$pid"), 256) }
                                 }
                             }
+                        }
                         }
                     }
                 }
@@ -412,7 +423,7 @@ fun NewIssueScreen(repo: Repo, onCreated: (Long?) -> Unit, onBack: () -> Unit) {
         topBar = {
             TopAppBar(
                 title = { Text("Catat kendala", fontWeight = FontWeight.SemiBold) },
-                navigationIcon = { TextButton(onClick = onBack) { Text("‹ Batal", color = Color.White) } },
+                navigationIcon = { BackButton(onBack, "Batal") },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Ink, titleContentColor = Color.White),
             )
         },
@@ -421,56 +432,54 @@ fun NewIssueScreen(repo: Repo, onCreated: (Long?) -> Unit, onBack: () -> Unit) {
         Column(Modifier.padding(padding).imePadding()) {
             Banner(repo)
             val f = form
-            if (f == null) { Text("Memuat…", color = Muted, modifier = Modifier.padding(16.dp)); return@Column }
+            if (f == null) { Loading(); return@Column }
             Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Label("Lokasi")
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(atRoom, { atRoom = true }, { Text("Kamar") })
-                    FilterChip(!atRoom, { atRoom = false }, { Text("Lokasi lain") })
+                FormSection("Lokasi") {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(atRoom, { atRoom = true }, { Text("Kamar") })
+                        FilterChip(!atRoom, { atRoom = false }, { Text("Lokasi lain") })
+                    }
+                    if (atRoom) {
+                        OutlinedTextField(room, { room = it }, label = { Text("Nomor kamar") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), isError = roomError,
+                            supportingText = if (roomError) { { Text("Kamar ${room.trim()} tidak ada di data kamar. Periksa lagi nomornya.") } } else null)
+                    } else {
+                        OutlinedTextField(location, { location = it.take(120) }, label = { Text("Nama lokasi") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                        val suggestions = (0 until (f.optJSONArray("locations")?.length() ?: 0)).map { f.getJSONArray("locations").getString(it) }
+                            .filter { location.isBlank() || it.contains(location.trim(), ignoreCase = true) }.take(10)
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            suggestions.forEach { name -> SuggestionChip({ location = name }, { Text(name) }) }
+                        }
+                    }
                 }
-                if (atRoom) {
-                    OutlinedTextField(room, { room = it }, label = { Text("Nomor kamar") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), isError = roomError,
-                        supportingText = if (roomError) { { Text("Kamar ${room.trim()} tidak ada di data kamar. Periksa lagi nomornya.") } } else null)
-                } else {
-                    OutlinedTextField(location, { location = it.take(120) }, label = { Text("Nama lokasi") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                    val suggestions = (0 until (f.optJSONArray("locations")?.length() ?: 0)).map { f.getJSONArray("locations").getString(it) }
-                        .filter { location.isBlank() || it.contains(location.trim(), ignoreCase = true) }.take(10)
+
+                FormSection("Kendala") {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        suggestions.forEach { name -> SuggestionChip({ location = name }, { Text(name) }) }
+                        f.optJSONArray("categories").objects().forEach { c ->
+                            val cid = c.getLong("id")
+                            FilterChip(category == cid, { category = if (category == cid) null else cid }, { Text(c.optString("name")) })
+                        }
+                    }
+                    OutlinedTextField(description, { description = it.take(2000) }, label = { Text("Uraian kendala") }, minLines = 3, modifier = Modifier.fillMaxWidth())
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Mendesak", color = Ink, fontWeight = FontWeight.Medium)
+                            Text("Tamu menunggu / perlu segera", color = Muted, fontSize = 12.sp)
+                        }
+                        Switch(urgent, { urgent = it })
                     }
                 }
 
-                Label("Kategori")
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    f.optJSONArray("categories").objects().forEach { c ->
-                        val cid = c.getLong("id")
-                        FilterChip(category == cid, { category = if (category == cid) null else cid }, { Text(c.optString("name")) })
+                FormSection("Penanganan") {
+                    ChoicePicker("Diteruskan ke", listOf<Pair<Long?, String>>(null to "Sesuai kategori") + f.optJSONArray("departments").objects().map { it.getLong("id") to it.optString("name") }, department) { department = it }
+                    Text("Sumber laporan", color = Muted, fontSize = 13.sp)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        f.optJSONArray("sources").objects().forEach { src ->
+                            FilterChip(source == src.optString("key"), { source = src.optString("key") }, { Text(src.optString("label")) })
+                        }
                     }
                 }
 
-                Label("Diteruskan ke")
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    FilterChip(department == null, { department = null }, { Text("Sesuai kategori") })
-                    f.optJSONArray("departments").objects().forEach { d ->
-                        val did = d.getLong("id")
-                        FilterChip(department == did, { department = did }, { Text(d.optString("name")) })
-                    }
-                }
-
-                Label("Sumber")
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    f.optJSONArray("sources").objects().forEach { src ->
-                        FilterChip(source == src.optString("key"), { source = src.optString("key") }, { Text(src.optString("label")) })
-                    }
-                }
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Mendesak", color = Ink, modifier = Modifier.weight(1f))
-                    Switch(urgent, { urgent = it })
-                }
-
-                OutlinedTextField(description, { description = it.take(2000) }, label = { Text("Kendalanya") }, minLines = 3, modifier = Modifier.fillMaxWidth())
                 error?.let { Text(it, color = Red, fontSize = 14.sp) }
                 Button({ submit() }, Modifier.fillMaxWidth().height(50.dp), enabled = !busy, colors = ButtonDefaults.buttonColors(containerColor = Ink)) {
                     if (busy) CircularProgressIndicator(Modifier.size(22.dp), color = Color.White, strokeWidth = 2.dp) else Text("Simpan kendala")

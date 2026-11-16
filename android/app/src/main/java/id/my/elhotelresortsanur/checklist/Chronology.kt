@@ -46,10 +46,10 @@ fun ChronologyListScreen(repo: Repo, onOpen: (Long) -> Unit, onNew: () -> Unit, 
     Scaffold(
         topBar = {
             TopAppBar(title = { Text("Chronology Report", fontWeight = FontWeight.SemiBold) },
-                navigationIcon = { TextButton(onClick = onBack) { Text("‹ Kembali", color = Color.White) } },
+                navigationIcon = { BackButton(onBack) },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Ink, titleContentColor = Color.White))
         },
-        floatingActionButton = { ExtendedFloatingActionButton(onClick = onNew, containerColor = Ink, contentColor = Color.White) { Text("+ Laporan baru") } },
+        floatingActionButton = { AddButton("Laporan baru", onNew) },
         containerColor = Cream,
     ) { padding ->
         Column(Modifier.padding(padding)) {
@@ -57,8 +57,8 @@ fun ChronologyListScreen(repo: Repo, onOpen: (Long) -> Unit, onNew: () -> Unit, 
             PullToRefreshBox(isRefreshing = refreshing, onRefresh = { load() }, modifier = Modifier.fillMaxSize()) {
                 LazyColumn(contentPadding = PaddingValues(16.dp, 16.dp, 16.dp, 96.dp), verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxSize()) {
                     when {
-                        reports == null -> item { Text(if (refreshing) "Memuat…" else "Belum bisa memuat.", color = Muted) }
-                        reports!!.isEmpty() -> item { Text("Belum ada laporan.", color = Muted) }
+                        reports == null -> item { LoadingOr(refreshing) }
+                        reports!!.isEmpty() -> item { EmptyState(androidx.compose.ui.res.painterResource(R.drawable.ic_description), "Belum ada laporan", "Ketuk \"Laporan baru\" untuk membuat Chronology Report.") }
                     }
                     items(reports.orEmpty(), key = { it.getLong("id") }) { r ->
                         Column(Modifier.fillMaxWidth().background(Color.White, RoundedCornerShape(14.dp)).clickable { onOpen(r.getLong("id")) }.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -88,14 +88,14 @@ fun ChronologyScreen(repo: Repo, id: Long, onEdit: () -> Unit, onBack: () -> Uni
     Scaffold(
         topBar = {
             TopAppBar(title = { Text("Chronology Report", fontWeight = FontWeight.SemiBold) },
-                navigationIcon = { TextButton(onClick = onBack) { Text("‹ Kembali", color = Color.White) } },
+                navigationIcon = { BackButton(onBack) },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Ink, titleContentColor = Color.White))
         },
         containerColor = Cream,
     ) { padding ->
         Column(Modifier.padding(padding)) {
             Banner(repo)
-            val r = report ?: return@Column Text("Memuat…", color = Muted, modifier = Modifier.padding(16.dp))
+            val r = report ?: return@Column Loading()
             Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Pill(if (r.optString("status") == "final") "Final · terkunci" else "Draft", if (r.optString("status") == "final") Green else Amber)
                 Text(r.optString("text"), color = Ink, fontSize = 15.sp, modifier = Modifier.fillMaxWidth().background(Color.White, RoundedCornerShape(14.dp)).padding(16.dp))
@@ -176,14 +176,14 @@ fun ChronologyFormScreen(repo: Repo, id: Long?, onSaved: (Long) -> Unit, onBack:
     Scaffold(
         topBar = {
             TopAppBar(title = { Text(if (id == null) "Laporan baru" else "Ubah draft", fontWeight = FontWeight.SemiBold) },
-                navigationIcon = { TextButton(onClick = onBack) { Text("‹ Batal", color = Color.White) } },
+                navigationIcon = { BackButton(onBack, "Batal") },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Ink, titleContentColor = Color.White))
         },
         containerColor = Cream,
     ) { padding ->
         Column(Modifier.padding(padding).imePadding()) {
             Banner(repo)
-            if (!loaded) return@Column Text("Memuat…", color = Muted, modifier = Modifier.padding(16.dp))
+            if (!loaded) return@Column Loading()
             Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("Isi dalam bahasa Inggris (laporan untuk manajemen).", color = Muted, fontSize = 13.sp)
                 Label("Tamu")

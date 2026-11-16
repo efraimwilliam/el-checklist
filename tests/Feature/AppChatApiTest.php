@@ -67,3 +67,26 @@ it('keeps other people out of a private chat and closes everything when chat is 
     $this->getJson('/api/v1/app/obrolan')->assertForbidden();
     $this->getJson('/api/v1/app/me')->assertJsonPath('user.features.obrolan', false);
 });
+
+it('shows typing, replies, and blue ticks like WhatsApp', function () {
+    Sanctum::actingAs($this->ani);
+    $thread = $this->postJson("/api/v1/app/obrolan/pribadi/{$this->budi->id}")->json('id');
+    $this->postJson("/api/v1/app/obrolan/{$thread}/pesan", ['body' => 'AC kamar 305?'])->assertOk();
+    $first = $this->getJson("/api/v1/app/obrolan/{$thread}/pesan")->json('messages.0.id');
+    $this->getJson('/api/v1/app/obrolan')->assertJsonPath('threads.0.last_mine', true)->assertJsonPath('threads.0.last_read', false)->assertJsonPath('threads.0.group', false);
+
+    Sanctum::actingAs($this->budi);
+    $this->postJson("/api/v1/app/obrolan/{$thread}/mengetik")->assertOk();
+    $this->postJson("/api/v1/app/obrolan/{$thread}/pesan", ['body' => 'Sudah dicek', 'reply_to' => $first])->assertOk();
+
+    Sanctum::actingAs($this->ani);
+    $page = $this->getJson("/api/v1/app/obrolan/{$thread}/pesan")->assertJsonPath('typing', [])  // mengetik berhenti saat pesan terkirim
+        ->assertJsonPath('messages.1.reply.text', 'AC kamar 305?')->assertJsonPath('thread.title', $this->budi->name());
+    expect($page->json('read_upto'))->toBeGreaterThanOrEqual($first);
+    $this->getJson('/api/v1/app/obrolan')->assertJsonPath('threads.0.last_mine', false);
+
+    Sanctum::actingAs($this->budi);
+    $this->postJson("/api/v1/app/obrolan/{$thread}/mengetik")->assertOk();
+    Sanctum::actingAs($this->ani);
+    $this->getJson("/api/v1/app/obrolan/{$thread}/pesan")->assertJsonPath('typing', [$this->budi->name()]);
+});

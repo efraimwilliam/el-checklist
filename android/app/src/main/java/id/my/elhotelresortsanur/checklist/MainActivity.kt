@@ -28,6 +28,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Badge
@@ -52,8 +53,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -204,13 +208,23 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                         // Tab bawah hanya untuk menu yang fiturnya menyala dan boleh dipakai (dari /me).
-                        if (kendala || permintaan || papan || obrolan) NavigationBar(containerColor = Color.White) {
-                            NavigationBarItem(tab == "checklist", { tab = "checklist" }, icon = { Text("☑", fontSize = 20.sp) }, label = { Text("Checklist") })
-                            if (papan) NavigationBarItem(tab == "tim", { tab = "tim" }, icon = { Text("👥", fontSize = 20.sp) }, label = { Text("Tim") })
-                            if (kendala) NavigationBarItem(tab == "kendala", { tab = "kendala" }, icon = { Text("🛠", fontSize = 20.sp) }, label = { Text("Kendala") })
-                            if (permintaan) NavigationBarItem(tab == "permintaan", { tab = "permintaan" }, icon = { Text("🛎", fontSize = 20.sp) }, label = { Text("Permintaan") })
-                            if (obrolan) NavigationBarItem(tab == "obrolan", { tab = "obrolan" }, label = { Text("Obrolan") }, icon = {
-                                BadgedBox(badge = { if (chatUnread.intValue > 0) Badge { Text("${chatUnread.intValue}") } }) { Text("💬", fontSize = 20.sp) }
+                        if (kendala || permintaan || papan || obrolan) NavigationBar(containerColor = Color.White, tonalElevation = 0.dp) {
+                            // Ikon garis abu-abu, yang aktif hitam dengan latar emas muda (seragam di semua tab).
+                            val navColors = androidx.compose.material3.NavigationBarItemDefaults.colors(
+                                selectedIconColor = Ink, selectedTextColor = Ink, indicatorColor = GoldSoft, unselectedIconColor = Muted, unselectedTextColor = Muted,
+                            )
+                            NavigationBarItem(tab == "checklist", { tab = "checklist" }, colors = navColors, label = { Text("Checklist", maxLines = 1) },
+                                icon = { Icon(painterResource(R.drawable.ic_checklist), null) })
+                            if (papan) NavigationBarItem(tab == "tim", { tab = "tim" }, colors = navColors, label = { Text("Tim", maxLines = 1) },
+                                icon = { Icon(painterResource(R.drawable.ic_group), null) })
+                            if (kendala) NavigationBarItem(tab == "kendala", { tab = "kendala" }, colors = navColors, label = { Text("Kendala", maxLines = 1) },
+                                icon = { Icon(painterResource(R.drawable.ic_build), null) })
+                            if (permintaan) NavigationBarItem(tab == "permintaan", { tab = "permintaan" }, colors = navColors, label = { Text("Permintaan", maxLines = 1) },
+                                icon = { Icon(painterResource(R.drawable.ic_room_service), null) })
+                            if (obrolan) NavigationBarItem(tab == "obrolan", { tab = "obrolan" }, colors = navColors, label = { Text("Obrolan", maxLines = 1) }, icon = {
+                                BadgedBox(badge = { if (chatUnread.intValue > 0) Badge(containerColor = Gold, contentColor = Color.White) { Text("${chatUnread.intValue}") } }) {
+                                    Icon(painterResource(R.drawable.ic_chat), null)
+                                }
                             })
                         }
                     }
@@ -272,6 +286,10 @@ fun LoginScreen(repo: Repo) {
     Box(Modifier.fillMaxSize().background(Ink).imePadding(), contentAlignment = Alignment.Center) {
         Card(Modifier.padding(20.dp).fillMaxWidth(), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
             Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                androidx.compose.foundation.Image(
+                    painterResource(R.mipmap.ic_launcher), null,
+                    modifier = Modifier.size(56.dp).clip(RoundedCornerShape(14.dp)),
+                )
                 Text("éL Hotel & Resort Sanur", color = Gold, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                 Text("Daily Department Checklist", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Ink)
                 Text("Masuk dengan username dan PIN absensi.", color = Muted, fontSize = 14.sp)
@@ -321,11 +339,11 @@ fun ListScreen(repo: Repo, onOpen: (Long) -> Unit, onHistory: (() -> Unit)? = nu
                 actions = {
                     // Menu lain: Riwayat checklist, Chronology Report, Keluar.
                     var menu by remember { mutableStateOf(false) }
-                    TextButton(onClick = { menu = true }) { Text("⋮", color = Color.White, fontSize = 22.sp) }
+                    androidx.compose.material3.IconButton({ menu = true }) { Icon(painterResource(R.drawable.ic_more), "Menu lain", tint = Color.White) }
                     androidx.compose.material3.DropdownMenu(menu, { menu = false }) {
-                        onHistory?.let { androidx.compose.material3.DropdownMenuItem({ Text("Riwayat checklist") }, { menu = false; it() }) }
-                        onChronology?.let { androidx.compose.material3.DropdownMenuItem({ Text("Chronology Report") }, { menu = false; it() }) }
-                        androidx.compose.material3.DropdownMenuItem({ Text("Keluar", color = Red) }, { menu = false; confirmLogout = true })
+                        onHistory?.let { androidx.compose.material3.DropdownMenuItem({ Text("Riwayat checklist") }, { menu = false; it() }, leadingIcon = { Icon(painterResource(R.drawable.ic_history), null) }) }
+                        onChronology?.let { androidx.compose.material3.DropdownMenuItem({ Text("Chronology Report") }, { menu = false; it() }, leadingIcon = { Icon(painterResource(R.drawable.ic_description), null) }) }
+                        androidx.compose.material3.DropdownMenuItem({ Text("Keluar", color = Red) }, { menu = false; confirmLogout = true }, leadingIcon = { Icon(painterResource(R.drawable.ic_logout), null, tint = Red) })
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Ink, titleContentColor = Color.White),
@@ -349,9 +367,9 @@ fun ListScreen(repo: Repo, onOpen: (Long) -> Unit, onHistory: (() -> Unit)? = nu
             PullToRefreshBox(isRefreshing = refreshing, onRefresh = { reload() }, modifier = Modifier.fillMaxSize()) {
                 LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxSize()) {
                     if (list == null) {
-                        item { Text(if (refreshing) "Memuat…" else "Belum ada data. Tarik ke bawah untuk memuat.", color = Muted) }
+                        item { LoadingOr(refreshing) }
                     } else if (list.isEmpty()) {
-                        item { Text("Belum ada checklist untuk 7 hari terakhir. Checklist dibuatkan oleh HOD / HR.", color = Muted) }
+                        item { EmptyState(painterResource(R.drawable.ic_checklist), "Belum ada checklist", "Checklist 7 hari terakhir tampil di sini. Checklist dibuatkan oleh HOD / HR; tarik ke bawah untuk memuat ulang.") }
                     }
                     items(list.orEmpty(), key = { it.id }) { c -> ChecklistCard(repo, c, version) { onOpen(c.id) } }
                 }

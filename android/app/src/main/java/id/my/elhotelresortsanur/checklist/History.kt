@@ -53,7 +53,7 @@ fun HistoryScreen(repo: Repo, onOpen: (Long) -> Unit, onBack: () -> Unit) {
         topBar = {
             TopAppBar(
                 title = { Text("Riwayat checklist", fontWeight = FontWeight.SemiBold) },
-                navigationIcon = { TextButton(onClick = onBack) { Text("‹ Kembali", color = Color.White) } },
+                navigationIcon = { BackButton(onBack) },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Ink, titleContentColor = Color.White),
             )
         },
@@ -82,8 +82,8 @@ fun HistoryScreen(repo: Repo, onOpen: (Long) -> Unit, onBack: () -> Unit) {
                     }
                     val rows = data?.optJSONArray("checklists").objects()
                     when {
-                        data == null -> item { Text(if (refreshing) "Memuat…" else "Belum bisa memuat. Tarik ke bawah untuk mencoba lagi.", color = Muted) }
-                        rows.isEmpty() -> item { Text("Tidak ada checklist di rentang ini.", color = Muted) }
+                        data == null -> item { LoadingOr(refreshing) }
+                        rows.isEmpty() -> item { EmptyState(androidx.compose.ui.res.painterResource(R.drawable.ic_history), "Tidak ada checklist", "Coba rentang tanggal atau saringan lain.") }
                     }
                     items(rows, key = { it.getLong("id") }) { c -> HistoryRow(c) { onOpen(c.getLong("id")) } }
                 }

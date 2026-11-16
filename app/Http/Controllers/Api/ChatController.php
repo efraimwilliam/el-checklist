@@ -11,6 +11,7 @@ use App\Push\ChatPushNotifier;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -35,14 +36,25 @@ class ChatController extends Controller
             ->orderByDesc('last_message_at')->limit(100)->get();
 
         return response()->json([
-            'threads' => $threads->map(fn (ChatThread $t) => [
-                'id' => $t->id,
-                'title' => $t->title($me),
-                'initials' => $t->initials($me),
-                'last' => $t->latestMessage ? ($t->latestMessage->user_id === $me->id ? __('Anda').': ' : ($t->isDirect() || $t->latestMessage->isSystem() ? '' : $t->latestMessage->user?->name().': ')).$t->latestMessage->snippet(60) : '',
-                'last_at' => $t->last_message_at?->toIso8601String(),
-                'unread' => (int) $t->unread_count,
-            ])->values(),
+            'threads' => $threads->map(function (ChatThread $t) use ($me) {
+                $last = $t->latestMessage;
+                $mine = $last && $last->user_id === $me->id && ! $last->isSystem();
+                // Centang biru seperti WhatsApp: pesan terakhir saya sudah dibaca semua peserta lain.
+                $readUpto = (int) $t->participants->where('user_id', '!=', $me->id)->min('last_read_message_id');
+
+                return [
+                    'id' => $t->id,
+                    'title' => $t->title($me),
+                    'initials' => $t->initials($me),
+                    'group' => ! $t->isDirect(),
+                    'photo' => $t->isDirect() ? $this->photo($t->others($me)->first()) : null,
+                    'last' => $last ? (! $mine && ! $t->isDirect() && ! $last->isSystem() ? $last->user?->name().': ' : '').$last->snippet(60) : '',
+                    'last_mine' => $mine,
+                    'last_read' => $mine && $last->id <= $readUpto,
+                    'last_at' => $t->last_message_at?->toIso8601String(),
+                    'unread' => (int) $t->unread_count,
+                ];
+            })->values(),
             'unread' => $me->unreadChatCount(),
         ]);
     }
@@ -68,8 +80,17 @@ class ChatController extends Controller
         ChatPushNotifier::markPresent($thread->id, $me->id); // sedang dibuka = tidak dikirimi notifikasi
         $thread->load('participants.user.employee.department', 'issue.room', 'checklist.employee');
 
+        // "sedang mengetik…": diisi `ChatController::typing` (cache beberapa detik, sama dengan web).
+        $typing = collect((array) Cache::get('chat.typing.'.$thread->id, []))
+            ->filter(fn ($at, $id) => (int) $id !== $me->id && $at >= now()->timestamp - 6)->keys()->map(fn ($id) => (int) $id);
+
         return response()->json([
-            'thread' => ['id' => $thread->id, 'title' => $thread->title($me), 'subtitle' => $thread->subtitle($me), 'can_post' => Gate::allows('post', $thread)],
+            'thread' => [
+                'id' => $thread->id, 'title' => $thread->title($me), 'subtitle' => $thread->subtitle($me), 'initials' => $thread->initials($me),
+                'group' => ! $thread->isDirect(), 'photo' => $thread->isDirect() ? $this->photo($thread->others($me)->first()) : null,
+                'can_post' => Gate::allows('post', $thread),
+            ],
+            'typing' => $thread->participants->whereIn('user_id', $typing)->map(fn ($p) => $p->user?->name())->filter()->values(),
             'messages' => $messages->map(fn (ChatMessage $m) => $this->message($m, $me))->values(),
             'deleted' => $deleted->values(),
             'read_upto' => (int) ChatParticipant::where('chat_thread_id', $thread->id)->where('user_id', '!=', $me->id)->min('last_read_message_id'),
@@ -86,7 +107,7 @@ class ChatController extends Controller
             ->whereHas('employee', fn ($q) => $q->where('is_active', true))->get()
             ->filter->canUseApp()
             ->sortBy(fn (User $u) => mb_strtolower($u->name()))->values()
-            ->map(fn (User $u) => ['id' => $u->id, 'name' => $u->name(), 'detail' => collect([$u->employee?->position_title, $u->employee?->department?->name])->filter()->implode(' · ')])]);
+            ->map(fn (User $u) => ['id' => $u->id, 'name' => $u->name(), 'photo' => $this->photo($u), 'detail' => collect([$u->employee?->position_title, $u->employee?->department?->name])->filter()->implode(' · ')])]);
     }
 
     /** Chat pribadi: dibuat saat pertama dibuka, setelahnya yang sama (sama dengan web `direct`). */
@@ -106,6 +127,14 @@ class ChatController extends Controller
         }
 
         return response()->json(['id' => $thread->id]);
+    }
+
+    /** Alamat foto profil (salinan dari Absensi) untuk avatar; null = pakai inisial. */
+    private function photo(?User $user): ?string
+    {
+        $employee = $user?->employee;
+
+        return $employee?->photo_cached_version ? "/obrolan/pegawai/{$employee->id}/foto?v={$employee->photo_cached_version}" : null;
     }
 
     /** @return array<string, mixed> */
@@ -128,6 +157,7 @@ class ChatController extends Controller
             'mine' => $m->user_id === $me->id,
             'system' => $m->isSystem(),
             'user' => $m->user?->name(),
+            'user_id' => $m->user_id,
             'body' => $deleted ? null : $m->body,
             'deleted' => $deleted,
             'photo' => ! $deleted && (bool) $m->photo_path,

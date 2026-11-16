@@ -109,7 +109,7 @@ fun BoardScreen(repo: Repo, onOpen: (Long) -> Unit, onHistory: (() -> Unit)? = n
             val b = board
             PullToRefreshBox(isRefreshing = refreshing, onRefresh = { load() }, modifier = Modifier.fillMaxSize()) {
                 if (b == null) {
-                    Text(if (refreshing) "Memuat…" else "Belum bisa memuat. Tarik ke bawah untuk mencoba lagi.", color = Muted, modifier = Modifier.padding(16.dp))
+                    LoadingOr(refreshing)
                     return@PullToRefreshBox
                 }
                 val staff = b.optJSONArray("staff").objects()
@@ -118,9 +118,9 @@ fun BoardScreen(repo: Repo, onOpen: (Long) -> Unit, onHistory: (() -> Unit)? = n
                 LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxSize()) {
                     item {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            TextButton({ date = day.minusDays(1).toString() }) { Text("‹", fontSize = 22.sp) }
-                            Text(formatDate(day.toString()), fontWeight = FontWeight.SemiBold, color = Ink, modifier = Modifier.weight(1f))
-                            if (day < today) TextButton({ date = day.plusDays(1).toString() }) { Text("›", fontSize = 22.sp) }
+                            IconButton({ date = day.minusDays(1).toString() }) { Icon(androidx.compose.ui.res.painterResource(R.drawable.ic_chevron_left), "Hari sebelumnya", tint = Ink) }
+                            Text(formatDate(day.toString()), fontWeight = FontWeight.SemiBold, color = Ink, fontSize = 16.sp, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                            IconButton({ date = day.plusDays(1).toString() }, enabled = day < today) { Icon(androidx.compose.ui.res.painterResource(R.drawable.ic_chevron_right), "Hari berikutnya", tint = if (day < today) Ink else Muted.copy(alpha = 0.3f)) }
                             if (day != today) TextButton({ date = today.toString() }) { Text("Hari ini") }
                         }
                     }
@@ -147,7 +147,7 @@ fun BoardScreen(repo: Repo, onOpen: (Long) -> Unit, onHistory: (() -> Unit)? = n
                         OutlinedButton({ confirmAll = true }, Modifier.fillMaxWidth(), enabled = !busy) { Text("Buat checklist untuk yang masuk kerja") }
                     }
                     val shown = staff.filter { matches(filter, it.optString("state")) }
-                    if (shown.isEmpty()) item { Text("Tidak ada staff di sini.", color = Muted) }
+                    if (shown.isEmpty()) item { EmptyState(androidx.compose.ui.res.painterResource(R.drawable.ic_group), "Tidak ada staff di sini", "Coba saringan lain atau pilih departemen / tanggal lain.") }
                     items(shown, key = { it.getLong("employee_id") }) { row -> StaffRow(row, busy, onOpen) { start(row) } }
                 }
             }

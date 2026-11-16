@@ -1,6 +1,8 @@
 package id.my.elhotelresortsanur.checklist
 
 import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -72,7 +74,7 @@ fun RequestsScreen(repo: Repo, onNew: () -> Unit) {
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Ink, titleContentColor = Color.White))
         },
         floatingActionButton = {
-            ExtendedFloatingActionButton(onClick = onNew, containerColor = Ink, contentColor = Color.White) { Text("+ Catat permintaan") }
+            AddButton("Catat permintaan", onNew)
         },
         containerColor = Cream,
     ) { padding ->
@@ -85,8 +87,8 @@ fun RequestsScreen(repo: Repo, onNew: () -> Unit) {
             PullToRefreshBox(isRefreshing = refreshing, onRefresh = { load() }, modifier = Modifier.fillMaxSize()) {
                 LazyColumn(contentPadding = PaddingValues(16.dp, 16.dp, 16.dp, 96.dp), verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxSize()) {
                     when {
-                        rows == null -> item { Text(if (refreshing) "Memuat…" else "Belum bisa memuat. Tarik ke bawah untuk mencoba lagi.", color = Muted) }
-                        rows!!.isEmpty() -> item { Text(if (done) "Belum ada permintaan yang selesai." else "Tidak ada permintaan yang menunggu.", color = Muted) }
+                        rows == null -> item { LoadingOr(refreshing) }
+                        rows!!.isEmpty() -> item { EmptyState(androidx.compose.ui.res.painterResource(R.drawable.ic_room_service), if (done) "Belum ada permintaan yang selesai" else "Tidak ada permintaan yang menunggu", if (done) null else "Permintaan tamu untuk departemen Anda tampil di sini.") }
                     }
                     items(rows.orEmpty(), key = { it.getLong("id") }) { row ->
                         RequestRow(row, tick,
@@ -203,7 +205,7 @@ fun NewRequestScreen(repo: Repo, onDone: () -> Unit, onBack: () -> Unit) {
         topBar = {
             TopAppBar(
                 title = { Text("Catat permintaan", fontWeight = FontWeight.SemiBold) },
-                navigationIcon = { TextButton(onClick = onBack) { Text("‹ Batal", color = Color.White) } },
+                navigationIcon = { BackButton(onBack, "Batal") },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Ink, titleContentColor = Color.White),
             )
         },
@@ -212,42 +214,43 @@ fun NewRequestScreen(repo: Repo, onDone: () -> Unit, onBack: () -> Unit) {
         Column(Modifier.padding(padding).imePadding()) {
             Banner(repo)
             val f = form
-            if (f == null) { Text("Memuat…", color = Muted, modifier = Modifier.padding(16.dp)); return@Column }
+            if (f == null) { Loading(); return@Column }
             Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(room, { room = it.take(30) }, label = { Text("Nomor kamar") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                FormSection("Kamar") {
+                    OutlinedTextField(room, { room = it.take(30) }, label = { Text("Nomor kamar") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                }
 
-                Label("Permintaan")
-                Column(Modifier.fillMaxWidth().background(Color.White, RoundedCornerShape(12.dp))) {
+                FormSection("Permintaan") {
                     f.optJSONArray("kinds").objects().forEach { kind ->
                         val key = kind.getString("key")
                         val checked = key in qty
-                        Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(if (checked) GoldSoft else Color.Transparent)
+                            .clickable { if (checked) qty.remove(key) else qty[key] = 1 }.padding(end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                             Checkbox(checked, { on -> if (on) qty[key] = 1 else qty.remove(key) })
                             Text(kind.optString("label"), color = Ink, modifier = Modifier.weight(1f))
                             if (checked && kind.optBoolean("has_quantity")) {
-                                TextButton(onClick = { qty[key] = ((qty[key] ?: 1) - 1).coerceAtLeast(1) }) { Text("−", fontSize = 20.sp) }
-                                Text("${qty[key]}", fontWeight = FontWeight.Bold, color = Ink)
-                                TextButton(onClick = { qty[key] = ((qty[key] ?: 1) + 1).coerceAtMost(20) }) { Text("+", fontSize = 20.sp) }
+                                // Jumlah: − angka + dalam kapsul.
+                                Row(Modifier.background(Color.White, RoundedCornerShape(50)), verticalAlignment = Alignment.CenterVertically) {
+                                    IconButton({ qty[key] = ((qty[key] ?: 1) - 1).coerceAtLeast(1) }, Modifier.size(36.dp)) { Text("−", fontSize = 20.sp, color = Gold) }
+                                    Text("${qty[key]}", fontWeight = FontWeight.Bold, color = Ink, modifier = Modifier.widthIn(min = 20.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                                    IconButton({ qty[key] = ((qty[key] ?: 1) + 1).coerceAtMost(20) }, Modifier.size(36.dp)) { Text("+", fontSize = 20.sp, color = Gold) }
+                                }
                             }
                         }
                     }
+                    OutlinedTextField(note, { note = it.take(500) }, label = { Text("Catatan (opsional)") }, modifier = Modifier.fillMaxWidth(), minLines = 2)
                 }
 
-                OutlinedTextField(note, { note = it.take(500) }, label = { Text("Catatan (opsional)") }, modifier = Modifier.fillMaxWidth(), minLines = 2)
-
-                Label("Diteruskan ke")
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    FilterChip(department == null, { department = null }, { Text("Sesuai jenis") })
-                    f.optJSONArray("departments").objects().forEach { d ->
-                        val did = d.getLong("id")
-                        FilterChip(department == did, { department = did }, { Text(d.optString("name")) })
+                FormSection("Penanganan") {
+                    ChoicePicker("Diteruskan ke", listOf<Pair<Long?, String>>(null to "Sesuai jenis (bawaan Housekeeping)") + f.optJSONArray("departments").objects().map { it.getLong("id") to it.optString("name") }, department) { department = it }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Mendesak", color = Ink, fontWeight = FontWeight.Medium)
+                            Text("Tamu menunggu / perlu segera", color = Muted, fontSize = 12.sp)
+                        }
+                        Switch(urgent, { urgent = it })
                     }
-                }
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Mendesak", color = Ink, modifier = Modifier.weight(1f))
-                    Switch(urgent, { urgent = it })
                 }
                 error?.let { Text(it, color = Red, fontSize = 14.sp) }
                 Button(::submit, Modifier.fillMaxWidth().height(50.dp), enabled = !busy, colors = ButtonDefaults.buttonColors(containerColor = Ink)) {

@@ -14,6 +14,7 @@ use App\Http\Controllers\ChecklistController;
 use App\Http\Controllers\ChecklistItemController;
 use App\Http\Controllers\ChecklistPhotoController;
 use App\Http\Controllers\ChronologyReportController;
+use App\Http\Controllers\EmployeePhotoController;
 use App\Http\Controllers\FillController;
 use App\Http\Controllers\GuestRequestController;
 use App\Http\Controllers\RoomIssueController;
@@ -63,6 +64,8 @@ Route::prefix('v1/app')->group(function () {
         Route::post('/obrolan/{thread}/pesan', [ChatController::class, 'send'])->whereNumber('thread')->middleware('throttle:60,1');
         Route::delete('/obrolan/{thread}/pesan/{message}', [ChatController::class, 'destroy'])->whereNumber(['thread', 'message']);
         Route::get('/obrolan/{thread}/foto/{message}', [ChatController::class, 'photo'])->whereNumber(['thread', 'message']);
+        Route::post('/obrolan/{thread}/mengetik', [ChatController::class, 'typing'])->whereNumber('thread')->middleware('throttle:60,1');
+        Route::get('/obrolan/pegawai/{employee}/foto', EmployeePhotoController::class)->whereNumber('employee')->middleware('can:chat');
 
         // Chronology Report: daftar / detail lewat Api\ChronologyController; simpan & finalisasi lewat controller web yang sama.
         Route::get('/chronology', [ChronologyController::class, 'index']);

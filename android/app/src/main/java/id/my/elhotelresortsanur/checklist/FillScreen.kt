@@ -123,7 +123,7 @@ fun FillScreen(repo: Repo, id: Long, onBack: () -> Unit) {
         Column(Modifier.padding(padding).imePadding()) {
             Banner(repo)
             if (detail == null) {
-                Text("Memuat checklist…", Modifier.padding(16.dp), color = Muted)
+                Loading()
                 return@Column
             }
             val editable = detail.summary.canEdit
