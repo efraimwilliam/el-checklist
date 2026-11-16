@@ -889,12 +889,29 @@ if (chat) {
         let quick = null; // { text, type, ok, ... }
         let quickDismissed = false;
         let quickTimer = null;
-        const looksQuick = (text) => !text.startsWith('/') && /(^|[^\d])\d{3,4}([^\d]|$)/.test(text);
+        // Dibaca server bila ada nomor kamar, atau bila membalas pesan (balasan "copy" / "ok" / "otw" = ambil tugas di kartu itu).
+        const looksQuick = (text) => !text.startsWith('/') && (/(^|[^\d])\d{3,4}([^\d]|$)/.test(text) || (replyTo !== null && text.length <= 60));
         const hideQuick = () => { quick = null; if (quickBox) quickBox.hidden = true; };
         const el = (tag, className, text) => { const node = document.createElement(tag); if (className) node.className = className; if (text !== undefined) node.textContent = text; return node; };
         const renderQuick = () => {
             if (!quickBox) return;
             if (!quick || !quick.type || quickDismissed) { quickBox.hidden = true; return; }
+            if (quick.type === 'reply_action') {
+                if (quick.reply !== replyTo || photo || documentFile) { quickBox.hidden = true; return; }
+                const content = el('div', 'min-w-0 flex-1');
+                const done = quick.action === 'done';
+                content.append(el('p', 'font-semibold text-slate-900', done ? `✅ ${t('Balasan ini menyelesaikan tugas')}` : `✋ ${t('Balasan ini mengambil tugas')}`));
+                content.append(el('p', 'text-slate-600', quick.items.join(', ')));
+                content.append(el('p', 'text-xs text-slate-400', done ? t('Kirim = balasan terkirim dan tugas ditandai selesai atas nama Anda. × = kirim sebagai balasan biasa.') : t('Kirim = balasan terkirim dan tugas diambil atas nama Anda. × = kirim sebagai balasan biasa.')));
+                const close = el('button', 'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-lg text-slate-500 hover:bg-slate-100', '×');
+                close.type = 'button';
+                close.setAttribute('aria-label', t('Kirim sebagai balasan biasa'));
+                close.addEventListener('click', () => { quickDismissed = true; renderQuick(); body.focus(); });
+                quickBox.className = 'mb-2 flex items-start gap-2 rounded-lg border-l-4 border-emerald-700 bg-white px-3 py-2 text-sm';
+                quickBox.replaceChildren(content, close);
+                quickBox.hidden = false;
+                return;
+            }
             const isRequest = quick.type === 'request';
             const isLost = quick.type === 'lost';
             if (photo && !isLost) { quickBox.hidden = true; return; } // foto + teks: hanya barang tertinggal yang dibaca
@@ -964,12 +981,12 @@ if (chat) {
                 const response = await fetch(chat.dataset.quickUrl, {
                     method: 'POST', credentials: 'same-origin',
                     headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
-                    body: JSON.stringify({ text }),
+                    body: JSON.stringify({ text, reply_to: replyTo }),
                 });
                 if (!response.ok) return null;
                 const data = await response.json();
                 if (body.value.trim() !== text) return null; // sudah diketik lagi
-                quick = { text, ...data };
+                quick = { text, reply: replyTo, ...data };
                 renderQuick();
                 return quick;
             } catch { return null; }
@@ -996,15 +1013,17 @@ if (chat) {
             if ((!text && !photo && !documentFile) || sending) return;
             // Pratinjau belum sempat muncul untuk teks ini: tampilkan dulu, kirim pada Enter berikutnya.
             let record = false;
+            let claim = false;
             if (!documentFile && !quickDismissed && chat.dataset.quickUrl && looksQuick(text)) {
-                if (!quick || quick.text !== text) {
+                if (!quick || quick.text !== text || quick.reply !== replyTo) {
                     clearTimeout(quickTimer);
                     const fresh = await readQuick(text);
                     // Dengan foto, hanya barang tertinggal yang dicatat; jenis lain langsung terkirim sebagai pesan biasa.
                     if (fresh && (fresh.type === 'lost' || (fresh.type && !photo))) return;
                 }
-                const current = quick && quick.text === text && quick.ok ? quick.type : null;
+                const current = quick && quick.text === text && quick.reply === replyTo && quick.ok ? quick.type : null;
                 record = current === 'lost' || (current === 'request' && !photo);
+                claim = current === 'reply_action' && !photo;
             }
             sending = true;
             button.disabled = true;
@@ -1016,6 +1035,7 @@ if (chat) {
                 if (quick.other) data.append('departemen', quick.departmentChoice ?? quick.department_id ?? '');
             }
             if (replyTo) data.append('reply_to', replyTo);
+            if (claim) data.append('balas_aksi', '1');
             if (photo) data.append('photo', photo, 'foto.jpg');
             else if (documentFile) data.append('file', documentFile, documentFile.name);
             try {
@@ -1037,6 +1057,7 @@ if (chat) {
                 clearPhoto();
                 clearFile();
                 append(json.messages, { stick: true, fromMe: true });
+                replace(json.changed || []); // kartu yang baru diambil / diselesaikan lewat balasan
                 readUpto = json.read_upto;
                 updateTicks();
             } catch (error) {

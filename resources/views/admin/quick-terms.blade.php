@@ -11,7 +11,7 @@
         $slotGroup = explode('|', (string) session('quick_slot'))[0];
         $tab = match (true) {
             old('category_form') !== null || $slotGroup === 'issue' => 'kendala',
-            in_array($slotGroup, ['request_word', 'urgent', 'ignore'], true) => 'bantu',
+            in_array($slotGroup, ['request_word', 'urgent', 'ignore', 'lost', 'claim', 'done'], true) => 'bantu',
             default => 'permintaan',
         };
         $tabs = [
@@ -120,6 +120,8 @@
         @include('admin.partials.quick-term-row', $row(['group' => 'request_word', 'target' => null, 'title' => __('Kata minta'), 'help' => __('Menandai pesan sebagai permintaan, mis. req, minta, need.'), 'terms' => $box('request_word')]))
         @include('admin.partials.quick-term-row', $row(['group' => 'urgent', 'target' => null, 'title' => __('Tanda mendesak'), 'help' => __('Membuat permintaan / kendala berprioritas Mendesak, mis. "tamu di kamar", "segera".'), 'terms' => $box('urgent')]))
         @include('admin.partials.quick-term-row', $row(['group' => 'ignore', 'target' => null, 'title' => __('Bukan kendala'), 'help' => __('Frasa yang diabaikan saat mencari kendala, mis. "shower room" (ruang mandi tamu), "hair dryer".'), 'terms' => $box('ignore')]))
+        @include('admin.partials.quick-term-row', $row(['group' => 'claim', 'target' => null, 'title' => __('Ambil tugas (balasan)'), 'help' => __('Membalas kartu Permintaan tamu / Kendala di obrolan hanya dengan salah satu kata ini (boleh ditambah sapaan seperti "pak", "ya", atau emoji) = Saya ambil, mis. "copy", "otw".'), 'terms' => $box('claim')]))
+        @include('admin.partials.quick-term-row', $row(['group' => 'done', 'target' => null, 'title' => __('Selesaikan tugas (balasan)'), 'help' => __('Membalas kartu Permintaan tamu / Kendala hanya dengan salah satu kata ini = Selesai (kendala yang belum diambil ikut diambil dulu), mis. "done", "sudah".'), 'terms' => $box('done')]))
         @include('admin.partials.quick-term-row', $row(['group' => 'lost', 'target' => null, 'title' => __('Barang tertinggal'), 'help' => __('Pesan / foto berketerangan dengan nomor kamar dan salah satu kata ini dicatat sebagai barang tertinggal, mis. "1203 complete tertinggal".'), 'terms' => $box('lost')]))
         <div class="mt-4 rounded-xl bg-white p-4 text-sm text-slate-600 ring-1 ring-slate-200">
             <p class="font-semibold text-slate-900">{{ __('Cara menulis kata') }}</p>

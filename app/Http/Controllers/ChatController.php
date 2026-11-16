@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Chat\ChatPoster;
 use App\Chat\QuickEntry;
+use App\Chat\ReplyAction;
 use App\Models\GuestRequest;
 use App\Models\Checklist;
 use App\Models\ChatMessage;
@@ -413,6 +414,17 @@ class ChatController extends Controller
         Gate::authorize('post', $thread);
         $text = trim((string) ($request->validate(['text' => ['nullable', 'string', 'max:'.self::MAX_BODY]])['text'] ?? ''));
         $settings = app(\App\Checklists\ChecklistSettings::class);
+
+        // Membalas kartu Permintaan / Kendala dengan "copy" / "otw" (ambil) atau "done" / "sudah" (selesai): pratinjau, dijalankan saat dikirim (`balas_aksi=1`).
+        $replied = $request->integer('reply_to') ? $thread->messages()->whereKey($request->integer('reply_to'))->first() : null;
+        $action = $replied && $settings->quickEntry('quick_entry') ? $quick->replyAction($text) : null;
+        if ($action) {
+            $actions = app(ReplyAction::class);
+            if ($labels = $actions->labels($actions->targets($request->user(), $replied, $action))) {
+                return response()->json(['type' => 'reply_action', 'action' => $action, 'ok' => true, 'items' => $labels, 'room' => null, 'urgent' => false, 'warnings' => []]);
+            }
+        }
+
         $read = $text !== '' && $settings->quickEntry('quick_entry') ? $quick->read($text) : ['type' => null];
         $otherDepartmentId = GuestRequest::kinds()->departmentFor('other');
 
@@ -493,6 +505,20 @@ class ChatController extends Controller
 
         $message = $this->post($thread, $me, $body !== '' ? $body : null, $path, $replyTo);
         $extra = collect();
+        $changed = collect();
+        // Balasan pada kartu Permintaan / Kendala (dikonfirmasi lewat pratinjau, `balas_aksi=1`): "copy" / "ok" / "otw" = Saya ambil,
+        // "done" / "sudah" = Selesai. Catatan sistem memberi tahu semua peserta; kartu yang dibalas ikut diperbarui di layar pengirim.
+        $action = $replyTo && $body !== '' && ! $path && ! $request->hasFile('file') && $request->boolean('balas_aksi')
+            && app(\App\Checklists\ChecklistSettings::class)->quickEntry('quick_entry') ? app(QuickEntry::class)->replyAction($body) : null;
+        if ($action) {
+            $actions = app(ReplyAction::class);
+            $won = $actions->apply($me, ChatMessage::findOrFail($replyTo), $action);
+            if ($labels = $actions->labels($won)) {
+                $note = $action === 'done' ? __('✅ :name menyelesaikan :items', ['name' => $me->name(), 'items' => implode(', ', $labels)]) : __('✋ :name mengambil :items', ['name' => $me->name(), 'items' => implode(', ', $labels)]);
+                $extra->push($this->post($thread, $me, $note, null, null, 'system'));
+                $changed = $thread->messages()->where(fn ($q) => $q->whereIn('guest_request_id', $won['requests']->pluck('id'))->when($won['issue'], fn ($q) => $q->orWhere('room_issue_id', $won['issue']->id)))->get();
+            }
+        }
         // Barang tertinggal dari obrolan (`catat=1`): foto pesan disalin ke catatan barang, kartu menempel pada pesan itu.
         if ($body !== '' && ! $request->hasFile('file') && $request->boolean('catat') && Gate::allows('lost-found') && app(\App\Checklists\ChecklistSettings::class)->quickEntry('quick_entry')) {
             $read = app(QuickEntry::class)->read($body);
@@ -543,7 +569,7 @@ class ChatController extends Controller
 
         $with = ['user.employee', 'replyTo.user.employee', 'sharedIssue.room', 'sharedIssue.category', 'sharedChecklist.items', 'sharedChecklist.employee', 'sharedReport.guests', 'sharedReport.entries', 'sharedReport.author.employee', 'sharedRequest.room', 'sharedRequest.claimer.employee', 'sharedRequest.completer.employee', 'sharedLost.room', 'sharedLost.finder.employee', 'sharedLost.resolver.employee'];
 
-        return response()->json($this->payload($thread, $me, collect([$message, ...$extra])->each->load($with), collect()));
+        return response()->json($this->payload($thread, $me, collect([$message, ...$extra])->each->load($with), $changed->each->load($with)));
     }
 
     /** Hapus untuk semua orang (pengirimnya saja), seperti WhatsApp: gelembung tetap ada dengan tulisan "Pesan ini dihapus". */

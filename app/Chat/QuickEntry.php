@@ -31,6 +31,9 @@ class QuickEntry
     /** Jumlah di depan sebutan barang: "2 mineral water", "4x toilet rolls", "1 extra bathtowel". */
     private const QUANTITY = '(?:(\d{1,2})\s*(?:x|pcs|pc|buah|btl|botol)?\s*(?:extra\s+|tambahan\s+)?)?';
 
+    /** Kata sapaan / pengisi yang boleh menyertai balasan ambil / selesai ("copy pak", "otw ya", "done team"). */
+    private const CLAIM_FILLER = '(?<![\p{L}])(?:ya+|y|yo|pak|bu|bang|kak|mas|mba|mbak|bro|sis|team|tim|guys|all|dulu|langsung|segera|sekarang|saya|aku|sy|gw|kesana|ke\s+sana|bos|boss)(?![\p{L}])';
+
     /** @var Collection<string, Collection<int, QuickTerm>>|null kamus per kelompok, dimuat sekali per permintaan */
     private ?Collection $terms = null;
 
@@ -152,6 +155,34 @@ class QuickEntry
     }
 
     /** @return Collection<int, QuickTerm> */
+    /**
+     * Balasan singkat pada kartu tugas (App\Chat\ReplyAction): 'done' bila isinya kata kelompok `done` ("done", "sudah", "ok done"),
+     * 'claim' bila kata kelompok `claim` ("copy", "ok", "otw ya *eka", "siap pak 👍"), selain itu null. Hanya kata kamus ditambah sapaan /
+     * tanda baca / emoji; kalimat lain ("ok nanti saya cek dulu kamarnya") bukan.
+     *
+     * @return 'claim'|'done'|null
+     */
+    public function replyAction(string $text): ?string
+    {
+        $clean = mb_strtolower(trim(preg_replace('/\*\s*[\p{L}.\-]+\s*$/u', '', $text)));
+        if ($clean === '' || mb_strlen($clean) > 60) {
+            return null;
+        }
+        $done = $this->matches('done', $clean);
+        if (! $done && ! $this->matches('claim', $clean)) {
+            return null;
+        }
+        foreach ([...$this->group('done'), ...$this->group('claim')] as $term) {
+            $clean = preg_replace('~'.QuickTerm::pattern($term->term).'~u', ' ', $clean);
+        }
+        $rest = preg_replace('~'.self::CLAIM_FILLER.'~u', ' ', $clean);
+        if (preg_replace('~[^\p{L}\d]+~u', '', $rest) !== '') {
+            return null;
+        }
+
+        return $done ? 'done' : 'claim';
+    }
+
     private function group(string $group): Collection
     {
         $this->terms ??= QuickTerm::all()->groupBy('group');

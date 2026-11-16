@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Model;
  */
 class QuickTerm extends Model
 {
-    public const GROUPS = ['request_word', 'item', 'issue', 'urgent', 'ignore', 'lost'];
+    public const GROUPS = ['request_word', 'item', 'issue', 'urgent', 'ignore', 'lost', 'claim', 'done'];
 
     protected $fillable = ['group', 'target', 'term'];
 
