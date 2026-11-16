@@ -105,3 +105,30 @@ it('takes and finishes an issue by replying to its card, logging both steps', fu
     expect($issue->status)->toBe(RoomIssue::STATUS_DONE)->and($issue->claimed_by)->toBe($this->engStaff->id)->and($issue->completed_by)->toBe($this->engStaff->id)
         ->and($issue->updates()->pluck('kind')->all())->toBe(['ambil', 'selesai']);
 });
+
+it('logs an issue straight from a typed message when confirmed (Shift+Enter), and merges a similar open one', function () {
+    $category = IssueCategory::firstOrCreate(['name' => 'AC'], ['department_id' => $this->eng->id]);
+    $category->update(['department_id' => $this->eng->id]);
+    \App\Models\QuickTerm::firstOrCreate(['group' => 'issue', 'target' => (string) $category->id, 'term' => 'ac']);
+    loggedIn($this->foStaff);
+
+    // Tanpa catat_kendala = pesan biasa saja.
+    $this->postJson(route('chat.send', $this->thread), ['body' => '1206 ac tidak dingin'])->assertOk();
+    expect(RoomIssue::count())->toBe(0);
+
+    $response = $this->postJson(route('chat.send', $this->thread), ['body' => '1206 ac tidak dingin, tamu di kamar', 'catat_kendala' => 1])->assertOk();
+    $issue = RoomIssue::firstOrFail();
+    expect($issue->room->number)->toBe('1206')->and($issue->category_id)->toBe($category->id)->and($issue->assigned_department_id)->toBe($this->eng->id)
+        ->and($issue->priority)->toBe('mendesak')->and($issue->source)->toBe('staff')->and($issue->reported_by)->toBe($this->foStaff->id)
+        ->and($issue->status)->toBe(RoomIssue::STATUS_NEW)
+        ->and(ChatMessage::where('room_issue_id', $issue->id)->whereNotNull('body')->exists())->toBeTrue();
+    expect($response->json('messages.0.html'))->toContain('1206');
+
+    // Kendala serupa yang belum selesai: laporan tambahan, bukan kendala ganda.
+    $this->postJson(route('chat.send', $this->thread), ['body' => '1206 ac masih mati', 'catat_kendala' => 1])->assertOk();
+    expect(RoomIssue::count())->toBe(1)->and($issue->updates()->where('kind', 'laporan')->count())->toBe(1);
+
+    // Pesan yang bukan kendala tidak membuat apa pun.
+    $this->postJson(route('chat.send', $this->thread), ['body' => 'selamat pagi semua', 'catat_kendala' => 1])->assertOk();
+    expect(RoomIssue::count())->toBe(1);
+});

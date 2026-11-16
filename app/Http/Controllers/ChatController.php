@@ -8,6 +8,7 @@ use App\Chat\ReplyAction;
 use App\Models\GuestRequest;
 use App\Models\Checklist;
 use App\Models\ChatMessage;
+use App\Models\RoomIssueUpdate;
 use App\Models\ChatParticipant;
 use App\Models\ChatThread;
 use App\Models\PushSubscription;
@@ -554,6 +555,15 @@ class ChatController extends Controller
                 }
             }
         }
+        // Ketik bebas yang terbaca sebagai kendala dan dikonfirmasi dengan Shift+Enter (`catat_kendala=1`): kendalanya langsung dicatat
+        // (tanpa membuka form), dengan aturan yang sama dengan form: kategori terbaca, departemen bawaan kategori, laporan serupa digabung.
+        if ($body !== '' && ! $path && ! $request->hasFile('file') && $request->boolean('catat_kendala') && Gate::allows('room-issues')
+            && app(\App\Checklists\ChecklistSettings::class)->quickEntry('quick_entry') && app(\App\Checklists\ChecklistSettings::class)->quickEntry('quick_issues')) {
+            $read = app(QuickEntry::class)->read($body);
+            if ($read['type'] === 'issue' && $read['room']) {
+                $message->update(['room_issue_id' => $this->recordIssue($me, $read, $body)->id]);
+            }
+        }
         if (! $path && $request->hasFile('file')) {
             $message->update($this->storeDocument($thread, $request->file('file')));
         }
@@ -807,6 +817,35 @@ class ChatController extends Controller
         ChatParticipant::firstOrCreate(['chat_thread_id' => $thread->id, 'user_id' => $user->id]);
 
         return redirect()->route('chat.show', $thread);
+    }
+
+    /** Catat kendala dari ketik bebas. Kendala serupa yang belum selesai (kamar + kategori sama) menerima laporan tambahan, bukan kendala ganda. */
+    private function recordIssue(User $user, array $read, string $text): RoomIssue
+    {
+        $roomId = $read['room']->id;
+        $categoryId = $read['category']?->id;
+        $note = fn (RoomIssue $issue, string $body, string $kind, ?int $related = null) => RoomIssueUpdate::create([
+            'room_issue_id' => $issue->id, 'user_id' => $user->id, 'department_id' => $user->checklistDepartmentId(), 'body' => $body, 'kind' => $kind, 'related_issue_id' => $related,
+        ]);
+
+        if ($duplicate = RoomIssue::openDuplicate($roomId, null, $categoryId)) {
+            $note($duplicate, __('Laporan lagi (:source): :text', ['source' => RoomIssue::sourceLabels()['staff'], 'text' => mb_substr($text, 0, 2000)]), 'laporan');
+            $read['priority'] === 'mendesak' && $duplicate->priority !== 'mendesak' ? $duplicate->update(['priority' => 'mendesak']) : $duplicate->touch();
+
+            return $duplicate;
+        }
+
+        $issue = RoomIssue::create([
+            'room_id' => $roomId, 'category_id' => $categoryId, 'source' => 'staff', 'priority' => $read['priority'],
+            'recurrence' => RoomIssue::nextRecurrence($roomId, null, $categoryId), 'description' => mb_substr($text, 0, 2000), 'reported_by' => $user->id,
+            'assigned_department_id' => $categoryId ? $read['category']->department_id : null, 'status' => RoomIssue::STATUS_NEW,
+        ]);
+        if ($issue->recurrence > 1) {
+            RoomIssue::atPlace($roomId, null)->where('category_id', $categoryId)->whereKeyNot($issue->id)->orderByDesc('created_at')->first()
+                ?->updates()->create(['body' => __('Muncul lagi sebagai kendala #:id (Berulang ke-:n).', ['id' => $issue->id, 'n' => $issue->recurrence]), 'kind' => 'berulang', 'related_issue_id' => $issue->id]);
+        }
+
+        return $issue;
     }
 
     private function post(ChatThread $thread, User $user, ?string $body, ?string $photo = null, ?int $replyTo = null, string $type = 'text'): ChatMessage

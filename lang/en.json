@@ -929,7 +929,6 @@
     "Perubahan berlaku untuk checklist yang dibuat sesudahnya; checklist yang sudah ada tidak berubah.": "Changes apply to checklists created afterwards; existing checklists do not change.",
     "Belum ada pegawai di departemen Anda. Data pegawai datang dari Absensi (Administrator bisa menekan \"Sinkron dari absensi\").": "No employees in your department yet. Employee data comes from Attendance (an Administrator can press \"Sync from attendance\").",
     "belum diisi": "not filled in",
-    "Ketuk kartu ini untuk membuka form Catat kendala (sudah terisi). Enter = kirim sebagai pesan biasa.": "Tap this card to open the Log issue form (already filled in). Enter = send as a normal message.",
     "✋ :name mengambil :items": "✋ :name took :items",
     "Balasan ini mengambil tugas": "This reply takes the task",
     "Kirim = balasan terkirim dan tugas diambil atas nama Anda. × = kirim sebagai balasan biasa.": "Send = the reply is sent and the task is taken in your name. × = send as a normal reply.",
@@ -940,5 +939,6 @@
     "Kirim = balasan terkirim dan tugas ditandai selesai atas nama Anda. × = kirim sebagai balasan biasa.": "Send = the reply is sent and the task is marked done in your name. × = send as a normal reply.",
     "Kirim sebagai balasan biasa": "Send as a normal reply",
     "Selesaikan tugas (balasan)": "Complete task (reply)",
-    "Membalas kartu Permintaan tamu / Kendala hanya dengan salah satu kata ini = Selesai (kendala yang belum diambil ikut diambil dulu), mis. \"done\", \"sudah\".": "Replying to a Guest request / Issue card with only one of these words = Done (an issue not yet taken is taken first), e.g. \"done\", \"sudah\"."
+    "Membalas kartu Permintaan tamu / Kendala hanya dengan salah satu kata ini = Selesai (kendala yang belum diambil ikut diambil dulu), mis. \"done\", \"sudah\".": "Replying to a Guest request / Issue card with only one of these words = Done (an issue not yet taken is taken first), e.g. \"done\", \"sudah\".",
+    "Ketuk kartu ini untuk membuka form Catat kendala (sudah terisi). Shift + Enter = langsung catat. Enter = kirim sebagai pesan biasa.": "Tap this card to open the Log issue form (already filled in). Shift + Enter = log it right away. Enter = send as a normal message."
 }

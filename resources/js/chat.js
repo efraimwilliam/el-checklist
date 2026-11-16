@@ -958,7 +958,7 @@ if (chat) {
             if (isRequest && quick.ok) content.append(el('p', 'text-xs text-slate-400', t('Enter / kirim = pesan terkirim dan permintaan tercatat. × = kirim sebagai pesan biasa.')));
             if (isLost && quick.ok) content.append(el('p', 'text-xs text-slate-400', photo ? t('Kirim = foto terkirim dan barang tercatat. × = kirim sebagai pesan biasa.') : t('Lampirkan foto barangnya bila ada. Kirim = barang tercatat. × = pesan biasa.')));
             if (isRequest && !quick.ok) content.append(el('p', 'text-xs text-slate-400', t('Pesan tetap bisa dikirim, tapi permintaannya tidak dicatat.')));
-            if (!isRequest && !isLost && quick.ok) content.append(el('p', 'text-xs text-slate-400', t('Ketuk kartu ini untuk membuka form Catat kendala (sudah terisi). Enter = kirim sebagai pesan biasa.')));
+            if (!isRequest && !isLost && quick.ok) content.append(el('p', 'text-xs text-slate-400', t('Ketuk kartu ini untuk membuka form Catat kendala (sudah terisi). Shift + Enter = langsung catat. Enter = kirim sebagai pesan biasa.')));
             const actions = el('div', 'flex shrink-0 items-center gap-1');
             // Kendala: seluruh kartu bisa diketuk dan langsung membuka form Catat kendala yang sudah terisi (tanpa tombol terpisah).
             if (!isRequest && !isLost && quick.ok && quick.url) {
@@ -1013,7 +1013,7 @@ if (chat) {
             if (event.key === 'Escape' && quickBox && !quickBox.hidden) { quickDismissed = true; renderQuick(); }
         });
 
-        const submit = async () => {
+        const submit = async (options = {}) => {
             const text = body.value.trim();
             const command = !photo && !documentFile ? commandFor(text) : null;
             if (command) {
@@ -1025,6 +1025,7 @@ if (chat) {
             // Pratinjau belum sempat muncul untuk teks ini: tampilkan dulu, kirim pada Enter berikutnya.
             let record = false;
             let claim = false;
+            let issue = false;
             if (!documentFile && !quickDismissed && chat.dataset.quickUrl && looksQuick(text)) {
                 if (!quick || quick.text !== text || quick.reply !== replyTo) {
                     clearTimeout(quickTimer);
@@ -1035,6 +1036,7 @@ if (chat) {
                 const current = quick && quick.text === text && quick.reply === replyTo && quick.ok ? quick.type : null;
                 record = current === 'lost' || (current === 'request' && !photo);
                 claim = current === 'reply_action' && !photo;
+                issue = options.issue === true && current === 'issue' && !photo;
             }
             sending = true;
             button.disabled = true;
@@ -1047,6 +1049,7 @@ if (chat) {
             }
             if (replyTo) data.append('reply_to', replyTo);
             if (claim) data.append('balas_aksi', '1');
+            if (issue) data.append('catat_kendala', '1');
             if (photo) data.append('photo', photo, 'foto.jpg');
             else if (documentFile) data.append('file', documentFile, documentFile.name);
             try {
@@ -1086,6 +1089,13 @@ if (chat) {
             if (event.key === 'Enter' && !event.shiftKey && !event.isComposing && window.matchMedia('(pointer: fine)').matches) {
                 event.preventDefault();
                 submit();
+            }
+            // Shift+Enter saat pratinjau membaca "Sepertinya kendala": langsung catat kendalanya (tanpa form). Selain itu tetap baris baru.
+            const text = body.value.trim();
+            if (event.key === 'Enter' && event.shiftKey && !event.isComposing && window.matchMedia('(pointer: fine)').matches
+                && !quickDismissed && quickBox && !quickBox.hidden && quick && quick.type === 'issue' && quick.ok && quick.text === text && quick.reply === replyTo && !photo && !documentFile) {
+                event.preventDefault();
+                submit({ issue: true });
             }
             if (event.key === 'Escape') clearReply();
         });
