@@ -13,10 +13,17 @@ use Throwable;
  */
 final class FcmSender implements AppPushSender
 {
+    /** Alasan kiriman terakhir gagal (untuk `aplikasi:cek-notif`); null = berhasil. */
+    public ?string $lastError = null;
+
     public function send(string $token, array $message): string
     {
+        $this->lastError = null;
         $credentials = $this->credentials();
         if ($credentials === null) {
+            $this->lastError = 'Berkas service account Firebase tidak ada / tidak valid: '.config('services.fcm.credentials');
+            Log::warning('FCM: '.$this->lastError);
+
             return self::FAILED;
         }
 
@@ -30,6 +37,7 @@ final class FcmSender implements AppPushSender
                     'android' => ['priority' => 'high', 'notification' => ['channel_id' => 'tugas', 'tag' => $message['tag']]],
                 ]]);
         } catch (Throwable $e) {
+            $this->lastError = 'Firebase tidak bisa dihubungi: '.$e->getMessage();
             Log::warning('FCM gagal dihubungi: '.$e->getMessage());
 
             return self::FAILED;
@@ -39,8 +47,11 @@ final class FcmSender implements AppPushSender
             return self::SENT;
         }
         if ($response->status() === 404 || str_contains($response->body(), 'UNREGISTERED')) {
+            $this->lastError = 'Token HP sudah tidak berlaku (aplikasi dihapus / data dibersihkan).';
+
             return self::GONE;
         }
+        $this->lastError = 'Firebase menolak ('.$response->status().'): '.mb_substr($response->body(), 0, 300);
         if ($response->status() === 401) {
             Cache::forget('fcm.access_token');
         }

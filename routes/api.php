@@ -59,6 +59,8 @@ Route::prefix('v1/app')->group(function () {
         // Obrolan: daftar / pesan / kontak lewat Api\ChatController; kirim, foto, hapus lewat controller web yang sama.
         Route::get('/obrolan', [AppChatController::class, 'index']);
         Route::get('/obrolan/kontak', [AppChatController::class, 'contacts']);
+        // Angka belum dibaca untuk tab Obrolan (dipanggil berkala di semua tab, ringan).
+        Route::get('/obrolan/belum-dibaca', [ChatController::class, 'unread'])->middleware(['can:chat', 'throttle:120,1']);
         Route::post('/obrolan/pribadi/{person}', [AppChatController::class, 'direct'])->whereNumber('person');
         Route::get('/obrolan/{thread}/pesan', [AppChatController::class, 'messages'])->whereNumber('thread');
         Route::post('/obrolan/{thread}/pesan', [ChatController::class, 'send'])->whereNumber('thread')->middleware('throttle:60,1');

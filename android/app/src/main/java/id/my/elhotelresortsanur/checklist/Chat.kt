@@ -101,8 +101,13 @@ private fun dayLabel(day: LocalDate): String = when (java.time.temporal.ChronoUn
     else -> day.format(LONG_DAY)
 }
 
-/** Angka belum dibaca untuk tab bawah (diperbarui daftar obrolan dan saat aplikasi dibuka). */
+/** Angka belum dibaca untuk tab bawah (diperbarui berkala oleh MainActivity, daftar obrolan, dan notifikasi yang masuk). */
 val chatUnread = mutableIntStateOf(0)
+
+/** Ambil angka belum dibaca dari server (diam bila gagal: tidak mengganggu dengan pesan galat tiap 10 detik). */
+suspend fun refreshChatUnread(repo: Repo) = withContext(Dispatchers.IO) {
+    runCatching { repo.api.get("/obrolan/belum-dibaca").optInt("unread") }.getOrNull()?.let { chatUnread.intValue = it }
+}
 
 // Warna avatar inisial (tetap per nama, seperti WhatsApp).
 private val AvatarColors = listOf(0xFFB08A3E, 0xFF5B8A72, 0xFF7A6FA8, 0xFFB5654D, 0xFF4F7FA3, 0xFF9A6A8E, 0xFF6E8B3D, 0xFFA77B4F).map { Color(it) }
@@ -169,6 +174,7 @@ fun ChatListScreen(repo: Repo, onOpen: (Long) -> Unit, onNew: () -> Unit) {
     ) { padding ->
         Column(Modifier.padding(padding)) {
             Banner(repo)
+            NotificationsOffBanner()
             val shown = threads.orEmpty().filter { query.isBlank() || it.optString("title").contains(query.trim(), true) || it.optString("last").contains(query.trim(), true) }
             PullToRefreshBox(isRefreshing = refreshing, onRefresh = { scope.launch { refreshing = true; load(); refreshing = false } }, modifier = Modifier.fillMaxSize()) {
                 LazyColumn(contentPadding = PaddingValues(bottom = 96.dp), modifier = Modifier.fillMaxSize()) {
@@ -181,6 +187,25 @@ fun ChatListScreen(repo: Repo, onOpen: (Long) -> Unit, onNew: () -> Unit) {
                 }
             }
         }
+    }
+}
+
+/** Notifikasi aplikasi dimatikan di HP (atau izin ditolak): beri tahu dan buka pengaturannya (staff sendiri yang menyalakan). */
+@Composable
+private fun NotificationsOffBanner() {
+    val context = LocalContext.current
+    var enabled by remember { mutableStateOf(true) }
+    LifecycleResumeEffect(Unit) {
+        enabled = androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled()
+        onPauseOrDispose { }
+    }
+    if (enabled) return
+    Row(Modifier.fillMaxWidth().background(Color(0xFFFDF3D8)).padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text("Notifikasi aplikasi mati. Pesan baru tidak akan muncul di HP.", fontSize = 13.sp, color = Ink, modifier = Modifier.weight(1f))
+        TextButton({
+            context.startActivity(android.content.Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+        }) { Text("Aktifkan", fontWeight = FontWeight.SemiBold) }
     }
 }
 

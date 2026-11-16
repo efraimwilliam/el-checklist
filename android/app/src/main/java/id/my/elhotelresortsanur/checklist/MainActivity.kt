@@ -67,6 +67,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.isActive
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -121,8 +122,18 @@ class MainActivity : ComponentActivity() {
                 var chronoList by rememberSaveable { mutableStateOf(false) }
                 var chrono by rememberSaveable { mutableStateOf<Long?>(null) }
                 var chronoForm by rememberSaveable { mutableStateOf<Long?>(null) } // 0 = laporan baru
-                // Angka belum dibaca di tab Obrolan: dimuat saat aplikasi dibuka (daftar obrolan memperbaruinya selama terbuka).
-                LaunchedEffect(loggedIn, obrolan) { if (loggedIn && obrolan) repo.call { it.get("/obrolan") }?.let { chatUnread.intValue = it.optInt("unread") } }
+                // Angka belum dibaca di tab Obrolan: diperbarui tiap 10 detik di semua tab selama aplikasi terbuka,
+                // dan langsung saat notifikasi obrolan masuk (PushService).
+                val scope = androidx.compose.runtime.rememberCoroutineScope()
+                androidx.lifecycle.compose.LifecycleResumeEffect(loggedIn, obrolan) {
+                    val job = scope.launch {
+                        while (loggedIn && obrolan && kotlinx.coroutines.currentCoroutineContext().isActive) {
+                            refreshChatUnread(repo)
+                            kotlinx.coroutines.delay(10_000)
+                        }
+                    }
+                    onPauseOrDispose { job.cancel() }
+                }
                 var newRequest by rememberSaveable { mutableStateOf(false) }
                 var open by rememberSaveable { mutableStateOf<Long?>(null) }
                 var tab by rememberSaveable { mutableStateOf("checklist") }

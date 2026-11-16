@@ -648,7 +648,9 @@ sudo chown www-data:www-data /var/www/checklist/storage/app/private/firebase/ser
 sudo chmod 600 /var/www/checklist/storage/app/private/firebase/service-account.json
 ```
 
-Tanpa berkas ini aplikasi tetap jalan, hanya tanpa notifikasi. Server harus bisa menghubungi `oauth2.googleapis.com` dan `fcm.googleapis.com` (HTTPS keluar). Lokasi lain: `.env` `FCM_CREDENTIALS=/path/ke/berkas.json`. Berkas ini ikut dicadangkan bersama `storage` (bagian 11); bila bocor, hapus kuncinya di konsol Firebase (Project settings > Service accounts) dan buat yang baru.
+Tanpa berkas ini aplikasi tetap jalan, hanya tanpa notifikasi.
+
+**Notifikasi tidak masuk?** Jalankan `sudo -u www-data php artisan aplikasi:cek-notif <username> --kirim`: perintah ini menunjukkan apakah berkas Firebase terbaca, fitur menyala, HP orang itu sudah login dan memberi token (login aplikasi berlaku 12 jam, sesudah itu harus login lagi), lalu mengirim notifikasi uji dan menampilkan jawaban Firebase. Server harus bisa menghubungi `oauth2.googleapis.com` dan `fcm.googleapis.com` (HTTPS keluar). Lokasi lain: `.env` `FCM_CREDENTIALS=/path/ke/berkas.json`. Berkas ini ikut dicadangkan bersama `storage` (bagian 11); bila bocor, hapus kuncinya di konsol Firebase (Project settings > Service accounts) dan buat yang baru.
 
 ## 13b. Menerbitkan aplikasi Android versi baru
 
