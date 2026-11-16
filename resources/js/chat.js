@@ -928,26 +928,33 @@ if (chat) {
             if (isRequest && quick.ok) content.append(el('p', 'text-xs text-slate-400', t('Enter / kirim = pesan terkirim dan permintaan tercatat. × = kirim sebagai pesan biasa.')));
             if (isLost && quick.ok) content.append(el('p', 'text-xs text-slate-400', photo ? t('Kirim = foto terkirim dan barang tercatat. × = kirim sebagai pesan biasa.') : t('Lampirkan foto barangnya bila ada. Kirim = barang tercatat. × = pesan biasa.')));
             if (isRequest && !quick.ok) content.append(el('p', 'text-xs text-slate-400', t('Pesan tetap bisa dikirim, tapi permintaannya tidak dicatat.')));
-            if (!isRequest && !isLost && quick.ok) content.append(el('p', 'text-xs text-slate-400', t('Ketuk Catat kendala untuk mencatatnya (form sudah terisi). Enter = kirim sebagai pesan biasa.')));
+            if (!isRequest && !isLost && quick.ok) content.append(el('p', 'text-xs text-slate-400', t('Ketuk kartu ini untuk membuka form Catat kendala (sudah terisi). Enter = kirim sebagai pesan biasa.')));
             const actions = el('div', 'flex shrink-0 items-center gap-1');
+            // Kendala: seluruh kartu bisa diketuk dan langsung membuka form Catat kendala yang sudah terisi (tanpa tombol terpisah).
             if (!isRequest && !isLost && quick.ok && quick.url) {
-                const open = el('button', 'rounded-full bg-[#b08a3e] px-3 py-1 text-xs font-semibold text-white hover:bg-[#9a7733]', t('Catat kendala'));
-                open.type = 'button';
-                open.addEventListener('click', () => {
-                    const url = quick.url;
+                const url = quick.url;
+                const openForm = () => {
                     body.value = '';
                     body.style.height = '';
                     hideQuick();
                     openToolUrl(url, t('Kendala'));
+                };
+                content.setAttribute('role', 'button');
+                content.tabIndex = 0;
+                content.setAttribute('aria-label', `${t('Catat kendala')} · ${t('Kamar')} ${quick.room}`);
+                content.classList.add('cursor-pointer', 'rounded-md', 'focus:outline-none', 'focus-visible:ring-2', 'focus-visible:ring-gold-500');
+                head.append(el('span', 'ml-1 text-gold-700', '›'));
+                content.addEventListener('click', openForm);
+                content.addEventListener('keydown', (event) => {
+                    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openForm(); }
                 });
-                actions.append(open);
             }
             const close = el('button', 'inline-flex h-7 w-7 items-center justify-center rounded-full text-lg text-slate-500 hover:bg-slate-100', '×');
             close.type = 'button';
             close.setAttribute('aria-label', t('Jangan catat, kirim sebagai pesan biasa'));
             close.addEventListener('click', () => { quickDismissed = true; renderQuick(); body.focus(); });
             actions.append(close);
-            quickBox.className = `mb-2 flex items-start gap-2 rounded-lg border-l-4 bg-white px-3 py-2 text-sm ${isLost ? 'border-gold-600' : isRequest ? 'border-sky-600' : 'border-amber-500'}`;
+            quickBox.className = `mb-2 flex items-start gap-2 rounded-lg border-l-4 bg-white px-3 py-2 text-sm ${isLost ? 'border-gold-600' : isRequest ? 'border-sky-600' : 'border-amber-500'}${content.getAttribute('role') === 'button' ? ' transition hover:bg-gold-50' : ''}`;
             quickBox.replaceChildren(content, actions);
             quickBox.hidden = false;
         };

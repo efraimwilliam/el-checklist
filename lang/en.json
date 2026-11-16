@@ -765,7 +765,6 @@
     "Kategori belum terbaca": "Category not recognised",
     "Enter / kirim = pesan terkirim dan permintaan tercatat. × = kirim sebagai pesan biasa.": "Enter / send = message sent and request logged. × = send as a normal message.",
     "Pesan tetap bisa dikirim, tapi permintaannya tidak dicatat.": "The message can still be sent, but the request will not be logged.",
-    "Ketuk Catat kendala untuk mencatatnya (form sudah terisi). Enter = kirim sebagai pesan biasa.": "Tap Log issue to record it (the form is prefilled). Enter = send as a normal message.",
     "Jangan catat, kirim sebagai pesan biasa": "Don't log, send as a normal message",
     "Ketik bebas di obrolan": "Free typing in chat",
     "Ketik bebas tercatat": "Log free typing",
@@ -929,5 +928,6 @@
     "Tugas bawaan: semua tugas departemen tercentang. Hapus centang untuk menyesuaikan.": "Default tasks: all department tasks are ticked. Untick to customise.",
     "Perubahan berlaku untuk checklist yang dibuat sesudahnya; checklist yang sudah ada tidak berubah.": "Changes apply to checklists created afterwards; existing checklists do not change.",
     "Belum ada pegawai di departemen Anda. Data pegawai datang dari Absensi (Administrator bisa menekan \"Sinkron dari absensi\").": "No employees in your department yet. Employee data comes from Attendance (an Administrator can press \"Sync from attendance\").",
-    "belum diisi": "not filled in"
+    "belum diisi": "not filled in",
+    "Ketuk kartu ini untuk membuka form Catat kendala (sudah terisi). Enter = kirim sebagai pesan biasa.": "Tap this card to open the Log issue form (already filled in). Enter = send as a normal message."
 }
