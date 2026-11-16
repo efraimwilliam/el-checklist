@@ -702,8 +702,15 @@ if (chat) {
             if (room) url.searchParams.set('kamar', room);
             openToolUrl(url.href, tool.dataset.title);
         };
+        // Teks yang dibuka sebagai form (kartu "Sepertinya kendala"): tetap di kotak tulis sampai formnya benar-benar tersimpan,
+        // jadi menutup form (× / Batal / Esc) tidak menghilangkan ketikan.
+        let toolDraft = null;
         const closeTool = () => { if (toolDialog?.open) toolDialog.close(); };
-        toolDialog?.addEventListener('close', () => { toolFrame.src = 'about:blank'; });
+        toolDialog?.addEventListener('close', () => {
+            toolFrame.src = 'about:blank';
+            if (toolDraft !== null) body?.focus();
+            toolDraft = null;
+        });
         tools.forEach((tool) => tool.addEventListener('click', () => openTool(tool)));
         // Tombol di kartu (mis. "Perbarui status" barang tertinggal) membuka halamannya di jendela form yang sama.
         log.addEventListener('click', (event) => {
@@ -716,6 +723,12 @@ if (chat) {
             if (event.origin !== location.origin || !toolFrame || event.source !== toolFrame.contentWindow) return;
             if (event.data?.type === 'chat-tool-close') closeTool();
             if (event.data?.type === 'chat-tool-done') {
+                // Tersimpan: teks yang tadi dibuka sebagai form dikosongkan (kecuali sudah diketik ulang).
+                if (toolDraft !== null && body && body.value.trim() === toolDraft) {
+                    body.value = '';
+                    body.style.height = '';
+                    body.dispatchEvent(new Event('input', { bubbles: true }));
+                }
                 closeTool();
                 poll().then(() => { log.scrollTop = log.scrollHeight; });
             }
@@ -951,10 +964,8 @@ if (chat) {
             if (!isRequest && !isLost && quick.ok && quick.url) {
                 const url = quick.url;
                 const openForm = () => {
-                    body.value = '';
-                    body.style.height = '';
-                    hideQuick();
                     openToolUrl(url, t('Kendala'));
+                    toolDraft = body.value.trim();
                 };
                 content.setAttribute('role', 'button');
                 content.tabIndex = 0;
