@@ -103,6 +103,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             MaterialTheme(colorScheme = lightColorScheme(primary = Gold, onPrimary = Color.White, background = Cream, surface = Color.White, secondary = Ink,
                 secondaryContainer = GoldSoft, onSecondaryContainer = Ink, surfaceContainerHigh = Color.White)) {
+                UpdateGate(repo)
                 val loggedIn by repo.loggedIn.collectAsState()
                 val kendala by repo.kendala.collectAsState()
                 val permintaan by repo.permintaan.collectAsState()

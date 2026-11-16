@@ -650,6 +650,23 @@ sudo chmod 600 /var/www/checklist/storage/app/private/firebase/service-account.j
 
 Tanpa berkas ini aplikasi tetap jalan, hanya tanpa notifikasi. Server harus bisa menghubungi `oauth2.googleapis.com` dan `fcm.googleapis.com` (HTTPS keluar). Lokasi lain: `.env` `FCM_CREDENTIALS=/path/ke/berkas.json`. Berkas ini ikut dicadangkan bersama `storage` (bagian 11); bila bocor, hapus kuncinya di konsol Firebase (Project settings > Service accounts) dan buat yang baru.
 
+## 13b. Menerbitkan aplikasi Android versi baru
+
+Aplikasi di HP mengecek versi terbaru saat dibuka dan menawarkan **Perbarui** (staff cukup menekan Perbarui lalu Instal; data dan login tetap).
+APK terbaru juga bisa diunduh langsung di `https://checklist.elhotelresortsanur.my.id/aplikasi/eL-Checklist.apk` (pemasangan pertama di HP baru).
+
+1. Di Mac: naikkan `versionCode` (angka, +1) dan `versionName` (mis. 1.5.0 -> 1.6.0) di `android/app/build.gradle.kts`.
+2. Satu perintah dari folder proyek (membuat APK rilis, mengirim ke server, menerbitkannya):
+   ```bash
+   android/rilis.sh william@<ip-server> "Isi singkat yang baru"
+   ```
+   Tambahkan `--wajib` di akhir bila versi lama tidak boleh dipakai lagi (mis. ada perubahan API): aplikasi lama hanya menampilkan "Perbarui".
+3. Manual (bila tanpa skrip): salin `app-release.apk` + `output-metadata.json` dari `android/app/build/outputs/apk/release/` ke server, lalu
+   `cd /var/www/checklist && sudo -u www-data php artisan aplikasi:rilis /tmp/app-release.apk --catatan="..."`.
+
+Kunci tanda tangan (`android/android.keystore` + `keystore.properties`) harus selalu sama: APK dengan kunci lain tidak bisa memperbarui aplikasi yang sudah terpasang.
+HP yang masih memakai versi tanpa fitur pembaruan (sebelum 1.5.0) perlu memasang APK sekali secara manual dari alamat unduhan di atas.
+
 ## 14. Uji sebelum dipakai
 
 - [ ] `https://checklist.elhotelresortsanur.my.id/up` terbuka, sertifikat valid (gembok hijau).

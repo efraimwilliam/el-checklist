@@ -1,37 +1,42 @@
 <?php
 
-use App\Http\Controllers\PlanController;
-use App\Http\Controllers\ChecklistTaskController;
-use App\Http\Controllers\ChronologyReportController;
-use App\Http\Controllers\TaskCatalogImportController;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\Admin\AccessController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\FloorPlanController;
+use App\Http\Controllers\Admin\QuickTermController;
 use App\Http\Controllers\Admin\RoomController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\TaskController;
+use App\Http\Controllers\AppReleaseController;
 use App\Http\Controllers\Auth\AttendanceLoginController;
 use App\Http\Controllers\Auth\SsoController;
 use App\Http\Controllers\BulkAssignController;
 use App\Http\Controllers\ChatController;
-use App\Http\Controllers\EmployeePhotoController;
 use App\Http\Controllers\ChecklistController;
 use App\Http\Controllers\ChecklistItemController;
 use App\Http\Controllers\ChecklistPhotoController;
+use App\Http\Controllers\ChecklistTaskController;
+use App\Http\Controllers\ChronologyReportController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EmployeePhotoController;
 use App\Http\Controllers\FillController;
+use App\Http\Controllers\GuestRequestController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\LocaleController;
+use App\Http\Controllers\LostItemController;
+use App\Http\Controllers\PlanController;
 use App\Http\Controllers\ReportController;
-use App\Http\Controllers\GuestRequestController;
 use App\Http\Controllers\RoomIssueController;
+use App\Http\Controllers\TaskCatalogImportController;
 use App\Http\Controllers\TeamPositionController;
 use App\Http\Controllers\TeamTaskController;
 use App\Http\Middleware\EnsureActiveSession;
 use App\Http\Middleware\VerifySsoSession;
 use Illuminate\Support\Facades\Route;
 
+// Unduhan APK aplikasi Android (pemasangan pertama dan pembaruan dari aplikasi), tanpa login.
+Route::get('/aplikasi/eL-Checklist.apk', [AppReleaseController::class, 'download'])->middleware('throttle:30,1')->name('app.download');
 Route::get('/bahasa/{locale}', [LocaleController::class, 'update'])->where('locale', 'id|en')->name('locale.update');
 
 // Portal SSO: login sekali untuk semua sistem (aktif bila SSO_CLIENT_ID diisi).
@@ -94,11 +99,11 @@ Route::middleware(['auth', EnsureActiveSession::class, VerifySsoSession::class])
     Route::post('/chronology/{report}/buka-lagi', [ChronologyReportController::class, 'reopen'])->whereNumber('report')->name('chronology.reopen');
     Route::delete('/chronology/{report}', [ChronologyReportController::class, 'destroy'])->whereNumber('report')->name('chronology.destroy');
     // Barang tertinggal: hanya dibuka dari obrolan (menu lampiran / "/t"), tidak ada di menu.
-    Route::get('/tertinggal', [\App\Http\Controllers\LostItemController::class, 'index'])->name('lost.index');
-    Route::post('/tertinggal', [\App\Http\Controllers\LostItemController::class, 'store'])->middleware('throttle:30,1')->name('lost.store');
-    Route::post('/tertinggal/{item}/status', [\App\Http\Controllers\LostItemController::class, 'updateStatus'])->whereNumber('item')->name('lost.status');
-    Route::get('/tertinggal/{item}/foto', [\App\Http\Controllers\LostItemController::class, 'photo'])->whereNumber('item')->name('lost.photo');
-    Route::delete('/tertinggal/{item}', [\App\Http\Controllers\LostItemController::class, 'destroy'])->whereNumber('item')->name('lost.destroy');
+    Route::get('/tertinggal', [LostItemController::class, 'index'])->name('lost.index');
+    Route::post('/tertinggal', [LostItemController::class, 'store'])->middleware('throttle:30,1')->name('lost.store');
+    Route::post('/tertinggal/{item}/status', [LostItemController::class, 'updateStatus'])->whereNumber('item')->name('lost.status');
+    Route::get('/tertinggal/{item}/foto', [LostItemController::class, 'photo'])->whereNumber('item')->name('lost.photo');
+    Route::delete('/tertinggal/{item}', [LostItemController::class, 'destroy'])->whereNumber('item')->name('lost.destroy');
     Route::get('/permintaan', [GuestRequestController::class, 'index'])->name('permintaan.index');
     Route::post('/permintaan', [GuestRequestController::class, 'store'])->name('permintaan.store');
     Route::post('/permintaan/{guestRequest}/ambil', [GuestRequestController::class, 'claim'])->whereNumber('guestRequest')->name('permintaan.claim');
@@ -168,7 +173,8 @@ Route::middleware(['auth', EnsureActiveSession::class, VerifySsoSession::class])
     Route::get('/tim/daftar/impor', [TaskCatalogImportController::class, 'create'])->name('team.catalog.import');
     Route::post('/tim/daftar/impor', [TaskCatalogImportController::class, 'preview'])->name('team.catalog.import.preview');
     Route::post('/tim/daftar/impor/simpan', [TaskCatalogImportController::class, 'apply'])->name('team.catalog.import.apply');
-    Route::post('/tim/daftar/impor/batal', [TaskCatalogImportController::class, 'cancel'])->name('team.catalog.import.cancel');    Route::get('/tim/jabatan', [TeamPositionController::class, 'edit'])->name('team.positions.edit');
+    Route::post('/tim/daftar/impor/batal', [TaskCatalogImportController::class, 'cancel'])->name('team.catalog.import.cancel');
+    Route::get('/tim/jabatan', [TeamPositionController::class, 'edit'])->name('team.positions.edit');
     Route::put('/tim/jabatan', [TeamPositionController::class, 'update'])->name('team.positions.update');
     Route::get('/tim/{employee}/tugas', [TeamTaskController::class, 'edit'])->name('team.tasks.edit');
     Route::put('/tim/{employee}/tugas', [TeamTaskController::class, 'update'])->name('team.tasks.update');
@@ -190,13 +196,13 @@ Route::middleware(['auth', EnsureActiveSession::class, VerifySsoSession::class])
         Route::put('/pengaturan/aturan', [SettingsController::class, 'updateRules'])->name('settings.rules.update');
         Route::put('/pengaturan/fitur', [SettingsController::class, 'updateFeatures'])->name('settings.features.update');
         Route::put('/pengaturan/ketik-bebas', [SettingsController::class, 'updateQuickEntry'])->name('settings.quick.update');
-        Route::get('/kamus-ketik', [\App\Http\Controllers\Admin\QuickTermController::class, 'index'])->name('quick-terms.index');
-        Route::post('/kamus-ketik', [\App\Http\Controllers\Admin\QuickTermController::class, 'store'])->name('quick-terms.store');
-        Route::post('/kamus-ketik/jenis', [\App\Http\Controllers\Admin\QuickTermController::class, 'storeKind'])->name('quick-terms.kinds.store');
-        Route::put('/kamus-ketik/jenis/{kind}', [\App\Http\Controllers\Admin\QuickTermController::class, 'updateKind'])->whereNumber('kind')->name('quick-terms.kinds.update');
-        Route::post('/kamus-ketik/kategori', [\App\Http\Controllers\Admin\QuickTermController::class, 'storeCategory'])->name('quick-terms.categories.store');
-        Route::put('/kamus-ketik/kategori/{category}', [\App\Http\Controllers\Admin\QuickTermController::class, 'updateCategory'])->whereNumber('category')->name('quick-terms.categories.update');
-        Route::delete('/kamus-ketik/{term}', [\App\Http\Controllers\Admin\QuickTermController::class, 'destroy'])->whereNumber('term')->name('quick-terms.destroy');
+        Route::get('/kamus-ketik', [QuickTermController::class, 'index'])->name('quick-terms.index');
+        Route::post('/kamus-ketik', [QuickTermController::class, 'store'])->name('quick-terms.store');
+        Route::post('/kamus-ketik/jenis', [QuickTermController::class, 'storeKind'])->name('quick-terms.kinds.store');
+        Route::put('/kamus-ketik/jenis/{kind}', [QuickTermController::class, 'updateKind'])->whereNumber('kind')->name('quick-terms.kinds.update');
+        Route::post('/kamus-ketik/kategori', [QuickTermController::class, 'storeCategory'])->name('quick-terms.categories.store');
+        Route::put('/kamus-ketik/kategori/{category}', [QuickTermController::class, 'updateCategory'])->whereNumber('category')->name('quick-terms.categories.update');
+        Route::delete('/kamus-ketik/{term}', [QuickTermController::class, 'destroy'])->whereNumber('term')->name('quick-terms.destroy');
 
         Route::post('/denah', [FloorPlanController::class, 'store'])->name('plans.store');
         Route::get('/denah/{plan}', [FloorPlanController::class, 'edit'])->name('plans.edit');

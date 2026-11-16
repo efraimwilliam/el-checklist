@@ -48,6 +48,34 @@ class Api(private val token: () -> String?) {
         )
     )
 
+    /** Unduh berkas dari alamat situs (bukan /api), mis. APK pembaruan; progress 0..1 bila ukuran diketahui. */
+    fun downloadTo(sitePath: String, out: File, progress: (Float) -> Unit) {
+        val request = Request.Builder().url(BuildConfig.API_URL.trimEnd('/') + sitePath).build()
+        val response = try { http.newCall(request).execute() } catch (e: IOException) { throw ApiException(0, "Tidak ada koneksi ke server.") }
+        response.use {
+            if (!it.isSuccessful) throw ApiException(it.code, "Unduhan gagal (${it.code}).")
+            val body = it.body ?: throw ApiException(0, "Unduhan kosong.")
+            val total = body.contentLength()
+            try {
+                body.byteStream().use { input ->
+                    out.outputStream().use { output ->
+                        val buffer = ByteArray(64 * 1024)
+                        var done = 0L
+                        while (true) {
+                            val n = input.read(buffer)
+                            if (n < 0) break
+                            output.write(buffer, 0, n)
+                            done += n
+                            if (total > 0) progress(done.toFloat() / total)
+                        }
+                    }
+                }
+            } catch (e: IOException) {
+                throw ApiException(0, "Unduhan terputus. Coba lagi.")
+            }
+        }
+    }
+
     fun bytes(path: String): ByteArray = execute(request(path).get()) { it }
 
     private fun request(path: String) = Request.Builder().url(base + path)

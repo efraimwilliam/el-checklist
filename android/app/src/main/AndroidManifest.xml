@@ -4,6 +4,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Pembaruan dari server sendiri: membuka pemasang Android untuk APK versi baru (staff tetap menekan Instal). -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- Kamera dipakai lewat aplikasi kamera bawaan HP (tanpa izin CAMERA), jadi tidak wajib ada. -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />

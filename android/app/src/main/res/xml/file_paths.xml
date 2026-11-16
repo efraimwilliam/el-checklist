@@ -2,4 +2,6 @@
 <paths>
     <!-- Foto dari kamera ditulis ke sini sebelum dikecilkan. -->
     <cache-path name="camera" path="camera/" />
+    <!-- APK versi baru yang diunduh sebelum diserahkan ke pemasang Android. -->
+    <cache-path name="updates" path="updates/" />
 </paths>

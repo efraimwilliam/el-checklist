@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\ChecklistController as AppChecklistController;
 use App\Http\Controllers\Api\ChronologyController;
 use App\Http\Controllers\Api\GuestRequestController as AppGuestRequestController;
 use App\Http\Controllers\Api\RoomIssueController as AppRoomIssueController;
+use App\Http\Controllers\AppReleaseController;
 use App\Http\Controllers\BulkAssignController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ChecklistController;
@@ -22,6 +23,8 @@ use Illuminate\Support\Facades\Route;
 // Aplikasi Android (token Sanctum). Simpan isian / catatan / foto memakai controller web yang sama.
 Route::prefix('v1/app')->group(function () {
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
+    // Pembaruan aplikasi (tanpa login): versi terbaru yang diterbitkan `aplikasi:rilis`.
+    Route::get('/versi', [AppReleaseController::class, 'version'])->middleware('throttle:60,1');
 
     Route::middleware(['auth:sanctum', EnsureActiveToken::class, 'throttle:120,1'])->group(function () {
         Route::get('/me', [AuthController::class, 'me']);
