@@ -6,13 +6,14 @@ use App\Attendance\AttendanceApiService;
 use App\Attendance\AttendanceUnavailable;
 use App\Checklists\ChecklistService;
 use App\Checklists\ChecklistSettings;
-use App\Enums\ChecklistStatus;
+use App\Checklists\TeamBoard;
 use App\Enums\Role;
 use App\Models\Checklist;
 use App\Models\Department;
 use App\Models\Employee;
 use App\Models\Position;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -95,34 +96,7 @@ class FillController extends Controller
             }
         }
 
-        $board = collect();
-        if (! $staffMode && $department) {
-            $day = Checklist::with('items.parameters', 'items.photos')->where('department_id', $department->id)->whereDate('date', $date)->get()->groupBy('employee_id');
-            $board = $employees->load('checklistPosition')
-                ->reject(fn (Employee $e) => $e->id === $user->employee_id && ! $user->role->overridesReview() && ! $day->has($e->id))
-                ->map(function (Employee $e) use ($day, $user, $schedules) {
-                    $checklists = $day->get($e->id, collect());
-                    $noSchedule = $schedules !== null && ($schedules[$e->external_id]['status'] ?? 'unscheduled') === 'unscheduled';
-                    $state = match (true) {
-                        $checklists->isEmpty() && $noSchedule => 'noschedule',
-                        $checklists->isEmpty() => 'none',
-                        $checklists->every(fn (Checklist $c) => $c->isReviewed()) => 'reviewed',
-                        $checklists->every(fn (Checklist $c) => $c->status !== ChecklistStatus::Saved) => 'hod_reviewed',
-                        $checklists->every(fn (Checklist $c) => $c->isComplete()) => 'complete',
-                        $checklists->sum(fn (Checklist $c) => $c->answeredCount()) === 0 => 'empty',
-                        default => 'partial',
-                    };
-
-                    return [
-                        'employee' => $e,
-                        'checklists' => $checklists,
-                        'state' => $state,
-                        // Rencana masa depan yang belum diisi boleh dihapus (per pegawai, atau sekaligus per departemen).
-                        'removable_ids' => $checklists->filter(fn (Checklist $c) => $c->date->isFuture() && $user->can('plan', $c) && ! $this->service->hasAnswers($c))->pluck('id')->values()->all(),
-                        'canStart' => $state !== 'noschedule' && $e->checklistPosition && $user->can('fill', [Checklist::class, $e, $e->checklistPosition]),
-                    ];
-                })->values();
-        }
+        $board = ! $staffMode && $department ? app(TeamBoard::class)->rows($user, $employees, $department, $date, $schedules) : collect();
 
         // Checklist yang belum lengkap (dibuatkan sekaligus atau tersimpan setengah jalan) supaya mudah dilanjutkan:
         // staff melihat miliknya, HOD / HR / Administrator melihat milik departemen yang boleh mereka akses
@@ -193,7 +167,7 @@ class FillController extends Controller
         ]);
     }
 
-    public function start(Request $request): RedirectResponse
+    public function start(Request $request): RedirectResponse|JsonResponse
     {
         Gate::authorize('fill-checklists');
         $data = $request->validate([
@@ -208,12 +182,17 @@ class FillController extends Controller
         $date = CarbonImmutable::parse($data['date']);
         $existing = $this->service->find($employee, $position, $date);
         if ($existing && ! Gate::allows('update', $existing)) {
+            if ($request->is('api/*')) {
+                return response()->json(['id' => $existing->id, 'message' => __('Checklist ini sudah direview dan terkunci. Perubahan hanya lewat HR.')], 409);
+            }
+
             return redirect()->route('checklists.show', $existing)->with('status', __('Checklist ini sudah direview dan terkunci. Perubahan hanya lewat HR.'));
         }
 
         $checklist = $existing ?? $this->service->start($employee, $position, $date, $request->user(), $request->user()->role === Role::Staff ? null : $request->user()->name());
 
-        return redirect()->route('checklists.fill', $checklist);
+        // Aplikasi Android: id checklist untuk dibuka di layar isi.
+        return $request->is('api/*') ? response()->json(['id' => $checklist->id]) : redirect()->route('checklists.fill', $checklist);
     }
 
     private function date(mixed $value): ?CarbonImmutable

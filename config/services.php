@@ -29,6 +29,11 @@ return [
     ],
 
     // Portal SSO (login sekali untuk semua sistem). Mati selama SSO_CLIENT_ID kosong: login username + PIN tetap dipakai.
+    // Notifikasi aplikasi Android (Firebase Cloud Messaging). Berkas service account rahasia, di luar Git.
+    'fcm' => [
+        'credentials' => env('FCM_CREDENTIALS', storage_path('app/private/firebase/service-account.json')),
+    ],
+
     'sso' => [
         'enabled' => (bool) env('SSO_ENABLED', true),
         'portal_url' => rtrim((string) env('SSO_PORTAL_URL'), '/'),

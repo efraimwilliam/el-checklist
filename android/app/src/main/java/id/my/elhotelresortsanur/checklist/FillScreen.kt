@@ -27,6 +27,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -69,6 +71,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 
@@ -79,6 +82,7 @@ private fun statusColor(status: String?) = when (status) { "done" -> Green; "ong
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FillScreen(repo: Repo, id: Long, onBack: () -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
     val version by repo.version.collectAsState()
     val detail = remember(version) { repo.cachedDetail(id)?.let(::parseDetail) }
@@ -106,8 +110,8 @@ fun FillScreen(repo: Repo, id: Long, onBack: () -> Unit) {
             TopAppBar(
                 title = {
                     Column {
-                        Text(detail?.summary?.position ?: "Checklist", fontWeight = FontWeight.SemiBold)
-                        detail?.let { Text(formatDate(it.summary.date), fontSize = 12.sp, color = Color(0xFFDCCDB6)) }
+                        Text(detail?.summary?.employee ?: detail?.summary?.position ?: "Checklist", fontWeight = FontWeight.SemiBold)
+                        detail?.let { Text(listOfNotNull(it.summary.position.takeIf { _ -> it.summary.employee != null }, formatDate(it.summary.date)).joinToString(" · "), fontSize = 12.sp, color = Color(0xFFDCCDB6)) }
                     }
                 },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Kembali", tint = Color.White) } },
@@ -144,7 +148,16 @@ fun FillScreen(repo: Repo, id: Long, onBack: () -> Unit) {
                     }
                     item(key = item.id) { TaskCard(repo, detail, item, editable, ::save) }
                 }
+                item(key = "extras") { ExtrasCard(repo, detail, editable) }
                 item(key = "note") { GeneralNote(repo, detail, editable) }
+                // HOD / GM / HR: tandai sudah direview bila lengkap dan semua isian sudah terkirim (server memeriksa lagi).
+                if (detail.summary.canReview) item(key = "review") {
+                    val waiting = repo.pendingFor(id)
+                    Button(
+                        onClick = { scope.launch { repo.call { it.send("POST", "/checklists/$id/review") }?.let { res -> repo.message.value = null; android.widget.Toast.makeText(context, res.s("message"), android.widget.Toast.LENGTH_LONG).show() }; repo.refreshDetail(id) } },
+                        enabled = progress.complete && waiting == 0, modifier = Modifier.fillMaxWidth().height(50.dp), colors = ButtonDefaults.buttonColors(containerColor = Green),
+                    ) { Text(if (waiting > 0) "Kirim isian dulu sebelum review" else "Tandai sudah direview") }
+                }
             }
         }
     }
@@ -286,6 +299,49 @@ private fun DebouncedField(
     )
 }
 
+/** Tugas tambahan hari itu (di luar daftar, tidak dihitung skor): judul, status, catatan. Tersimpan otomatis seperti isian lain. */
+@Composable
+private fun ExtrasCard(repo: Repo, detail: Detail, editable: Boolean) {
+    val id = detail.summary.id
+    val scope = rememberCoroutineScope()
+    val version by repo.version.collectAsState()
+    val extras = remember(version) { repo.cachedDetail(id)?.optJSONArray("extras").objects() }
+    if (!editable && extras.isEmpty()) return
+
+    fun update(send: Boolean = true, change: (JSONArray) -> Unit) {
+        val json = repo.cachedDetail(id) ?: return
+        val list = json.optJSONArray("extras") ?: JSONArray().also { json.put("extras", it) }
+        change(list)
+        repo.saveDetail(id, json)
+        if (send) { repo.saveExtras(id, list); scope.launch { repo.flush() } }
+    }
+
+    Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(16.dp)) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("Tugas tambahan", fontWeight = FontWeight.SemiBold)
+            Text("Di luar daftar tugas; tidak dihitung skor.", color = Muted, fontSize = 13.sp)
+            extras.forEachIndexed { i, extra ->
+                // uid lokal supaya kolom tidak tertukar saat baris dihapus.
+                val uid = extra.optString("uid").ifEmpty { "srv-$i-${extra.optString("title")}" }
+                Column(Modifier.fillMaxWidth().background(Cream, RoundedCornerShape(12.dp)).padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    DebouncedField(key = "extra-$id-$uid", initial = extra.s("title").orEmpty(), editable = editable, label = "Tugas") { text ->
+                        update { it.getJSONObject(i).put("title", text) }
+                    }
+                    StatusButtons(extra.s("status"), editable) { status -> update { it.getJSONObject(i).put("status", status ?: JSONObject.NULL) } }
+                    DebouncedField(key = "extra-note-$id-$uid", initial = extra.s("note").orEmpty(), editable = editable, label = "Catatan") { text ->
+                        update { it.getJSONObject(i).put("note", text.ifBlank { null } ?: JSONObject.NULL) }
+                    }
+                    if (editable) TextButton(onClick = { update { it.remove(i) } }) { Text("Hapus", color = Red) }
+                }
+            }
+            if (editable && extras.size < 20) OutlinedButton(onClick = {
+                // Baris kosong hanya di HP sampai judulnya diisi (server membuang judul kosong).
+                update(send = false) { it.put(JSONObject().put("uid", java.util.UUID.randomUUID().toString()).put("title", "").put("status", JSONObject.NULL).put("note", JSONObject.NULL)) }
+            }, Modifier.fillMaxWidth()) { Text("+ Tambah tugas tambahan") }
+        }
+    }
+}
+
 @Composable
 private fun GeneralNote(repo: Repo, detail: Detail, editable: Boolean) {
     val scope = rememberCoroutineScope()
@@ -365,19 +421,21 @@ private fun PhotoRow(repo: Repo, detail: Detail, item: Item, editable: Boolean) 
 private val thumbCache = android.util.LruCache<String, android.graphics.Bitmap>(40)
 
 @Composable
-private fun Thumb(repo: Repo, checklist: Long, photo: Photo, modifier: Modifier, edge: Int = 256, crop: Boolean = true) {
-    val key = "${photo.id ?: photo.local}@$edge"
+private fun Thumb(repo: Repo, checklist: Long, photo: Photo, modifier: Modifier, edge: Int = 256, crop: Boolean = true) =
+    RemoteImage("${photo.id ?: photo.local}@$edge", modifier, crop, if (photo.local != null) "⏳" else "📷") {
+        if (photo.local != null) Photos.thumbnail(File(photo.local), edge)
+        else Photos.thumbnail(repo.api.bytes("/checklists/$checklist/photos/${photo.id}"), edge)
+    }
+
+/** Gambar dari server / berkas, dimuat di latar belakang dan disimpan di cache memori. */
+@Composable
+fun RemoteImage(key: String, modifier: Modifier, crop: Boolean = true, placeholder: String = "📷", load: () -> android.graphics.Bitmap?) {
     val bitmap by produceState(thumbCache.get(key), key) {
         if (value != null) return@produceState
-        value = withContext(Dispatchers.IO) {
-            runCatching {
-                if (photo.local != null) Photos.thumbnail(File(photo.local), edge)
-                else Photos.thumbnail(repo.api.bytes("/checklists/$checklist/photos/${photo.id}"), edge)
-            }.getOrNull()
-        }?.also { thumbCache.put(key, it) }
+        value = withContext(Dispatchers.IO) { runCatching(load).getOrNull() }?.also { thumbCache.put(key, it) }
     }
     Box(modifier.clip(RoundedCornerShape(10.dp)).background(GoldSoft), contentAlignment = Alignment.Center) {
         bitmap?.let { Image(it.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = if (crop) ContentScale.Crop else ContentScale.Fit) }
-            ?: Text(if (photo.local != null) "⏳" else "📷", fontSize = 20.sp)
+            ?: Text(placeholder, fontSize = 20.sp)
     }
 }

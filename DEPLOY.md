@@ -634,6 +634,22 @@ Akun ini tidak ikut sinkronisasi pegawai, dan login-nya tidak pernah ke Absensi.
 
 ---
 
+## 13a. Notifikasi aplikasi Android (Firebase)
+
+Aplikasi Android menerima notifikasi kendala / permintaan tamu baru lewat Firebase Cloud Messaging. Server butuh **berkas service account Firebase** (rahasia, TIDAK di Git): salin dari Mac (`storage/app/private/firebase/service-account.json`) ke server, lalu kunci izinnya.
+
+```bash
+# di Mac
+scp "storage/app/private/firebase/service-account.json" william@<ip-server>:/tmp/fcm.json
+# di server
+sudo mkdir -p /var/www/checklist/storage/app/private/firebase
+sudo mv /tmp/fcm.json /var/www/checklist/storage/app/private/firebase/service-account.json
+sudo chown www-data:www-data /var/www/checklist/storage/app/private/firebase/service-account.json
+sudo chmod 600 /var/www/checklist/storage/app/private/firebase/service-account.json
+```
+
+Tanpa berkas ini aplikasi tetap jalan, hanya tanpa notifikasi. Server harus bisa menghubungi `oauth2.googleapis.com` dan `fcm.googleapis.com` (HTTPS keluar). Lokasi lain: `.env` `FCM_CREDENTIALS=/path/ke/berkas.json`. Berkas ini ikut dicadangkan bersama `storage` (bagian 11); bila bocor, hapus kuncinya di konsol Firebase (Project settings > Service accounts) dan buat yang baru.
+
 ## 14. Uji sebelum dipakai
 
 - [ ] `https://checklist.elhotelresortsanur.my.id/up` terbuka, sertifikat valid (gembok hijau).

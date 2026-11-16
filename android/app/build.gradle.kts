@@ -4,6 +4,8 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
+    // Notifikasi (Firebase Cloud Messaging): butuh app/google-services.json dari konsol Firebase (di luar Git).
+    id("com.google.gms.google-services")
 }
 
 // Kunci tanda tangan rilis dibaca dari keystore.properties (di luar Git). Tanpa berkas itu, build rilis tidak bertanda tangan.
@@ -18,8 +20,8 @@ android {
         applicationId = "id.my.elhotelresortsanur.checklist"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 5
+        versionName = "1.4.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -71,6 +73,8 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.10.0")
     implementation("androidx.exifinterface:exifinterface:1.4.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
+    implementation("com.google.firebase:firebase-messaging")
     debugImplementation("androidx.compose.ui:ui-tooling")
 
     testImplementation("junit:junit:4.13.2")

@@ -3,6 +3,7 @@
 namespace App\Push;
 
 use App\Models\PushSubscription;
+use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Log;
 use Minishlink\WebPush\Subscription;
 use Minishlink\WebPush\WebPush;
@@ -50,7 +51,7 @@ final class WebPushSender implements PushSender
         return $this->client ??= new WebPush(
             ['VAPID' => ['subject' => config('webpush.subject'), 'publicKey' => $keys['publicKey'], 'privateKey' => $keys['privateKey']]],
             [],
-            new \GuzzleHttp\Client(['timeout' => (int) config('webpush.timeout'), 'connect_timeout' => 3, 'http_errors' => false]),
+            new Client(['timeout' => (int) config('webpush.timeout'), 'connect_timeout' => 3, 'http_errors' => false]),
         );
     }
 

@@ -10,7 +10,10 @@ import org.json.JSONObject
 
 data class Progress(val filled: Int, val total: Int, val done: Int, val pending: Int, val score: Int?, val complete: Boolean)
 
-data class Summary(val id: Long, val date: String, val position: String, val status: String, val canEdit: Boolean, val progress: Progress)
+data class Summary(
+    val id: Long, val date: String, val position: String, val status: String, val canEdit: Boolean, val progress: Progress,
+    val employee: String? = null, val canReview: Boolean = false,
+)
 
 data class Param(
     val id: Long, val name: String, val type: String, val unit: String?, val min: Double?, val max: Double?,
@@ -43,6 +46,7 @@ fun parseProgress(o: JSONObject) = Progress(
 fun parseSummary(o: JSONObject) = Summary(
     id = o.getLong("id"), date = o.getString("date"), position = o.optString("position"), status = o.optString("status"),
     canEdit = o.optBoolean("can_edit"), progress = parseProgress(o.getJSONObject("progress")),
+    employee = o.str("employee"), canReview = o.optBoolean("can_review"),
 )
 
 fun parseDetail(o: JSONObject) = Detail(

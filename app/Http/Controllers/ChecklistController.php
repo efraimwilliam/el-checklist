@@ -8,10 +8,11 @@ use App\Checklists\ChecklistSettings;
 use App\Enums\ChecklistStatus;
 use App\Enums\ItemStatus;
 use App\Enums\Role;
+use App\Models\ChatThread;
 use App\Models\Checklist;
+use App\Models\Department;
 use App\Reports\ExcelReport;
 use App\Support\DateRange;
-use App\Models\Department;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -96,7 +97,7 @@ class ChecklistController extends Controller
             'canReview' => $user->can('review', $checklist),
             'canUnreview' => $user->can('unreview', $checklist),
             'canDelete' => $user->can('delete', $checklist),
-        ] + \App\Models\ChatThread::shareTargets($user));
+        ] + ChatThread::shareTargets($user));
     }
 
     /** Halaman kartu / daftar: setiap pilihan tersimpan otomatis. Yang tidak boleh mengubah diarahkan ke detail. */
@@ -149,7 +150,7 @@ class ChecklistController extends Controller
         return redirect()->route('checklists.show', $checklist)->with('status', __('Review dibatalkan. Checklist bisa diubah lagi.'));
     }
 
-    public function review(Request $request, Checklist $checklist): RedirectResponse
+    public function review(Request $request, Checklist $checklist): RedirectResponse|JsonResponse
     {
         Gate::authorize('review', $checklist);
         $final = $request->user()->role->reviews();
@@ -159,9 +160,9 @@ class ChecklistController extends Controller
             'reviewed_at' => now(),
         ]);
 
-        return redirect()->route('checklists.show', $checklist)->with('status', $final
-            ? __('Checklist ditandai direview oleh GM/HR dan terkunci.')
-            : __('Checklist ditandai direview oleh HOD. GM atau HR masih bisa mereview.'));
+        $message = $final ? __('Checklist ditandai direview oleh GM/HR dan terkunci.') : __('Checklist ditandai direview oleh HOD. GM atau HR masih bisa mereview.');
+
+        return $request->is('api/*') ? response()->json(['message' => $message]) : redirect()->route('checklists.show', $checklist)->with('status', $message);
     }
 
     public function destroy(Checklist $checklist, ChecklistPhotoService $photos): RedirectResponse

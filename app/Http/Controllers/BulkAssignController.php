@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Attendance\AttendanceUnavailable;
 use App\Checklists\BulkAssignService;
+use App\Checklists\ChecklistSettings;
 use App\Models\Department;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -16,13 +18,13 @@ use Illuminate\Support\Facades\Gate;
  */
 class BulkAssignController extends Controller
 {
-    public function store(Request $request, BulkAssignService $service): RedirectResponse
+    public function store(Request $request, BulkAssignService $service): RedirectResponse|JsonResponse
     {
         Gate::authorize('manage-team-tasks');
         $data = $request->validate([
-            'date' => ['required', 'date_format:Y-m-d', 'before_or_equal:'.CarbonImmutable::today()->addDays(\App\Checklists\ChecklistSettings::MAX_DAYS_AHEAD)->toDateString()],
+            'date' => ['required', 'date_format:Y-m-d', 'before_or_equal:'.CarbonImmutable::today()->addDays(ChecklistSettings::MAX_DAYS_AHEAD)->toDateString()],
             'department' => ['nullable', 'regex:/^(all|\d+)$/'],
-        ], ['date.before_or_equal' => __('Tanggal terlalu jauh ke depan (maksimal :n hari).', ['n' => \App\Checklists\ChecklistSettings::MAX_DAYS_AHEAD])]);
+        ], ['date.before_or_equal' => __('Tanggal terlalu jauh ke depan (maksimal :n hari).', ['n' => ChecklistSettings::MAX_DAYS_AHEAD])]);
         $user = $request->user();
         $allowed = $user->accessibleDepartmentIds() ?? Department::where('is_active', true)->pluck('id')->all();
 
@@ -35,7 +37,15 @@ class BulkAssignController extends Controller
         try {
             $summary = $service->run($allowed, CarbonImmutable::parse($data['date']), $user);
         } catch (AttendanceUnavailable) {
+            if ($request->is('api/*')) {
+                return response()->json(['message' => __('Sistem absensi tidak dapat dihubungi, jadi jadwal belum bisa dibaca. Coba lagi beberapa saat.')], 503);
+            }
+
             return back()->withInput()->withErrors(['assign' => __('Sistem absensi tidak dapat dihubungi, jadi jadwal belum bisa dibaca. Coba lagi beberapa saat.')]);
+        }
+
+        if ($request->is('api/*')) {
+            return response()->json(['summary' => $summary]);
         }
 
         return redirect()->route('fill.assign', ['date' => $data['date']])->with('assign_summary', $summary);

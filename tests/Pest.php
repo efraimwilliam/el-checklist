@@ -5,7 +5,10 @@ use App\Enums\Role;
 use App\Models\Checklist;
 use App\Models\Employee;
 use App\Models\Position;
+use App\Models\PushSubscription;
 use App\Models\User;
+use App\Push\AppPushSender;
+use App\Push\PushSender;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Factory as HttpFactory;
@@ -116,7 +119,7 @@ function makeChecklist(Employee $employee, Position $position, ?CarbonImmutable 
 }
 
 /** Pengirim push palsu: mencatat kiriman, tanpa menghubungi layanan push sungguhan. */
-class FakePushSender implements \App\Push\PushSender
+class FakePushSender implements PushSender
 {
     /** @var list<array{endpoint: string, payload: array<string, mixed>}> */
     public array $sent = [];
@@ -124,10 +127,27 @@ class FakePushSender implements \App\Push\PushSender
     /** @var array<string, string> endpoint => hasil (bawaan SENT) */
     public array $results = [];
 
-    public function send(\App\Models\PushSubscription $subscription, array $payload): string
+    public function send(PushSubscription $subscription, array $payload): string
     {
         $this->sent[] = ['endpoint' => $subscription->endpoint, 'payload' => $payload];
 
         return $this->results[$subscription->endpoint] ?? self::SENT;
+    }
+}
+
+/** Pengirim notifikasi aplikasi Android palsu: mencatat kiriman, tanpa menghubungi Firebase. */
+class FakeAppPushSender implements AppPushSender
+{
+    /** @var list<array{token: string, message: array<string, mixed>}> */
+    public array $sent = [];
+
+    /** @var array<string, string> token => hasil (bawaan SENT) */
+    public array $results = [];
+
+    public function send(string $token, array $message): string
+    {
+        $this->sent[] = ['token' => $token, 'message' => $message];
+
+        return $this->results[$token] ?? self::SENT;
     }
 }

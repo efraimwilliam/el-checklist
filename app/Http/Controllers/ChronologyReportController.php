@@ -6,13 +6,16 @@ use App\Chat\ChatPoster;
 use App\Chronology\ReportParser;
 use App\Chronology\ReportText;
 use App\Enums\Role;
+use App\Models\ChatThread;
 use App\Models\ChronologyReport;
 use App\Models\RoomIssue;
+use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -59,7 +62,7 @@ class ChronologyReportController extends Controller
         return view('chronology.form', ['report' => $report, 'guests' => $guests, 'entries' => [['body' => '', 'occurred_at' => '']], 'issue' => $issue ?? null, 'pasted' => null, 'parsed' => null, 'warnings' => []]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): RedirectResponse|JsonResponse
     {
         Gate::authorize('chronology-reports');
 
@@ -122,7 +125,7 @@ class ChronologyReportController extends Controller
             'statement' => ReportText::STATEMENT,
             'closing' => ReportText::CLOSING,
             'title' => ReportText::TITLE,
-        ] + \App\Models\ChatThread::shareTargets(request()->user()));
+        ] + ChatThread::shareTargets(request()->user()));
     }
 
     public function edit(ChronologyReport $report): View
@@ -139,17 +142,20 @@ class ChronologyReportController extends Controller
         ]);
     }
 
-    public function update(Request $request, ChronologyReport $report): RedirectResponse
+    public function update(Request $request, ChronologyReport $report): RedirectResponse|JsonResponse
     {
         Gate::authorize('update', $report);
 
         return $this->save($request, $report);
     }
 
-    public function finalize(ChronologyReport $report): RedirectResponse
+    public function finalize(Request $request, ChronologyReport $report): RedirectResponse|JsonResponse
     {
         Gate::authorize('update', $report);
         $report->update(['status' => ChronologyReport::STATUS_FINAL, 'finalized_at' => now()]);
+        if ($request->is('api/*')) {
+            return response()->json(['message' => __('Laporan difinalisasi dan dikunci.')]);
+        }
 
         return redirect()->route('chronology.show', $report)->with('status', __('Laporan difinalisasi dan dikunci.'));
     }
@@ -184,7 +190,7 @@ class ChronologyReportController extends Controller
         return $poster->done($thread);
     }
 
-    private function save(Request $request, ChronologyReport $report): RedirectResponse
+    private function save(Request $request, ChronologyReport $report): RedirectResponse|JsonResponse
     {
         $data = $request->validate([
             'nationality' => ['nullable', 'string', 'max:80'],
@@ -222,6 +228,9 @@ class ChronologyReportController extends Controller
 
         $isNew = ! $report->exists;
         $this->persist($request->user(), $report, $data, $guests, $entries, $issueId, ($data['intent'] ?? 'draft') === 'final');
+        if ($request->is('api/*')) {
+            return response()->json(['id' => $report->id, 'message' => $report->isFinal() ? __('Laporan difinalisasi dan dikunci.') : __('Draft disimpan.')]);
+        }
         if ($isNew && ($done = $this->sendToChat($request, $report))) {
             return $done;
         }
@@ -230,7 +239,7 @@ class ChronologyReportController extends Controller
     }
 
     /** Menyimpan laporan beserta tamu dan poinnya (urutan = urutan di daftar); `$final` sekaligus mengunci. */
-    private function persist(\App\Models\User $user, ChronologyReport $report, array $data, Collection $guests, Collection $entries, ?int $issueId, bool $final = false): void
+    private function persist(User $user, ChronologyReport $report, array $data, Collection $guests, Collection $entries, ?int $issueId, bool $final = false): void
     {
         DB::transaction(function () use ($user, $report, $data, $guests, $entries, $issueId, $final) {
             $report->fill([

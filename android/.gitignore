@@ -11,3 +11,6 @@ local.properties
 *.iml
 *.apk
 *.aab
+
+# Konfigurasi Firebase (dari konsol Firebase, tidak disimpan di Git)
+app/google-services*.json

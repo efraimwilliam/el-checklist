@@ -13,17 +13,18 @@ use App\Models\Room;
 use App\Models\RoomIssue;
 use App\Models\RoomIssuePhoto;
 use App\Models\RoomIssueUpdate;
-use Illuminate\Http\Response;
 use App\Models\User;
 use App\Rooms\RoomIssuePhotoService;
 use App\Support\PhotoReencoder;
-use Illuminate\Support\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Gate;
+use Illuminate\Http\Response;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -100,11 +101,11 @@ class RoomIssueController extends Controller
             'status' => RoomIssue::statusLabels()[$issue->status],
             'claimer' => $issue->claimer?->name(),
             'since' => $issue->created_at->diffForHumans(),
-            'description' => \Illuminate\Support\Str::limit($issue->description, 140),
+            'description' => Str::limit($issue->description, 140),
         ]);
     }
 
-    public function store(Request $request, ChatPoster $poster): RedirectResponse
+    public function store(Request $request, ChatPoster $poster): RedirectResponse|JsonResponse
     {
         Gate::authorize('room-issues');
         $data = $request->validate([
@@ -146,6 +147,10 @@ class RoomIssueController extends Controller
         if (! empty($data['merge_into'])) {
             $target = RoomIssue::find($data['merge_into']);
             if (! $target || $target->isDone() || ! $target->isAtPlace($roomId, $location) || $target->category_id !== $categoryId) {
+                if ($this->api($request)) {
+                    throw ValidationException::withMessages(['merge_into' => __('Kendala yang dipilih sudah tidak cocok. Periksa lagi lokasi dan kategorinya.')]);
+                }
+
                 return back()->withInput()->withErrors(['merge_into' => __('Kendala yang dipilih sudah tidak cocok. Periksa lagi lokasi dan kategorinya.')]);
             }
             DB::transaction(function () use ($request, $target, $data) {
@@ -157,6 +162,9 @@ class RoomIssueController extends Controller
                 }
             });
             $message = __('Laporan ditambahkan ke kendala yang sudah ada.');
+            if ($this->api($request)) {
+                return response()->json(['id' => $target->id, 'message' => $message, 'can_view' => $request->user()->can('view', $target)]);
+            }
             if ($thread = $poster->target($request)) {
                 $poster->card($thread, $request->user(), ['room_issue_id' => $target->id]);
 
@@ -170,6 +178,15 @@ class RoomIssueController extends Controller
 
         // Ada kendala serupa yang belum selesai dan pelapor belum memilih: minta memilih dulu (dialog menampilkan pilihannya).
         if ($duplicate && ! $request->boolean('force_new')) {
+            if ($this->api($request)) {
+                $duplicate->loadMissing(['room', 'category', 'claimer.employee']);
+
+                return response()->json([
+                    'message' => __(':place sudah punya kendala :category yang belum selesai.', ['place' => $duplicate->placeTitle(), 'category' => $duplicate->category?->name]),
+                    'duplicate' => ['id' => $duplicate->id, 'status' => RoomIssue::statusLabels()[$duplicate->status], 'claimer' => $duplicate->claimer?->name(), 'description' => Str::limit($duplicate->description, 140)],
+                ], 409);
+            }
+
             return back()->withInput()->withErrors(['duplicate' => __(':place sudah punya kendala :category yang belum selesai. Tambahkan laporan ke kendala itu, atau pilih buat kendala baru.', ['place' => $duplicate->loadMissing('room')->placeTitle(), 'category' => $duplicate->category?->name])]);
         }
 
@@ -205,6 +222,10 @@ class RoomIssueController extends Controller
             $poster->card($thread, $request->user(), ['room_issue_id' => $issue->id]);
 
             return $poster->done($thread);
+        }
+
+        if ($this->api($request)) {
+            return response()->json(['id' => $issue->id, 'message' => __('Kendala dicatat.'), 'can_view' => true]);
         }
 
         return redirect()->route('kamar.issues.show', $issue)->with('status', __('Kendala dicatat.'));
@@ -258,14 +279,14 @@ class RoomIssueController extends Controller
             'related' => $related,
             'departments' => Department::where('is_active', true)->orderBy('sort')->orderBy('name')->get(),
             'sources' => RoomIssue::sourceLabels(),
-        ] + \App\Models\ChatThread::shareTargets(request()->user()));
+        ] + ChatThread::shareTargets(request()->user()));
     }
 
     /**
      * Isi status pekerjaan setelah kendala diambil: Done (selesai), Ongoing (sedang dikerjakan), atau Pending (tertunda, wajib beralasan),
      * dengan catatan pekerjaan yang sudah dilakukan.
      */
-    public function progress(Request $request, RoomIssue $issue): RedirectResponse
+    public function progress(Request $request, RoomIssue $issue): RedirectResponse|JsonResponse
     {
         Gate::authorize('work', $issue);
         $data = $request->validate([
@@ -304,11 +325,13 @@ class RoomIssueController extends Controller
             $this->photos->store($update, $file, $request->user());
         }
 
-        return redirect()->route('kamar.issues.show', $issue)->with('status', match ($data['status']) {
+        $message = match ($data['status']) {
             'done' => __('Kendala ditandai Done.'),
             'pending' => __('Kendala ditandai Pending.'),
             default => __('Status Ongoing disimpan.'),
-        });
+        };
+
+        return $this->api($request) ? response()->json(['message' => $message]) : redirect()->route('kamar.issues.show', $issue)->with('status', $message);
     }
 
     /**
@@ -428,7 +451,7 @@ class RoomIssueController extends Controller
     }
 
     /** "Saya ambil": satu orang per kendala. Diperiksa atomik di database supaya dua orang yang menekan bersamaan tidak sama-sama berhasil. */
-    public function claim(Request $request, RoomIssue $issue): RedirectResponse
+    public function claim(Request $request, RoomIssue $issue): RedirectResponse|JsonResponse
     {
         Gate::authorize('claim', $issue);
         $user = $request->user();
@@ -445,15 +468,18 @@ class RoomIssueController extends Controller
 
         if (! $taken) {
             $by = $issue->refresh()->claimer?->name();
+            if ($this->api($request)) {
+                return response()->json(['message' => $by ? __('Kendala ini sudah diambil oleh :name.', ['name' => $by]) : __('Kendala ini tidak bisa diambil lagi.')], 409);
+            }
 
             return redirect()->route('kamar.issues.show', $issue)->withErrors(['claim' => $by ? __('Kendala ini sudah diambil oleh :name.', ['name' => $by]) : __('Kendala ini tidak bisa diambil lagi.')]);
         }
 
-        return redirect()->route('kamar.issues.show', $issue)->with('status', __('Anda mengambil kendala ini.'));
+        return $this->api($request) ? response()->json(['message' => __('Anda mengambil kendala ini.')]) : redirect()->route('kamar.issues.show', $issue)->with('status', __('Anda mengambil kendala ini.'));
     }
 
     /** Melepas pengambilan supaya rekan lain bisa mengambilnya; status kembali Baru bila belum ada pekerjaan yang dicatat. */
-    public function release(Request $request, RoomIssue $issue): RedirectResponse
+    public function release(Request $request, RoomIssue $issue): RedirectResponse|JsonResponse
     {
         Gate::authorize('release', $issue);
         $name = $issue->claimer?->name() ?? '—';
@@ -466,7 +492,7 @@ class RoomIssueController extends Controller
             }
         });
 
-        return redirect()->route('kamar.issues.show', $issue)->with('status', __('Pengambilan dilepas.'));
+        return $this->api($request) ? response()->json(['message' => __('Pengambilan dilepas.')]) : redirect()->route('kamar.issues.show', $issue)->with('status', __('Pengambilan dilepas.'));
     }
 
     /**
@@ -514,6 +540,12 @@ class RoomIssueController extends Controller
         });
 
         return redirect()->route('kamar.issues.show', $issue)->with('status', __('Kendala dibuka kembali.'));
+    }
+
+    /** Dipanggil aplikasi Android (`/api/v1/app`): jawab JSON, tanpa sesi / redirect. */
+    private function api(Request $request): bool
+    {
+        return $request->is('api/*');
     }
 
     private function log(Request $request, RoomIssue $issue, string $body, string $kind): RoomIssueUpdate

@@ -12,7 +12,7 @@ import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 /** Gagal memanggil server. code 0 = tidak ada koneksi / server tidak terjangkau (boleh dicoba lagi). */
-class ApiException(val code: Int, message: String) : Exception(message) {
+class ApiException(val code: Int, message: String, val body: JSONObject? = null) : Exception(message) {
     val retryable get() = code == 0 || code == 408 || code == 429 || code >= 500
 }
 
@@ -38,6 +38,16 @@ class Api(private val token: () -> String?) {
         )
     )
 
+    /** Form multipart: isian teks + beberapa foto JPEG (mis. `photos[]`). */
+    fun multipart(path: String, fields: Map<String, String>, files: List<Pair<String, File>> = emptyList()): JSONObject = json(
+        request(path).post(
+            MultipartBody.Builder().setType(MultipartBody.FORM).apply {
+                fields.forEach { (k, v) -> addFormDataPart(k, v) }
+                files.forEach { (k, f) -> addFormDataPart(k, f.name, f.asRequestBody("image/jpeg".toMediaType())) }
+            }.build()
+        )
+    )
+
     fun bytes(path: String): ByteArray = execute(request(path).get()) { it }
 
     private fun request(path: String) = Request.Builder().url(base + path)
@@ -57,7 +67,7 @@ class Api(private val token: () -> String?) {
             val bytes = try { it.body?.bytes() ?: ByteArray(0) } catch (e: IOException) {
                 throw ApiException(0, "Koneksi terputus.")
             }
-            if (!it.isSuccessful) throw ApiException(it.code, errorMessage(it.code, bytes))
+            if (!it.isSuccessful) throw ApiException(it.code, errorMessage(it.code, bytes), runCatching { JSONObject(String(bytes)) }.getOrNull())
             return read(bytes)
         }
     }
@@ -70,7 +80,7 @@ class Api(private val token: () -> String?) {
         }
         return first ?: json?.optString("message")?.takeIf { it.isNotBlank() } ?: when (code) {
             401 -> "Sesi Anda sudah berakhir. Silakan login lagi."
-            403 -> "Anda tidak boleh mengubah checklist ini."
+            403 -> "Anda tidak punya izin untuk ini."
             404 -> "Data tidak ditemukan."
             else -> "Server sedang bermasalah ($code). Coba lagi nanti."
         }

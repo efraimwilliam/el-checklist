@@ -15,6 +15,9 @@ use App\Policies\ChatThreadPolicy;
 use App\Policies\ChronologyReportPolicy;
 use App\Policies\GuestRequestPolicy;
 use App\Policies\RoomIssuePolicy;
+use App\Push\AppPushNotifier;
+use App\Push\AppPushSender;
+use App\Push\FcmSender;
 use App\Push\PushSender;
 use App\Push\WebPushSender;
 use App\Requests\RequestKinds;
@@ -73,6 +76,11 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(GuestRequest::class, GuestRequestPolicy::class);
         // Notifikasi obrolan (Web Push): pengirim bisa diganti di tes.
         $this->app->bind(PushSender::class, WebPushSender::class);
+        // Notifikasi aplikasi Android (Firebase) untuk kendala / permintaan baru, dikirim sesudah jawaban (lihat AppPushNotifier).
+        $this->app->bind(AppPushSender::class, FcmSender::class);
+        $this->app->scoped(AppPushNotifier::class);
+        RoomIssue::created(fn (RoomIssue $issue) => app(AppPushNotifier::class)->queue('kendala', $issue->id));
+        GuestRequest::created(fn (GuestRequest $request) => app(AppPushNotifier::class)->queue('permintaan', $request->id));
         // Chronology Report (laporan kejadian tamu): semua pengguna berakses boleh membuat; hak per laporan ada di ChronologyReportPolicy.
         Gate::define('chronology-reports', fn (User $user) => $user->canUseApp() && $feature('chronology'));
         Gate::policy(ChronologyReport::class, ChronologyReportPolicy::class);

@@ -30,6 +30,10 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -78,20 +82,137 @@ fun formatDate(date: String): String =
     runCatching { LocalDate.parse(date).format(DateTimeFormatter.ofPattern("EEEE, d MMM yyyy", ID)) }.getOrDefault(date)
 
 class MainActivity : ComponentActivity() {
+    /** Notifikasi yang diketuk: ("kendala", id) membuka kendala itu, ("permintaan", id) membuka daftar permintaan. */
+    private val opened = kotlinx.coroutines.flow.MutableStateFlow<Pair<String, Long>?>(null)
+
+    private fun readNotification(intent: android.content.Intent?) {
+        val type = intent?.getStringExtra("type") ?: return
+        opened.value = type to (intent.getStringExtra("id")?.toLongOrNull() ?: 0L)
+        intent.removeExtra("type")
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        readNotification(intent)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (savedInstanceState == null) readNotification(intent)
         val repo = (application as ChecklistApp).repo
         setContent {
-            MaterialTheme(colorScheme = lightColorScheme(primary = Gold, onPrimary = Color.White, background = Cream, surface = Color.White, secondary = Ink)) {
+            MaterialTheme(colorScheme = lightColorScheme(primary = Gold, onPrimary = Color.White, background = Cream, surface = Color.White, secondary = Ink,
+                secondaryContainer = GoldSoft, onSecondaryContainer = Ink, surfaceContainerHigh = Color.White)) {
                 val loggedIn by repo.loggedIn.collectAsState()
+                val kendala by repo.kendala.collectAsState()
+                val permintaan by repo.permintaan.collectAsState()
+                val papan by repo.papan.collectAsState()
+                val riwayat by repo.riwayat.collectAsState()
+                var history by rememberSaveable { mutableStateOf(false) }
+                val obrolan by repo.obrolan.collectAsState()
+                var chat by rememberSaveable { mutableStateOf<Long?>(null) }
+                var contacts by rememberSaveable { mutableStateOf(false) }
+                val chronologyOn by repo.chronology.collectAsState()
+                var chronoList by rememberSaveable { mutableStateOf(false) }
+                var chrono by rememberSaveable { mutableStateOf<Long?>(null) }
+                var chronoForm by rememberSaveable { mutableStateOf<Long?>(null) } // 0 = laporan baru
+                // Angka belum dibaca di tab Obrolan: dimuat saat aplikasi dibuka (daftar obrolan memperbaruinya selama terbuka).
+                LaunchedEffect(loggedIn, obrolan) { if (loggedIn && obrolan) repo.call { it.get("/obrolan") }?.let { chatUnread.intValue = it.optInt("unread") } }
+                var newRequest by rememberSaveable { mutableStateOf(false) }
                 var open by rememberSaveable { mutableStateOf<Long?>(null) }
+                var tab by rememberSaveable { mutableStateOf("checklist") }
+                var issue by rememberSaveable { mutableStateOf<Long?>(null) }
+                var newIssue by rememberSaveable { mutableStateOf(false) }
+                LaunchedEffect(loggedIn) { if (loggedIn) repo.refreshMe() }
+                // Android 13+: izin notifikasi diminta sekali setelah login.
+                val askNotify = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) {}
+                LaunchedEffect(loggedIn) {
+                    if (loggedIn && android.os.Build.VERSION.SDK_INT >= 33 &&
+                        checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
+                    ) askNotify.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                }
+                val link by opened.collectAsState()
+                LaunchedEffect(link, loggedIn) {
+                    val (type, id) = link ?: return@LaunchedEffect
+                    if (!loggedIn) return@LaunchedEffect // dibuka sesudah login
+                    open = null; newIssue = false; newRequest = false; history = false; contacts = false
+                    when (type) {
+                        "obrolan" -> { tab = "obrolan"; chat = id; issue = null }
+                        "kendala" -> { tab = "kendala"; issue = id }
+                        "permintaan" -> { tab = "permintaan"; issue = null }
+                    }
+                    opened.value = null
+                }
                 when {
                     !loggedIn -> LoginScreen(repo)
                     open != null -> {
                         BackHandler { open = null }
                         FillScreen(repo, open!!, onBack = { open = null })
                     }
-                    else -> ListScreen(repo, onOpen = { open = it })
+                    chat != null -> {
+                        BackHandler { chat = null }
+                        ChatScreen(repo, chat!!, onBack = { chat = null }, onCard = { type, id ->
+                            when (type) {
+                                "kendala" -> { chat = null; tab = "kendala"; issue = id }
+                                "permintaan" -> { chat = null; tab = "permintaan" }
+                            }
+                        })
+                    }
+                    contacts -> {
+                        BackHandler { contacts = false }
+                        ContactsScreen(repo, onOpen = { contacts = false; chat = it }, onBack = { contacts = false })
+                    }
+                    chronoForm != null -> {
+                        BackHandler { chronoForm = null }
+                        ChronologyFormScreen(repo, chronoForm.takeIf { it != 0L }, onSaved = { chronoForm = null; chrono = it }, onBack = { chronoForm = null })
+                    }
+                    chrono != null -> {
+                        BackHandler { chrono = null }
+                        ChronologyScreen(repo, chrono!!, onEdit = { chronoForm = chrono }, onBack = { chrono = null })
+                    }
+                    chronoList -> {
+                        BackHandler { chronoList = false }
+                        ChronologyListScreen(repo, onOpen = { chrono = it }, onNew = { chronoForm = 0L }, onBack = { chronoList = false })
+                    }
+                    history -> {
+                        BackHandler { history = false }
+                        HistoryScreen(repo, onOpen = { open = it }, onBack = { history = false })
+                    }
+                    newIssue -> {
+                        BackHandler { newIssue = false }
+                        NewIssueScreen(repo, onCreated = { id -> newIssue = false; issue = id }, onBack = { newIssue = false })
+                    }
+                    newRequest -> {
+                        BackHandler { newRequest = false }
+                        NewRequestScreen(repo, onDone = { newRequest = false }, onBack = { newRequest = false })
+                    }
+                    issue != null -> {
+                        BackHandler { issue = null }
+                        IssueScreen(repo, issue!!, onBack = { issue = null })
+                    }
+                    else -> Column(Modifier.fillMaxSize()) {
+                        // Kembali dari tab lain = ke tab Checklist dulu, baru keluar aplikasi.
+                        BackHandler(enabled = tab != "checklist") { tab = "checklist" }
+                        Box(Modifier.weight(1f)) {
+                            when {
+                                kendala && tab == "kendala" -> IssuesScreen(repo, onOpen = { issue = it }, onNew = { newIssue = true })
+                                permintaan && tab == "permintaan" -> RequestsScreen(repo, onNew = { newRequest = true })
+                                obrolan && tab == "obrolan" -> ChatListScreen(repo, onOpen = { chat = it }, onNew = { contacts = true })
+                                papan && tab == "tim" -> BoardScreen(repo, onOpen = { open = it }, onHistory = { history = true }.takeIf { riwayat })
+                                else -> ListScreen(repo, onOpen = { open = it }, onHistory = { history = true }.takeIf { riwayat }, onChronology = { chronoList = true }.takeIf { chronologyOn })
+                            }
+                        }
+                        // Tab bawah hanya untuk menu yang fiturnya menyala dan boleh dipakai (dari /me).
+                        if (kendala || permintaan || papan || obrolan) NavigationBar(containerColor = Color.White) {
+                            NavigationBarItem(tab == "checklist", { tab = "checklist" }, icon = { Text("☑", fontSize = 20.sp) }, label = { Text("Checklist") })
+                            if (papan) NavigationBarItem(tab == "tim", { tab = "tim" }, icon = { Text("👥", fontSize = 20.sp) }, label = { Text("Tim") })
+                            if (kendala) NavigationBarItem(tab == "kendala", { tab = "kendala" }, icon = { Text("🛠", fontSize = 20.sp) }, label = { Text("Kendala") })
+                            if (permintaan) NavigationBarItem(tab == "permintaan", { tab = "permintaan" }, icon = { Text("🛎", fontSize = 20.sp) }, label = { Text("Permintaan") })
+                            if (obrolan) NavigationBarItem(tab == "obrolan", { tab = "obrolan" }, label = { Text("Obrolan") }, icon = {
+                                BadgedBox(badge = { if (chatUnread.intValue > 0) Badge { Text("${chatUnread.intValue}") } }) { Text("💬", fontSize = 20.sp) }
+                            })
+                        }
+                    }
                 }
             }
         }
@@ -175,7 +296,7 @@ fun LoginScreen(repo: Repo) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ListScreen(repo: Repo, onOpen: (Long) -> Unit) {
+fun ListScreen(repo: Repo, onOpen: (Long) -> Unit, onHistory: (() -> Unit)? = null, onChronology: (() -> Unit)? = null) {
     val scope = rememberCoroutineScope()
     val version by repo.version.collectAsState()
     val list = remember(version) { repo.cachedList() }
@@ -196,7 +317,16 @@ fun ListScreen(repo: Repo, onOpen: (Long) -> Unit) {
                         Text(listOfNotNull(repo.userName, repo.userDetail?.takeIf { it.isNotBlank() }).joinToString(" · "), fontSize = 12.sp, color = Color(0xFFDCCDB6))
                     }
                 },
-                actions = { TextButton(onClick = { confirmLogout = true }) { Text("Keluar", color = Color.White) } },
+                actions = {
+                    // Menu lain: Riwayat checklist, Chronology Report, Keluar.
+                    var menu by remember { mutableStateOf(false) }
+                    TextButton(onClick = { menu = true }) { Text("⋮", color = Color.White, fontSize = 22.sp) }
+                    androidx.compose.material3.DropdownMenu(menu, { menu = false }) {
+                        onHistory?.let { androidx.compose.material3.DropdownMenuItem({ Text("Riwayat checklist") }, { menu = false; it() }) }
+                        onChronology?.let { androidx.compose.material3.DropdownMenuItem({ Text("Chronology Report") }, { menu = false; it() }) }
+                        androidx.compose.material3.DropdownMenuItem({ Text("Keluar", color = Red) }, { menu = false; confirmLogout = true })
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Ink, titleContentColor = Color.White),
             )
         },

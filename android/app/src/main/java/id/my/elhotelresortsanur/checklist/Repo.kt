@@ -43,6 +43,13 @@ class Repo(private val ctx: Context) {
     val offline = MutableStateFlow(false)
     val message = MutableStateFlow<String?>(null)
     val loggedIn = MutableStateFlow(prefs.getString("token", null) != null)
+    /** Menu Kendala (saklar fitur + izin di server, dari /login dan /me). */
+    val kendala = MutableStateFlow(prefs.getBoolean("kendala", false))
+    val permintaan = MutableStateFlow(prefs.getBoolean("permintaan", false))
+    val papan = MutableStateFlow(prefs.getBoolean("papan", false))
+    val riwayat = MutableStateFlow(prefs.getBoolean("riwayat", false))
+    val obrolan = MutableStateFlow(prefs.getBoolean("obrolan", false))
+    val chronology = MutableStateFlow(prefs.getBoolean("chronology", false))
 
     val userName: String? get() = prefs.getString("name", null)
     val userDetail: String? get() = prefs.getString("detail", null)
@@ -54,14 +61,55 @@ class Repo(private val ctx: Context) {
         val user = res.getJSONObject("user")
         // Orang lain masuk di HP ini: data dan antrean orang sebelumnya tidak boleh terkirim atas namanya.
         if (prefs.getLong("user_id", -1) != user.getLong("id")) clearData()
-        prefs.edit()
-            .putString("token", res.getString("token"))
-            .putLong("user_id", user.getLong("id"))
-            .putString("name", user.optString("name"))
-            .putString("detail", listOf(user.optString("position"), user.optString("department")).filter { it.isNotBlank() && it != "null" }.joinToString(" · "))
-            .apply()
+        prefs.edit().putString("token", res.getString("token")).putLong("user_id", user.getLong("id")).apply()
+        profile(user)
+        message.value = null // dibersihkan di sini: layar login sudah hilang begitu loggedIn berubah
         loggedIn.value = true
         flush()
+    }
+
+    /** Profil + menu yang boleh dipakai; dipanggil saat aplikasi dibuka supaya saklar fitur dari web ikut berlaku. */
+    suspend fun refreshMe() = io {
+        guard { profile(api.get("/me").getJSONObject("user")) }
+        registerPush()
+    }
+
+    /** Token notifikasi Firebase HP ini dikirim ke server (menempel pada token login). Gagal = dicoba lagi saat aplikasi dibuka. */
+    private suspend fun registerPush() {
+        val token = runCatching {
+            kotlinx.coroutines.suspendCancellableCoroutine { cont ->
+                com.google.firebase.messaging.FirebaseMessaging.getInstance().token
+                    .addOnCompleteListener { cont.resumeWith(Result.success(if (it.isSuccessful) it.result else null)) }
+            }
+        }.getOrNull() ?: return
+        sendPushToken(token)
+    }
+
+    fun sendPushToken(token: String) {
+        if (prefs.getString("token", null) == null) return
+        runCatching { api.send("POST", "/push-token", JSONObject().put("token", token)) }
+    }
+
+    private fun profile(user: JSONObject) {
+        val features = user.optJSONObject("features")
+        val kendalaOn = features?.optBoolean("kendala") == true
+        val permintaanOn = features?.optBoolean("permintaan") == true
+        prefs.edit()
+            .putString("name", user.optString("name"))
+            .putString("detail", listOf(user.optString("position"), user.optString("department")).filter { it.isNotBlank() && it != "null" }.joinToString(" · "))
+            .putBoolean("kendala", kendalaOn)
+            .putBoolean("permintaan", permintaanOn)
+            .putBoolean("papan", features?.optBoolean("papan") == true)
+            .putBoolean("riwayat", features?.optBoolean("riwayat") == true)
+            .putBoolean("obrolan", features?.optBoolean("obrolan") == true)
+            .putBoolean("chronology", features?.optBoolean("chronology") == true)
+            .apply()
+        kendala.value = kendalaOn
+        permintaan.value = permintaanOn
+        papan.value = features?.optBoolean("papan") == true
+        riwayat.value = features?.optBoolean("riwayat") == true
+        obrolan.value = features?.optBoolean("obrolan") == true
+        chronology.value = features?.optBoolean("chronology") == true
     }
 
     suspend fun logout() = io {
@@ -71,7 +119,7 @@ class Repo(private val ctx: Context) {
         loggedIn.value = false
     }
 
-    private fun sessionEnded() {
+    fun sessionEnded() {
         prefs.edit().remove("token").apply() // antrean & cache tetap: login lagi dengan akun yang sama lalu dikirim
         loggedIn.value = false
         message.value = "Sesi Anda sudah berakhir. Silakan login lagi."
@@ -123,6 +171,15 @@ class Repo(private val ctx: Context) {
 
     fun saveItem(checklist: Long, item: Long, body: JSONObject) =
         enqueue(checklist, "PATCH", "/checklists/$checklist/items/$item", body, key = "item:$checklist:$item")
+
+    /** Tugas tambahan dikirim utuh (server mengganti seluruh daftar; judul kosong dibuang). */
+    fun saveExtras(checklist: Long, extras: JSONArray) {
+        val clean = JSONArray()
+        for (i in 0 until extras.length()) extras.getJSONObject(i).let { e ->
+            clean.put(JSONObject().put("title", e.opt("title") ?: JSONObject.NULL).put("status", e.opt("status") ?: JSONObject.NULL).put("note", e.opt("note") ?: JSONObject.NULL))
+        }
+        enqueue(checklist, "PATCH", "/checklists/$checklist", JSONObject().put("extras", clean), key = "extras:$checklist")
+    }
 
     fun saveNote(checklist: Long, note: String?) =
         enqueue(checklist, "PATCH", "/checklists/$checklist", JSONObject().put("note", note ?: JSONObject.NULL), key = "meta:$checklist")

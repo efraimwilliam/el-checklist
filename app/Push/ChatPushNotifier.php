@@ -7,6 +7,7 @@ use App\Models\ChatMessage;
 use App\Models\ChatThread;
 use App\Models\PushSubscription;
 use Illuminate\Support\Facades\Cache;
+use Laravel\Sanctum\PersonalAccessToken;
 
 /**
  * Kirim notifikasi (Web Push) untuk pesan obrolan baru ke perangkat peserta lain. Isi notifikasi sengaja singkat (siapa dan di mana,
@@ -15,7 +16,7 @@ use Illuminate\Support\Facades\Cache;
  */
 final class ChatPushNotifier
 {
-    public function __construct(private readonly PushSender $sender) {}
+    public function __construct(private readonly PushSender $sender, private readonly AppPushSender $app) {}
 
     /** Kunci cache "sedang membuka obrolan ini" (diperbarui polling halaman obrolan). */
     public static function presenceKey(int $threadId, int $userId): string
@@ -47,10 +48,21 @@ final class ChatPushNotifier
                 continue;
             }
             $subscriptions = PushSubscription::where('user_id', $user->id)->get();
-            if ($subscriptions->isEmpty()) {
+            // Aplikasi Android: HP yang login sebagai pengguna ini (token login belum lewat batas mutlak).
+            $devices = PersonalAccessToken::where('tokenable_type', $user->getMorphClass())->where('tokenable_id', $user->id)->whereNotNull('fcm_token')
+                ->where('created_at', '>', now()->subMinutes((int) config('sanctum.expiration')))->get();
+            if ($subscriptions->isEmpty() && $devices->isEmpty()) {
                 continue;
             }
             $payload = $this->payload($thread, $message, $sender?->name() ?? '—', $message->mentionsUser($user), $user);
+            foreach ($devices as $device) {
+                $result = $this->app->send($device->fcm_token, ['title' => $payload['title'], 'body' => $payload['body'], 'data' => ['type' => 'obrolan', 'id' => (string) $thread->id], 'tag' => $payload['tag']]);
+                if ($result === AppPushSender::SENT) {
+                    $sent++;
+                } elseif ($result === AppPushSender::GONE) {
+                    $device->forceFill(['fcm_token' => null])->save();
+                }
+            }
 
             foreach ($subscriptions as $subscription) {
                 $result = $this->sender->send($subscription, $payload);

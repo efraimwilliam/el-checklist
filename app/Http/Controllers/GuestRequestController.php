@@ -6,6 +6,7 @@ use App\Chat\ChatPoster;
 use App\Models\Department;
 use App\Models\GuestRequest;
 use App\Models\Room;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -58,7 +59,7 @@ class GuestRequestController extends Controller
         ]);
     }
 
-    public function store(Request $request, ChatPoster $poster): RedirectResponse
+    public function store(Request $request, ChatPoster $poster): RedirectResponse|JsonResponse
     {
         Gate::authorize('guest-requests');
         $data = $request->validate([
@@ -100,21 +101,28 @@ class GuestRequestController extends Controller
             return $poster->done($thread);
         }
 
-        return redirect()->route('permintaan.index')->with('status', __(':n permintaan untuk kamar :room dicatat.', ['n' => $created->count(), 'room' => $room->number]));
+        $message = __(':n permintaan untuk kamar :room dicatat.', ['n' => $created->count(), 'room' => $room->number]);
+
+        return $this->api($request) ? response()->json(['message' => $message]) : redirect()->route('permintaan.index')->with('status', $message);
     }
 
     /** "Saya ambil" (pengganti "Copy" di chat); atomik supaya dua orang tidak sama-sama berhasil. */
-    public function claim(Request $request, GuestRequest $guestRequest): RedirectResponse
+    public function claim(Request $request, GuestRequest $guestRequest): RedirectResponse|JsonResponse
     {
         Gate::authorize('claim', $guestRequest);
         $won = GuestRequest::whereKey($guestRequest->id)->where('status', GuestRequest::STATUS_NEW)->whereNull('claimed_by')
             ->update(['status' => GuestRequest::STATUS_CLAIMED, 'claimed_by' => $request->user()->id, 'claimed_at' => now(), 'updated_at' => now()]);
 
-        return back()->with($won ? 'status' : 'error', $won ? __('Permintaan diambil.') : __('Permintaan ini sudah diambil orang lain.'));
+        $message = $won ? __('Permintaan diambil.') : __('Permintaan ini sudah diambil orang lain.');
+        if ($this->api($request)) {
+            return response()->json(['message' => $message], $won ? 200 : 409);
+        }
+
+        return back()->with($won ? 'status' : 'error', $message);
     }
 
     /** "Selesai" (pengganti "Done"); boleh langsung dari Baru, pengambilnya otomatis orang yang menekan. */
-    public function complete(Request $request, GuestRequest $guestRequest): RedirectResponse
+    public function complete(Request $request, GuestRequest $guestRequest): RedirectResponse|JsonResponse
     {
         Gate::authorize('complete', $guestRequest);
         $now = now();
@@ -123,22 +131,28 @@ class GuestRequestController extends Controller
             'claimed_by' => $guestRequest->claimed_by ?? $request->user()->id, 'claimed_at' => $guestRequest->claimed_at ?? $now,
         ]);
 
-        return back()->with('status', __('Permintaan selesai.'));
+        return $this->api($request) ? response()->json(['message' => __('Permintaan selesai.')]) : back()->with('status', __('Permintaan selesai.'));
     }
 
-    public function release(GuestRequest $guestRequest): RedirectResponse
+    public function release(Request $request, GuestRequest $guestRequest): RedirectResponse|JsonResponse
     {
         Gate::authorize('release', $guestRequest);
         $guestRequest->update(['status' => GuestRequest::STATUS_NEW, 'claimed_by' => null, 'claimed_at' => null]);
 
-        return back()->with('status', __('Pengambilan dilepas.'));
+        return $this->api($request) ? response()->json(['message' => __('Pengambilan dilepas.')]) : back()->with('status', __('Pengambilan dilepas.'));
     }
 
-    public function destroy(GuestRequest $guestRequest): RedirectResponse
+    public function destroy(Request $request, GuestRequest $guestRequest): RedirectResponse|JsonResponse
     {
         Gate::authorize('delete', $guestRequest);
         $guestRequest->delete();
 
-        return back()->with('status', __('Permintaan dihapus.'));
+        return $this->api($request) ? response()->json(['message' => __('Permintaan dihapus.')]) : back()->with('status', __('Permintaan dihapus.'));
+    }
+
+    /** Dipanggil aplikasi Android (`/api/v1/app`): jawab JSON, tanpa sesi / redirect. */
+    private function api(Request $request): bool
+    {
+        return $request->is('api/*');
     }
 }

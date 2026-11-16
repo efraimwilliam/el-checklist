@@ -5,13 +5,18 @@ namespace App\Http\Controllers\Api;
 use App\Checklists\ChecklistService;
 use App\Checklists\ChecklistSettings;
 use App\Checklists\ParameterRules;
+use App\Enums\ChecklistStatus;
+use App\Enums\Role;
 use App\Http\Controllers\Controller;
 use App\Models\Checklist;
 use App\Models\ChecklistItem;
+use App\Models\Department;
+use App\Support\DateRange;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 
 /**
  * Checklist milik pengguna untuk aplikasi Android. Menyimpan isian, catatan, dan foto memakai controller web yang sama
@@ -36,6 +41,42 @@ class ChecklistController extends Controller
             ->orderByDesc('date')->orderBy('id')->limit(60)->get();
 
         return response()->json(['checklists' => $checklists->map(fn (Checklist $c) => $this->summary($c, $user))->values()]);
+    }
+
+    /**
+     * Riwayat checklist (sama dengan web /checklists): Staff miliknya sendiri, HOD departemennya, HR / GM / Administrator semua.
+     * Rentang `from` / `to` (DateRange, maks 92 hari), penyaring departemen dan status review.
+     */
+    public function history(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $own = $user->role === Role::Staff;
+        abort_unless($own || Gate::allows('view-checklists'), 403);
+        $allowed = $user->accessibleDepartmentIds();
+        $filters = $request->validate([
+            'department' => ['nullable', 'integer'],
+            'status' => ['nullable', Rule::enum(ChecklistStatus::class)],
+        ]);
+        [$from, $to] = DateRange::fromRequest($request, 1, 92);
+        $departmentId = isset($filters['department']) ? (int) $filters['department'] : null;
+        abort_if($departmentId && ! $user->canAccessDepartment($departmentId), 403);
+
+        // shortcut: 300 terbaru tanpa halaman berikutnya; persempit rentang / departemen bila lebih.
+        $checklists = Checklist::with(['employee', 'department'])
+            ->whereBetween('date', [$from->toDateString(), $to->toDateString()])
+            ->when($own, fn ($q) => $q->where('employee_id', $user->employee_id))
+            ->when(! $own && $allowed !== null, fn ($q) => $q->whereIn('department_id', $allowed))
+            ->when($departmentId, fn ($q) => $q->where('department_id', $departmentId))
+            ->when($filters['status'] ?? null, fn ($q, $status) => $q->where('status', $status))
+            ->orderByDesc('date')->orderBy('department_id')->orderBy('position_name')->orderBy('id')
+            ->limit(300)->get();
+
+        return response()->json([
+            'from' => $from->toDateString(),
+            'to' => $to->toDateString(),
+            'departments' => $own ? [] : Department::when($allowed !== null, fn ($q) => $q->whereIn('id', $allowed))->where('is_active', true)->orderBy('sort')->orderBy('name')->get(['id', 'name']),
+            'checklists' => $checklists->map(fn (Checklist $c) => $this->summary($c, $user) + ['department' => $c->department?->name])->values(),
+        ]);
     }
 
     public function show(Request $request, Checklist $checklist): JsonResponse
@@ -87,6 +128,8 @@ class ChecklistController extends Controller
             'position' => $checklist->position_name,
             'status' => $checklist->status->value,
             'can_edit' => $user->can('update', $checklist),
+            'can_review' => $user->can('review', $checklist),
+            'employee' => $checklist->employee?->name,
             'updated_at' => $checklist->updated_at?->toIso8601String(),
             'progress' => $this->service->progress($checklist),
         ];
