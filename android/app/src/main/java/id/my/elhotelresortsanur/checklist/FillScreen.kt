@@ -7,6 +7,10 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.border
+import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -105,6 +109,9 @@ fun FillScreen(repo: Repo, id: Long, onBack: () -> Unit) {
         scope.launch { repo.flush() }
     }
 
+    var cardMode by remember { mutableStateOf(repo.cardView) }
+    var gridOpen by remember { mutableStateOf(false) }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -114,7 +121,15 @@ fun FillScreen(repo: Repo, id: Long, onBack: () -> Unit) {
                         detail?.let { Text(listOfNotNull(it.summary.position.takeIf { _ -> it.summary.employee != null }, formatDate(it.summary.date)).joinToString(" · "), fontSize = 12.sp, color = Color(0xFFDCCDB6)) }
                     }
                 },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Kembali", tint = Color.White) } },
+                navigationIcon = { BackButton(onBack) },
+                actions = {
+                    if (detail != null) {
+                        if (cardMode) IconButton({ gridOpen = true }) { Icon(painterResource(R.drawable.ic_apps), "Lihat semua tugas", tint = Color.White) }
+                        IconButton({ cardMode = !cardMode; repo.cardView = cardMode }) {
+                            Icon(painterResource(if (cardMode) R.drawable.ic_list else R.drawable.ic_cards), if (cardMode) "Tampilan daftar" else "Tampilan kartu", tint = Color.White)
+                        }
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Ink, titleContentColor = Color.White),
             )
         },
@@ -128,18 +143,11 @@ fun FillScreen(repo: Repo, id: Long, onBack: () -> Unit) {
             }
             val editable = detail.summary.canEdit
             val progress = localProgress(detail)
-            LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (cardMode) {
+                CardDeck(repo, detail, editable, progress, gridOpen, { gridOpen = false }, { gridOpen = true }, ::save, Modifier.weight(1f))
+            } else LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 item { ProgressHeader(progress, detail) }
-                if (!editable) item {
-                    Text(
-                        when (detail.summary.status) {
-                            "reviewed" -> "Checklist ini sudah direview GM/HR dan terkunci."
-                            "hod_reviewed" -> "Checklist ini sudah direview HOD dan terkunci."
-                            else -> "Anda hanya bisa melihat checklist ini."
-                        },
-                        Modifier.fillMaxWidth().background(GoldSoft, RoundedCornerShape(12.dp)).padding(12.dp), fontSize = 14.sp,
-                    )
-                }
+                if (!editable) item { LockedNotice(detail) }
                 var section: String? = null
                 detail.items.forEach { item ->
                     if (item.section != null && item.section != section) {
@@ -150,17 +158,139 @@ fun FillScreen(repo: Repo, id: Long, onBack: () -> Unit) {
                 }
                 item(key = "extras") { ExtrasCard(repo, detail, editable) }
                 item(key = "note") { GeneralNote(repo, detail, editable) }
-                // HOD / GM / HR: tandai sudah direview bila lengkap dan semua isian sudah terkirim (server memeriksa lagi).
-                if (detail.summary.canReview) item(key = "review") {
-                    val waiting = repo.pendingFor(id)
-                    Button(
-                        onClick = { scope.launch { repo.call { it.send("POST", "/checklists/$id/review") }?.let { res -> repo.message.value = null; android.widget.Toast.makeText(context, res.s("message"), android.widget.Toast.LENGTH_LONG).show() }; repo.refreshDetail(id) } },
-                        enabled = progress.complete && waiting == 0, modifier = Modifier.fillMaxWidth().height(50.dp), colors = ButtonDefaults.buttonColors(containerColor = Green),
-                    ) { Text(if (waiting > 0) "Kirim isian dulu sebelum review" else "Tandai sudah direview") }
-                }
+                if (detail.summary.canReview) item(key = "review") { ReviewButton(repo, detail, progress) }
             }
         }
     }
+}
+
+@Composable
+private fun LockedNotice(detail: Detail) = Text(
+    when (detail.summary.status) {
+        "reviewed" -> "Checklist ini sudah direview GM/HR dan terkunci."
+        "hod_reviewed" -> "Checklist ini sudah direview HOD dan terkunci."
+        else -> "Anda hanya bisa melihat checklist ini."
+    },
+    Modifier.fillMaxWidth().background(GoldSoft, RoundedCornerShape(12.dp)).padding(12.dp), fontSize = 14.sp,
+)
+
+/** HOD / GM / HR: tandai sudah direview bila lengkap dan semua isian sudah terkirim (server memeriksa lagi). */
+@Composable
+private fun ReviewButton(repo: Repo, detail: Detail, progress: Progress) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val id = detail.summary.id
+    val waiting = repo.pendingFor(id)
+    Button(
+        onClick = { scope.launch { repo.call { it.send("POST", "/checklists/$id/review") }?.let { res -> repo.message.value = null; android.widget.Toast.makeText(context, res.s("message"), android.widget.Toast.LENGTH_LONG).show() }; repo.refreshDetail(id) } },
+        enabled = progress.complete && waiting == 0, modifier = Modifier.fillMaxWidth().height(50.dp), colors = ButtonDefaults.buttonColors(containerColor = Green),
+    ) { Text(if (waiting > 0) "Kirim isian dulu sebelum review" else "Tandai sudah direview") }
+}
+
+// ---- Tampilan kartu: satu tugas per layar, geser kiri / kanan ----
+
+private fun segmentColor(status: String?) = when (status) { "done" -> Green; "ongoing" -> Amber; "pending" -> Red; else -> Color(0xFFE2D8C6) }
+
+/**
+ * Seperti kartu di web: geser kiri / kanan (atau panah di bawah) antar tugas; segmen berwarna di atas = status tiap tugas (ketuk untuk loncat);
+ * Done membuka tugas berikutnya sendiri (Ongoing / Pending tidak pindah); dibuka di tugas pertama yang belum diisi; layar terakhir = Ringkasan.
+ */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+private fun CardDeck(
+    repo: Repo, detail: Detail, editable: Boolean, progress: Progress, gridOpen: Boolean, onGridClose: () -> Unit, onGridOpen: () -> Unit,
+    save: (Item, Map<Long, String?>, String?, String?) -> Unit, modifier: Modifier,
+) {
+    val scope = rememberCoroutineScope()
+    val total = detail.items.size
+    val start = remember(detail.summary.id) { detail.items.indexOfFirst { it.status == null }.let { if (it < 0) total else it } }
+    val pager = androidx.compose.foundation.pager.rememberPagerState(initialPage = start) { total + 1 }
+    val page = pager.currentPage
+
+    fun jump(to: Int) { scope.launch { pager.animateScrollToPage(to.coerceIn(0, total)) } }
+    // Done: tunggu sebentar supaya terlihat, lalu pindah bila tugas itu memang sudah Done (tugas berparameter bisa masih kurang isiannya).
+    fun advanceIfDone(itemId: Long, from: Int) = scope.launch {
+        delay(350)
+        val status = repo.cachedDetail(detail.summary.id)?.let(::parseDetail)?.items?.firstOrNull { it.id == itemId }?.status
+        if (status == "done" && pager.currentPage == from) pager.animateScrollToPage((from + 1).coerceAtMost(total))
+    }
+
+    Column(modifier) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("${progress.filled}/${progress.total} terisi", fontWeight = FontWeight.SemiBold, color = Ink, fontSize = 14.sp, modifier = Modifier.weight(1f))
+            Text(if (progress.complete) "Lengkap ✓" else progress.score?.let { "Skor $it%" } ?: "", color = if (progress.complete) Green else Muted, fontSize = 14.sp)
+        }
+        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(16.dp), horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
+            detail.items.forEachIndexed { i, item ->
+                Box(Modifier.weight(1f).height(if (i == page) 12.dp else 6.dp).clip(RoundedCornerShape(3.dp)).background(segmentColor(item.status)).clickable { jump(i) })
+            }
+            Box(Modifier.weight(1f).height(if (page == total) 12.dp else 6.dp).clip(RoundedCornerShape(3.dp)).background(Gold).clickable { jump(total) })
+        }
+        if (!editable) Box(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) { LockedNotice(detail) }
+
+        androidx.compose.foundation.pager.HorizontalPager(
+            state = pager, modifier = Modifier.weight(1f).fillMaxWidth(),
+            key = { if (it < total) detail.items[it].id else -1L },
+        ) { index ->
+            Column(
+                Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                if (index < total) {
+                    val item = detail.items[index]
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Tugas ${index + 1} dari $total", color = Gold, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, modifier = Modifier.weight(1f))
+                        item.section?.let { Text(it, color = Muted, fontSize = 13.sp) }
+                    }
+                    TaskCard(repo, detail, item, editable, save) { advanceIfDone(item.id, index) }
+                } else {
+                    Text("Ringkasan", color = Gold, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                    ProgressHeader(progress, detail)
+                    if (progress.filled < total) OutlinedButton(onGridOpen, Modifier.fillMaxWidth()) { Text("Lihat tugas yang belum terisi (${total - progress.filled})") }
+                    ExtrasCard(repo, detail, editable)
+                    GeneralNote(repo, detail, editable)
+                    if (detail.summary.canReview) ReviewButton(repo, detail, progress)
+                }
+                Spacer(Modifier.height(16.dp))
+            }
+        }
+
+        Row(Modifier.fillMaxWidth().background(Color.White).padding(horizontal = 8.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+            IconButton({ jump(page - 1) }, enabled = page > 0) { Icon(painterResource(R.drawable.ic_chevron_left), "Tugas sebelumnya", tint = if (page > 0) Ink else Muted.copy(alpha = 0.3f)) }
+            Text(if (page < total) "${page + 1} / $total" else "Ringkasan", Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center, fontWeight = FontWeight.SemiBold, color = Ink)
+            IconButton({ jump(page + 1) }, enabled = page < total) { Icon(painterResource(R.drawable.ic_chevron_right), "Tugas berikutnya", tint = if (page < total) Ink else Muted.copy(alpha = 0.3f)) }
+        }
+    }
+
+    if (gridOpen) TaskGridDialog(detail.items, page, onPick = { onGridClose(); jump(it) }, onClose = onGridClose)
+}
+
+/** "Lihat semua tugas": kotak bernomor berwarna menurut status; ketuk untuk loncat. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun TaskGridDialog(items: List<Item>, current: Int, onPick: (Int) -> Unit, onClose: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onClose,
+        title = { Text("Semua tugas") },
+        text = {
+            Column(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items.forEachIndexed { i, item ->
+                        val filled = item.status != null
+                        Box(
+                            Modifier.size(44.dp).clip(RoundedCornerShape(10.dp)).background(if (filled) segmentColor(item.status) else Cream)
+                                .border(if (i == current) 2.dp else 1.dp, if (i == current) Ink else Color(0xFFE2D8C6), RoundedCornerShape(10.dp))
+                                .clickable { onPick(i) },
+                            contentAlignment = Alignment.Center,
+                        ) { Text("${i + 1}", color = if (filled) Color.White else Ink, fontWeight = FontWeight.SemiBold) }
+                    }
+                }
+                Text("Hijau Done · kuning Ongoing · merah Pending · putih belum diisi", color = Muted, fontSize = 12.sp)
+            }
+        },
+        confirmButton = { TextButton({ onPick(items.size) }) { Text("Ringkasan") } },
+        dismissButton = { TextButton(onClose) { Text("Tutup") } },
+    )
 }
 
 @Composable
@@ -183,7 +313,7 @@ private fun ProgressHeader(progress: Progress, detail: Detail) {
 
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-private fun TaskCard(repo: Repo, detail: Detail, item: Item, editable: Boolean, save: (Item, Map<Long, String?>, String?, String?) -> Unit) {
+private fun TaskCard(repo: Repo, detail: Detail, item: Item, editable: Boolean, save: (Item, Map<Long, String?>, String?, String?) -> Unit, onDone: () -> Unit = {}) {
     var showStandard by remember { mutableStateOf(false) }
     var noteOpen by rememberSaveable(item.id) { mutableStateOf(false) }
     val showNote = noteOpen || item.status == "pending" || item.status == "ongoing" || !item.note.isNullOrBlank()
@@ -199,9 +329,9 @@ private fun TaskCard(repo: Repo, detail: Detail, item: Item, editable: Boolean, 
             }
 
             if (item.params.isEmpty()) {
-                StatusButtons(item.status, editable) { save(item, emptyMap(), item.note, it) }
+                StatusButtons(item.status, editable) { save(item, emptyMap(), item.note, it); if (it == "done") onDone() }
             }
-            item.params.forEach { p -> ParamInput(p, item.params.size > 1, editable) { value -> save(item, mapOf(p.id to value), item.note, null) } }
+            item.params.forEach { p -> ParamInput(p, item.params.size > 1, editable, onDone) { value -> save(item, mapOf(p.id to value), item.note, null) } }
 
             if (showNote) {
                 DebouncedField(
@@ -239,11 +369,11 @@ private fun StatusButtons(current: String?, editable: Boolean, onPick: (String?)
 
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-private fun ParamInput(p: Param, showName: Boolean, editable: Boolean, onChange: (String?) -> Unit) {
+private fun ParamInput(p: Param, showName: Boolean, editable: Boolean, onDone: () -> Unit, onChange: (String?) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         if (showName && p.type != "checkbox") Text(p.name + (p.unit?.let { " ($it)" } ?: ""), fontSize = 14.sp, color = Ink)
         when (p.type) {
-            "status" -> StatusButtons(p.value, editable, onChange)
+            "status" -> StatusButtons(p.value, editable) { onChange(it); if (it == "done") onDone() }
             "number", "meter" -> {
                 val range = listOfNotNull(p.min?.let { "min ${fmt(it)}" }, p.max?.let { "maks ${fmt(it)}" }).joinToString(" · ")
                 DebouncedField(

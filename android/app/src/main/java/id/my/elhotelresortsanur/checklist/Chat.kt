@@ -101,12 +101,16 @@ private fun dayLabel(day: LocalDate): String = when (java.time.temporal.ChronoUn
     else -> day.format(LONG_DAY)
 }
 
-/** Angka belum dibaca untuk tab bawah (diperbarui berkala oleh MainActivity, daftar obrolan, dan notifikasi yang masuk). */
+/** Angka "baru" di tab bawah (diperbarui berkala oleh MainActivity, daftar obrolan, dan notifikasi yang masuk). */
 val chatUnread = mutableIntStateOf(0)
+val kendalaNew = mutableIntStateOf(0)
+val permintaanNew = mutableIntStateOf(0)
 
-/** Ambil angka belum dibaca dari server (diam bila gagal: tidak mengganggu dengan pesan galat tiap 10 detik). */
-suspend fun refreshChatUnread(repo: Repo) = withContext(Dispatchers.IO) {
-    runCatching { repo.api.get("/obrolan/belum-dibaca").optInt("unread") }.getOrNull()?.let { chatUnread.intValue = it }
+/** Ambil angka dari server (diam bila gagal: tidak mengganggu dengan pesan galat tiap 10 detik). */
+suspend fun refreshBadges(repo: Repo) = withContext(Dispatchers.IO) {
+    runCatching { repo.api.get("/badges") }.getOrNull()?.let {
+        chatUnread.intValue = it.optInt("chat"); kendalaNew.intValue = it.optInt("kendala"); permintaanNew.intValue = it.optInt("permintaan")
+    }
 }
 
 // Warna avatar inisial (tetap per nama, seperti WhatsApp).
@@ -589,10 +593,16 @@ private fun Bubble(
                         }
                         m.optJSONObject("card")?.let { c ->
                             val type = c.optString("type")
-                            val opens = type == "kendala" || type == "permintaan"
-                            Text(c.optString("text"), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = if (opens) Gold else Ink,
-                                modifier = Modifier.padding(bottom = 4.dp).fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Color.Black.copy(alpha = 0.04f))
-                                    .clickable(enabled = opens) { onCard(type, c.getLong("id")) }.padding(8.dp))
+                            val tappable = type == "kendala" || type == "permintaan"
+                            val opens = tappable && c.optBoolean("can_open")
+                            Column(
+                                Modifier.padding(bottom = 4.dp).fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Color.Black.copy(alpha = 0.04f))
+                                    .clickable(enabled = opens) { onCard(type, c.getLong("id")) }.padding(8.dp),
+                            ) {
+                                Text(c.optString("text"), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = if (opens) Gold else Ink)
+                                // Sama dengan web: bila tidak diteruskan ke pembaca, kartu hanya ringkasan.
+                                if (tappable && !opens) Text("Anda tidak punya akses ke halaman ini", fontSize = 12.sp, color = Muted)
+                            }
                         }
                         m.s("file")?.let { Text("📄 $it\n(buka di web)", fontSize = 14.sp, color = Ink, modifier = Modifier.padding(bottom = 4.dp)) }
                         val body = m.s("body")

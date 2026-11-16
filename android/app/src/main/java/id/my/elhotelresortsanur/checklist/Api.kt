@@ -106,11 +106,16 @@ class Api(private val token: () -> String?) {
         val first = json?.optJSONObject("errors")?.let { errors ->
             errors.keys().asSequence().firstOrNull()?.let { errors.optJSONArray(it)?.optString(0) }
         }
-        return first ?: json?.optString("message")?.takeIf { it.isNotBlank() } ?: when (code) {
-            401 -> "Sesi Anda sudah berakhir. Silakan login lagi."
-            403 -> "Anda tidak punya izin untuk ini."
-            404 -> "Data tidak ditemukan."
-            else -> "Server sedang bermasalah ($code). Coba lagi nanti."
+        val message = json?.optString("message")?.takeIf { it.isNotBlank() }
+        return when {
+            first != null -> first
+            code == 401 -> message ?: "Sesi Anda sudah berakhir. Silakan login lagi."
+            // Pesan bawaan Laravel (bahasa Inggris) diganti: "This action is unauthorized." dst.
+            code == 403 -> "Anda tidak punya akses untuk ini."
+            code == 404 -> "Data tidak ditemukan atau sudah dihapus."
+            code == 429 -> "Terlalu banyak permintaan. Tunggu sebentar lalu coba lagi."
+            code >= 500 -> "Server sedang bermasalah ($code). Coba lagi nanti."
+            else -> message ?: "Permintaan gagal ($code)."
         }
     }
 

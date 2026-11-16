@@ -26,8 +26,9 @@ class PushService : FirebaseMessagingService() {
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
-        // Pesan obrolan baru: angka di tab Obrolan langsung bertambah (aplikasi sedang dibuka).
-        if (message.data["type"] == "obrolan") scope.launch { refreshChatUnread((application as ChecklistApp).repo) }
+        // Apa pun yang masuk: daftar yang sedang terbuka dimuat ulang dan angka di tab bawah diperbarui (aplikasi sedang dibuka).
+        pushTick.intValue++
+        scope.launch { refreshBadges((application as ChecklistApp).repo) }
         val note = message.notification ?: return
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED &&
             android.os.Build.VERSION.SDK_INT >= 33) return

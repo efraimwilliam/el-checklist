@@ -5,6 +5,8 @@ use App\Enums\Role;
 use App\Models\ChatThread;
 use App\Models\Department;
 use App\Models\Employee;
+use App\Models\Room;
+use App\Models\RoomIssue;
 use App\Models\User;
 use App\Push\AppPushSender;
 use Illuminate\Http\UploadedFile;
@@ -89,4 +91,29 @@ it('shows typing, replies, and blue ticks like WhatsApp', function () {
     $this->postJson("/api/v1/app/obrolan/{$thread}/mengetik")->assertOk();
     Sanctum::actingAs($this->ani);
     $this->getJson("/api/v1/app/obrolan/{$thread}/pesan")->assertJsonPath('typing', [$this->budi->name()]);
+});
+
+it('marks issue cards the reader cannot open and reports tab badges', function () {
+    $acc = Department::factory()->create(['name' => 'Accounting']);
+    $eng = $this->ani->employee->department;
+    $room = Room::create(['number' => '305', 'floor' => '3', 'sort' => 1]);
+    $issue = RoomIssue::create(['room_id' => $room->id, 'source' => 'staff', 'description' => 'AC', 'priority' => 'biasa',
+        'reported_by' => $this->budi->id, 'assigned_department_id' => $eng->id, 'status' => 'baru']);
+    $thread = ChatThread::create(['subject' => 'Grup', 'created_by' => $this->budi->id]);
+    $outsider = User::factory()->role(Role::Staff)->create(['employee_id' => Employee::factory()->for($acc)->create()->id]);
+    $thread->participants()->createMany([['user_id' => $this->ani->id], ['user_id' => $this->budi->id], ['user_id' => $outsider->id]]);
+    $thread->messages()->create(['user_id' => $this->budi->id, 'type' => 'text', 'room_issue_id' => $issue->id]);
+
+    $open = fn ($user) => (function () use ($user, $thread) {
+        Sanctum::actingAs($user);
+
+        return $this->getJson("/api/v1/app/obrolan/{$thread->id}/pesan")->json('messages.0.card.can_open');
+    })();
+    // Angka dulu (membuka percakapan menandainya terbaca).
+    Sanctum::actingAs($this->ani);
+    $this->getJson('/api/v1/app/badges')->assertOk()->assertJsonPath('chat', 1)->assertJsonPath('kendala', 1)->assertJsonPath('permintaan', 0);
+    Sanctum::actingAs($outsider);
+    $this->getJson('/api/v1/app/badges')->assertJsonPath('kendala', 0);
+
+    expect($open($this->ani))->toBeTrue()->and($open($outsider))->toBeFalse();
 });

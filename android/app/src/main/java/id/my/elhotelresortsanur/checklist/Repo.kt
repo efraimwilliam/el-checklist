@@ -51,6 +51,11 @@ class Repo(private val ctx: Context) {
     val obrolan = MutableStateFlow(prefs.getBoolean("obrolan", false))
     val chronology = MutableStateFlow(prefs.getBoolean("chronology", false))
 
+    /** Tampilan checklist: kartu (satu tugas per layar, geser) atau daftar. Diingat di HP ini, bawaan kartu. */
+    var cardView: Boolean
+        get() = prefs.getBoolean("card_view", true)
+        set(value) { prefs.edit().putBoolean("card_view", value).apply() }
+
     val userName: String? get() = prefs.getString("name", null)
     val userDetail: String? get() = prefs.getString("detail", null)
 

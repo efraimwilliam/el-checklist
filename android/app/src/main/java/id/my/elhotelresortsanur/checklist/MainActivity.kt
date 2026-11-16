@@ -122,13 +122,13 @@ class MainActivity : ComponentActivity() {
                 var chronoList by rememberSaveable { mutableStateOf(false) }
                 var chrono by rememberSaveable { mutableStateOf<Long?>(null) }
                 var chronoForm by rememberSaveable { mutableStateOf<Long?>(null) } // 0 = laporan baru
-                // Angka belum dibaca di tab Obrolan: diperbarui tiap 10 detik di semua tab selama aplikasi terbuka,
-                // dan langsung saat notifikasi obrolan masuk (PushService).
+                // Angka "baru" di tab bawah (Obrolan, Kendala, Permintaan): tiap 10 detik di semua tab selama aplikasi terbuka,
+                // dan langsung saat notifikasi masuk (PushService).
                 val scope = androidx.compose.runtime.rememberCoroutineScope()
-                androidx.lifecycle.compose.LifecycleResumeEffect(loggedIn, obrolan) {
+                androidx.lifecycle.compose.LifecycleResumeEffect(loggedIn) {
                     val job = scope.launch {
-                        while (loggedIn && obrolan && kotlinx.coroutines.currentCoroutineContext().isActive) {
-                            refreshChatUnread(repo)
+                        while (loggedIn && kotlinx.coroutines.currentCoroutineContext().isActive) {
+                            refreshBadges(repo)
                             kotlinx.coroutines.delay(10_000)
                         }
                     }
@@ -228,10 +228,16 @@ class MainActivity : ComponentActivity() {
                                 icon = { Icon(painterResource(R.drawable.ic_checklist), null) })
                             if (papan) NavigationBarItem(tab == "tim", { tab = "tim" }, colors = navColors, label = { Text("Tim", maxLines = 1) },
                                 icon = { Icon(painterResource(R.drawable.ic_group), null) })
-                            if (kendala) NavigationBarItem(tab == "kendala", { tab = "kendala" }, colors = navColors, label = { Text("Kendala", maxLines = 1) },
-                                icon = { Icon(painterResource(R.drawable.ic_build), null) })
-                            if (permintaan) NavigationBarItem(tab == "permintaan", { tab = "permintaan" }, colors = navColors, label = { Text("Permintaan", maxLines = 1) },
-                                icon = { Icon(painterResource(R.drawable.ic_room_service), null) })
+                            if (kendala) NavigationBarItem(tab == "kendala", { tab = "kendala" }, colors = navColors, label = { Text("Kendala", maxLines = 1) }, icon = {
+                                BadgedBox(badge = { if (kendalaNew.intValue > 0) Badge(containerColor = Gold, contentColor = Color.White) { Text("${kendalaNew.intValue}") } }) {
+                                    Icon(painterResource(R.drawable.ic_build), null)
+                                }
+                            })
+                            if (permintaan) NavigationBarItem(tab == "permintaan", { tab = "permintaan" }, colors = navColors, label = { Text("Permintaan", maxLines = 1) }, icon = {
+                                BadgedBox(badge = { if (permintaanNew.intValue > 0) Badge(containerColor = Gold, contentColor = Color.White) { Text("${permintaanNew.intValue}") } }) {
+                                    Icon(painterResource(R.drawable.ic_room_service), null)
+                                }
+                            })
                             if (obrolan) NavigationBarItem(tab == "obrolan", { tab = "obrolan" }, colors = navColors, label = { Text("Obrolan", maxLines = 1) }, icon = {
                                 BadgedBox(badge = { if (chatUnread.intValue > 0) Badge(containerColor = Gold, contentColor = Color.White) { Text("${chatUnread.intValue}") } }) {
                                     Icon(painterResource(R.drawable.ic_chat), null)

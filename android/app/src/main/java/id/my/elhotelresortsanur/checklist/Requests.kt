@@ -26,6 +26,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -52,20 +53,23 @@ fun RequestsScreen(repo: Repo, onNew: () -> Unit) {
     var confirmDelete by remember { mutableStateOf<JSONObject?>(null) }
     var tick by remember { mutableIntStateOf(0) } // menit menunggu & warna baris diperbarui tiap menit
 
-    fun load() = scope.launch {
-        refreshing = true
+    suspend fun fetch() {
         repo.call { it.get("/permintaan" + if (done) "?status=selesai" else "") }?.let { res ->
             rows = res.optJSONArray("requests").objects()
             newForMe = res.optInt("new_for_me")
         }
-        refreshing = false
     }
+    fun load() = scope.launch { refreshing = true; fetch(); refreshing = false }
     fun act(row: JSONObject, method: String, path: String) = scope.launch {
         repo.call { it.send(method, "/permintaan/${row.getLong("id")}$path") }
         load()
     }
-    LaunchedEffect(done) { rows = null; load() }
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { load() }
+    LaunchedEffect(done) { rows = null }
+    // Selama layar terbuka: muat ulang tiap 10 detik (diam-diam) dan langsung saat notifikasi masuk.
+    androidx.lifecycle.compose.LifecycleResumeEffect(done, pushTick.intValue) {
+        val job = scope.launch { while (isActive) { fetch(); delay(10_000) } }
+        onPauseOrDispose { job.cancel() }
+    }
     LaunchedEffect(Unit) { while (true) { delay(60_000); tick++ } }
 
     Scaffold(

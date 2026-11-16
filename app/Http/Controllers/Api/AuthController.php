@@ -54,6 +54,19 @@ class AuthController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    /** Angka "baru" untuk tab bawah (Obrolan belum dibaca, Kendala dan Permintaan baru untuk saya): ringan, dipanggil tiap beberapa detik. */
+    public function badges(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $gate = Gate::forUser($user);
+
+        return response()->json([
+            'chat' => $gate->allows('chat') ? $user->unreadChatCount() : 0,
+            'kendala' => $gate->allows('room-issues') ? $user->newRoomIssueCount() : 0,
+            'permintaan' => $gate->allows('guest-requests') ? $user->newGuestRequestCount() : 0,
+        ]);
+    }
+
     /** Token notifikasi Firebase HP ini; satu HP hanya untuk satu akun (akun lain yang login di HP itu mengambil alih). */
     public function pushToken(Request $request): JsonResponse
     {

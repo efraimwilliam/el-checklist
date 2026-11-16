@@ -144,8 +144,8 @@ class ChatController extends Controller
         // Kartu (kendala / permintaan / checklist / laporan / barang): ringkasan teks + tautan ke layar aplikasi bila ada.
         $card = match (true) {
             $deleted => null,
-            (bool) $m->room_issue_id => ['type' => 'kendala', 'id' => $m->room_issue_id, 'text' => '🛠 '.__('Kendala').' · '.($m->sharedIssue ? $m->sharedIssue->placeTitle().' · '.($m->sharedIssue->category?->name ?? '') : __('sudah dihapus'))],
-            (bool) $m->guest_request_id => ['type' => 'permintaan', 'id' => $m->guest_request_id, 'text' => '🛎 '.($m->sharedRequest ? __('Kamar').' '.$m->sharedRequest->room?->number.' · '.$m->sharedRequest->label() : __('Permintaan'))],
+            (bool) $m->room_issue_id => ['type' => 'kendala', 'id' => $m->room_issue_id, 'can_open' => $m->sharedIssue && Gate::forUser($me)->allows('view', $m->sharedIssue), 'text' => '🛠 '.__('Kendala').' · '.($m->sharedIssue ? $m->sharedIssue->placeTitle().' · '.($m->sharedIssue->category?->name ?? '') : __('sudah dihapus'))],
+            (bool) $m->guest_request_id => ['type' => 'permintaan', 'id' => $m->guest_request_id, 'can_open' => $m->sharedRequest && Gate::forUser($me)->allows('view', $m->sharedRequest), 'text' => '🛎 '.($m->sharedRequest ? __('Kamar').' '.$m->sharedRequest->room?->number.' · '.$m->sharedRequest->label() : __('Permintaan'))],
             (bool) $m->checklist_id => ['type' => 'checklist', 'id' => $m->checklist_id, 'text' => '📋 '.__('Checklist').' · '.($m->sharedChecklist?->employee?->name ?? '')],
             (bool) $m->chronology_report_id => ['type' => 'chronology', 'id' => $m->chronology_report_id, 'text' => '📝 Chronology Report · '.($m->sharedReport?->guests->first()?->name ?? '')],
             (bool) $m->lost_item_id => ['type' => 'lost', 'id' => $m->lost_item_id, 'text' => '🧳 '.__('Barang tertinggal').' · '.($m->sharedLost?->placeTitle() ?? '')],

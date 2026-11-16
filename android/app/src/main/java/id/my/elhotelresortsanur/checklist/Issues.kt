@@ -31,6 +31,8 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -59,18 +61,23 @@ private val KINDS = mapOf(
 )
 
 /** Memanggil server di latar belakang; gagal = pesan di banner (401 = login lagi), hasil null. */
-internal suspend fun <T> Repo.call(block: (Api) -> T): T? = withContext(Dispatchers.IO) {
+internal suspend fun <T> Repo.call(onDenied: (() -> Unit)? = null, block: (Api) -> T): T? = withContext(Dispatchers.IO) {
     try {
         block(api).also { offline.value = false }
     } catch (e: ApiException) {
         when {
             e.code == 401 -> sessionEnded()
             e.code == 0 -> { offline.value = true; message.value = "Tidak ada koneksi. Menu ini butuh internet." }
+            // 403 / 404 pada layar yang dibuka lewat notifikasi atau kartu obrolan: pemanggil menutup layarnya.
+            (e.code == 403 || e.code == 404) && onDenied != null -> onDenied()
             else -> message.value = e.message
         }
         null
     }
 }
+
+/** Naik tiap notifikasi masuk (PushService): daftar yang sedang terbuka langsung memuat ulang. */
+val pushTick = mutableIntStateOf(0)
 
 @Composable
 internal fun Pill(text: String, color: Color) {
@@ -89,16 +96,19 @@ fun IssuesScreen(repo: Repo, onOpen: (Long) -> Unit, onNew: () -> Unit) {
     var newForMe by remember { mutableIntStateOf(0) }
     var refreshing by remember { mutableStateOf(false) }
 
-    fun load() = scope.launch {
-        refreshing = true
+    suspend fun fetch() {
         repo.call { it.get("/kendala" + if (done) "?status=selesai" else "") }?.let { res ->
             issues = res.optJSONArray("issues").objects()
             newForMe = res.optInt("new_for_me")
         }
-        refreshing = false
     }
-    LaunchedEffect(done) { issues = null; load() }
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { load() }
+    fun load() = scope.launch { refreshing = true; fetch(); refreshing = false }
+    LaunchedEffect(done) { issues = null }
+    // Selama layar terbuka: muat ulang tiap 10 detik (diam-diam) dan langsung saat notifikasi masuk.
+    androidx.lifecycle.compose.LifecycleResumeEffect(done, pushTick.intValue) {
+        val job = scope.launch { while (isActive) { fetch(); delay(10_000) } }
+        onPauseOrDispose { job.cancel() }
+    }
 
     Scaffold(
         topBar = {
@@ -169,10 +179,18 @@ fun IssueScreen(repo: Repo, id: Long, onBack: () -> Unit) {
 
     fun load() = scope.launch {
         refreshing = true
-        repo.call { it.get("/kendala/$id") }?.let { issue = it.getJSONObject("issue") }
+        var denied = false
+        repo.call(onDenied = { denied = true }) { it.get("/kendala/$id") }?.let { issue = it.getJSONObject("issue") }
         refreshing = false
+        if (denied) {
+            // Kendala diteruskan ke departemen / orang lain (atau sudah dihapus): kembali ke daftar dengan penjelasan.
+            repo.message.value = "Kendala #$id tidak diteruskan ke Anda atau departemen Anda, jadi tidak bisa dibuka."
+            onBack()
+        }
     }
     LaunchedEffect(id) { load() }
+    // Detail ikut segar saat notifikasi masuk (mis. kendala ini diambil orang lain).
+    LaunchedEffect(pushTick.intValue) { if (pushTick.intValue > 0 && issue != null) load() }
 
     fun act(path: String) = scope.launch {
         repo.call { it.send("POST", "/kendala/$id/$path") }?.let { repo.message.value = null }
@@ -386,6 +404,8 @@ fun NewIssueScreen(repo: Repo, onCreated: (Long?) -> Unit, onBack: () -> Unit) {
         error = when {
             atRoom && roomId == null -> if (room.isBlank()) "Tulis nomor kamarnya." else "Kamar ${room.trim()} tidak ada di data kamar. Periksa lagi nomornya."
             !atRoom && location.isBlank() -> "Tulis lokasinya."
+            // Tanpa kategori dan tanpa departemen, kendala tidak diteruskan ke siapa pun.
+            category == null && department == null -> "Pilih kategori kendala, atau pilih departemen tujuan."
             description.isBlank() -> "Tulis kendalanya dulu."
             else -> null
         }
