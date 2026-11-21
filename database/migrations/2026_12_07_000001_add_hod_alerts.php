@@ -1,0 +1,23 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        // Peringatan ke HOD lewat Telegram bila belum diambil: 0 = belum, 1 = 30 menit, 2 = 60 menit, 3 = 120 menit.
+        foreach (['guest_requests', 'room_issues'] as $table) {
+            Schema::table($table, fn (Blueprint $t) => $t->unsignedTinyInteger('hod_alerts')->default(0));
+        }
+    }
+
+    public function down(): void
+    {
+        foreach (['guest_requests', 'room_issues'] as $table) {
+            Schema::table($table, fn (Blueprint $t) => $t->dropColumn('hod_alerts'));
+        }
+    }
+};

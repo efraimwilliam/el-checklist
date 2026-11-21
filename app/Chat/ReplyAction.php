@@ -111,6 +111,27 @@ class ReplyAction
         return $won;
     }
 
+    /** HOD / HR / Admin menugaskan: menjadikan $to pengambil (sama dengan Saya ambil atas namanya). Hanya bila belum diambil siapa pun. */
+    public function assign(User $by, User $to, GuestRequest|RoomIssue $model): bool
+    {
+        $now = now();
+        if ($model instanceof GuestRequest) {
+            $done = GuestRequest::whereKey($model->id)->where('status', GuestRequest::STATUS_NEW)->whereNull('claimed_by')
+                ->update(['status' => GuestRequest::STATUS_CLAIMED, 'claimed_by' => $to->id, 'claimed_at' => $now, 'updated_at' => $now]);
+        } else {
+            $done = DB::transaction(function () use ($model, $by, $to, $now) {
+                $claimed = RoomIssue::whereKey($model->id)->whereNull('claimed_by')->where('status', '!=', RoomIssue::STATUS_DONE)
+                    ->update(['claimed_by' => $to->id, 'claimed_at' => $now, 'status' => RoomIssue::STATUS_WORKING]);
+                $claimed && $this->log($model, $by, __(':by menugaskan kendala ini kepada :to.', ['by' => $by->name(), 'to' => $to->name()]), 'ambil');
+
+                return $claimed;
+            });
+        }
+        $done && app(\App\Telegram\TelegramNotifier::class)->refresh($model);
+
+        return (bool) $done;
+    }
+
     private function log(RoomIssue $issue, User $user, string $body, string $kind): void
     {
         RoomIssueUpdate::create(['room_issue_id' => $issue->id, 'user_id' => $user->id, 'department_id' => $user->checklistDepartmentId(), 'body' => $body, 'kind' => $kind]);

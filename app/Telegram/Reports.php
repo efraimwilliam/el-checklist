@@ -10,10 +10,11 @@ use App\Models\User;
 /** Teks (HTML) perintah bot: /daftar (yang belum selesai + siapa yang mengambil), /respon (hari ini), /anggota (siapa sudah tertaut). */
 final class Reports
 {
-    public static function open(): string
+    /** @param ?User $only null = semua (grup); pengguna = hanya yang menjadi tanggung jawabnya (chat pribadi). */
+    public static function open(?User $only = null): string
     {
-        $requests = GuestRequest::with(['room', 'claimer.employee'])->where('status', '!=', GuestRequest::STATUS_DONE)->orderBy('id')->limit(40)->get();
-        $issues = RoomIssue::with(['room', 'category', 'claimer.employee'])->where('status', '!=', RoomIssue::STATUS_DONE)->orderBy('id')->limit(40)->get();
+        $requests = GuestRequest::with(['room', 'claimer.employee'])->where('status', '!=', GuestRequest::STATUS_DONE)->when($only, fn ($q) => $q->forUser($only))->orderBy('id')->limit(40)->get();
+        $issues = RoomIssue::with(['room', 'category', 'claimer.employee'])->where('status', '!=', RoomIssue::STATUS_DONE)->when($only, fn ($q) => $q->forUser($only))->orderBy('id')->limit(40)->get();
 
         $lines = $requests->map(fn (GuestRequest $r) => '🛎 '.e(__('Kamar').' '.$r->room?->number).' · '.e($r->label()).' — '
             .($r->claimer ? '✋ '.e($r->claimer->name()) : '🕓 '.e(__('belum diambil :n mnt', ['n' => (int) $r->created_at->diffInMinutes(now())]))))

@@ -257,3 +257,32 @@ it('mencatat barang tertinggal dari teks / foto berketerangan dan mengubah statu
     $reply('diambil Mr. Smith');
     expect($item->fresh())->status->toBe('diambil')->resolution_note->toBe('Mr. Smith');
 });
+
+it('memperingatkan HOD (30 / 60 / 120 menit) dan HOD menugaskan pegawai lewat tombol', function () {
+    $hod = User::factory()->role(Role::Hod)->create(['telegram_id' => 333, 'employee_id' => Employee::factory()->for($this->hk)->create(['name' => 'Pak Wayan'])->id]);
+    $hod->departments()->attach($this->hk);
+    $r = GuestRequest::create(['room_id' => $this->room->id, 'kind' => 'towel', 'status' => 'baru', 'priority' => 'biasa', 'requested_by' => $this->foUser->id, 'assigned_department_id' => $this->hk->id]);
+    $dm = fn () => collect(tgCalls())->where('method', 'sendMessage')->filter(fn ($c) => ($c['data']['chat_id'] ?? null) === 333);
+
+    $this->travel(31)->minutes();
+    $this->artisan('telegram:eskalasi');
+    $this->artisan('telegram:eskalasi');
+    expect($dm())->toHaveCount(1)->and($dm()->first()['data']['text'])->toContain('Peringatan 1/3');
+
+    $this->travel(30)->minutes();
+    $this->artisan('telegram:eskalasi');
+    expect($dm())->toHaveCount(2)->and($dm()->last()['data']['text'])->toContain('Peringatan 2/3');
+
+    $click = fn (string $data) => $this->postJson('/api/telegram/webhook', tgClick(333, $data, 333), ['X-Telegram-Bot-Api-Secret-Token' => 'rahasia'])->assertOk();
+    $click('as:rq:'.$r->id);
+    expect(collect(tgCalls())->where('method', 'editMessageText')->last()['data']['reply_markup']['inline_keyboard'])->not->toBeEmpty();
+
+    $click('as:rq:'.$r->id.':'.$this->hkUser->id);
+    expect($r->fresh())->claimed_by->toBe($this->hkUser->id)->status->toBe('diambil')
+        ->and(collect(tgCalls())->where('method', 'sendMessage')->filter(fn ($c) => ($c['data']['chat_id'] ?? null) === 222)->first()['data']['text'])->toContain('menugaskan Anda');
+
+    // Pegawai biasa tidak boleh menugaskan.
+    $other = GuestRequest::create(['room_id' => $this->room->id, 'kind' => 'towel', 'status' => 'baru', 'priority' => 'biasa', 'requested_by' => $this->foUser->id, 'assigned_department_id' => $this->hk->id]);
+    $this->postJson('/api/telegram/webhook', tgClick(222, 'as:rq:'.$other->id.':'.$this->hkUser->id, 222), ['X-Telegram-Bot-Api-Secret-Token' => 'rahasia'])->assertOk();
+    expect($other->fresh()->claimed_by)->toBeNull();
+});

@@ -75,7 +75,7 @@ class TelegramHandler
         }
         $command = strtolower(explode('@', explode(' ', $text)[0])[0]);
         $reply = match ($command) {
-            '/daftar' => Reports::open(),
+            '/daftar' => Reports::open($private ? $user : null),
             '/respon' => Reports::response(),
             '/tertinggal' => Reports::lost(),
             '/anggota' => Gate::forUser($user)->allows('manage-tasks') ? Reports::members() : null,
@@ -202,6 +202,11 @@ class TelegramHandler
 
             return;
         }
+        if ($kind === 'as') {
+            $this->assign($id, $user, $action, $key, $chat, $messageId);
+
+            return;
+        }
         $model = $kind === 'rq' ? GuestRequest::find((int) $key) : RoomIssue::find((int) $key);
         if (! $model) {
             $this->api->answer($id, __('Tidak ditemukan (mungkin sudah dihapus).'), true);
@@ -221,6 +226,51 @@ class TelegramHandler
         }
         $card = new TelegramCard($kind === 'rq' ? ['guest_request_id' => $model->id] : ['room_issue_id' => $model->id]);
         $this->api->answer($id, $this->applyAction($user, $card, $action === 'done' ? 'done' : 'claim') ? '✅' : __('Tidak bisa: sudah diambil / diselesaikan, bukan tugas Anda, atau Anda sendiri pelapornya.'), false);
+    }
+
+    /** Tombol "Tugaskan ke…" di pesan peringatan HOD: `as:rq|is:ID` = tampilkan pilihan, `as:rq|is:ID:USER` = tugaskan, `:0` = kembali. */
+    private function assign(string $callbackId, User $by, string $kind, string $key, int $chat, int $messageId): void
+    {
+        [$modelId, $target] = array_pad(explode(':', $key, 2), 2, null);
+        $model = $kind === 'rq' ? GuestRequest::find((int) $modelId) : RoomIssue::find((int) $modelId);
+        $mayAssign = $model && ($by->role->overridesReview() || ($by->role === \App\Enums\Role::Hod && in_array($model->assigned_department_id, $by->hodDepartmentIds(), true)));
+        if (! $mayAssign) {
+            $this->api->answer($callbackId, $model ? __('Hanya HOD departemen tujuan, HR, atau Administrator yang bisa menugaskan.') : __('Tidak ditemukan (mungkin sudah dihapus).'), true);
+
+            return;
+        }
+        [$html, $keyboard] = $kind === 'rq' ? Cards::request($model) : Cards::issue($model);
+        if ($target === null) { // pilihan orang: semua departemen, departemen tujuan lebih dulu
+            $people = User::with('employee.department')->whereNotNull('telegram_id')->get()->filter->canUseApp()
+                ->sortBy(fn (User $u) => [$u->employee?->department_id === $model->assigned_department_id ? 0 : 1, $u->employee?->department?->name, $u->name()])
+                ->map(fn (User $u) => ['text' => mb_substr($u->name().' · '.($u->employee?->department?->name ?? '—'), 0, 40), 'callback_data' => 'as:'.$kind.':'.$model->id.':'.$u->id])
+                ->take(90)->values()->chunk(2)->map->values()->all();
+            $people[] = [['text' => '‹ '.__('Batal'), 'callback_data' => 'as:'.$kind.':'.$model->id.':0']];
+            $this->api->edit($chat, $messageId, $html."\n\n".e(__('Tugaskan ke siapa?')), $people);
+            $this->api->answer($callbackId);
+
+            return;
+        }
+        $to = (int) $target ? User::find((int) $target) : null;
+        if (! $to) { // Batal: kembali ke kartu dengan tombol Tugaskan
+            $keyboard[] = [['text' => __('Tugaskan ke…'), 'callback_data' => 'as:'.$kind.':'.$model->id]];
+            $this->api->edit($chat, $messageId, $html, $keyboard);
+            $this->api->answer($callbackId);
+
+            return;
+        }
+        if (! $this->replies->assign($by, $to, $model)) {
+            $this->api->answer($callbackId, __('Sudah diambil orang lain.'), true);
+            $this->api->edit($chat, $messageId, Cards::{$kind === 'rq' ? 'request' : 'issue'}($model->fresh())[0]);
+
+            return;
+        }
+        $this->api->edit($chat, $messageId, '✅ '.e(__('Ditugaskan ke :name', ['name' => $to->name()])));
+        // Pesan pribadi ke yang ditugaskan, dengan tombol Selesai.
+        [$cardHtml, $cardKeys] = $kind === 'rq' ? Cards::request($model->fresh()) : Cards::issue($model->fresh());
+        $sent = $this->api->send($to->telegram_id, '📌 <b>'.e(__(':by menugaskan Anda', ['by' => $by->name()])).'</b>'."\n".$cardHtml, $cardKeys ?: null);
+        isset($sent['message_id']) && TelegramCard::firstOrCreate(['chat_id' => $to->telegram_id, 'message_id' => $sent['message_id']], [$kind === 'rq' ? 'guest_request_id' : 'room_issue_id' => $model->id]);
+        $this->api->answer($callbackId, '✅');
     }
 
     private function issueButton(string $callbackId, User $user, string $action, string $token, int $chat, int $messageId, array $callbackMessage = []): void
