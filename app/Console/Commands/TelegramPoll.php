@@ -54,6 +54,7 @@ class TelegramPoll extends Command
     /** @param array<string, mixed> $update */
     private function process(array $update): void
     {
+        $started = microtime(true);
         try {
             // Proses panjang: sambungan basis data bisa putus saat menganggur (disambung ulang bila perlu), dan cache per-permintaan
             // (kamus, pengaturan) harus segar.
@@ -69,6 +70,8 @@ class TelegramPoll extends Command
         } finally {
             // `defer` (kartu ke grup, pembaruan kartu) biasanya jalan di akhir permintaan; di sini tidak ada, jadi jalankan sekarang.
             app(DeferredCallbackCollection::class)->invoke();
+            // Antrean diproses satu per satu: pesan yang lambat menunda semua di belakangnya, jadi catat supaya terlihat di log.
+            ($seconds = microtime(true) - $started) > 2 && \Illuminate\Support\Facades\Log::warning('Telegram: satu update diproses '.round($seconds, 1).' detik (update '.($update['update_id'] ?? '?').')');
         }
     }
 }

@@ -20,7 +20,13 @@ class TelegramApi
             return null;
         }
         try {
-            $response = Http::timeout($timeout)->post('https://api.telegram.org/bot'.config('services.telegram.token').'/'.$method, $params);
+            $url = 'https://api.telegram.org/bot'.config('services.telegram.token').'/'.$method;
+            $response = Http::timeout($timeout)->post($url, $params);
+            // Batas kirim Telegram (429): tunggu sebentar sesuai permintaannya lalu coba sekali lagi, supaya kartu tidak hilang saat ramai.
+            if ($response->status() === 429 && ($wait = (int) $response->json('parameters.retry_after', 0)) >= 1 && $wait <= 5) {
+                sleep($wait);
+                $response = Http::timeout($timeout)->post($url, $params);
+            }
         } catch (\Throwable $e) {
             Log::warning('Telegram '.$method.' gagal: '.$e->getMessage());
 

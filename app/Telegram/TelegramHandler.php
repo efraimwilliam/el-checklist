@@ -323,6 +323,8 @@ class TelegramHandler
     private function link(int $chat, int $from, string $code): void
     {
         $userId = $code !== '' ? Cache::pull(self::LINK_CACHE.$code) : null;
+        // Tautan buatan HR (Kelola > Tautan Telegram): tersimpan di basis data, sekali pakai.
+        $userId ??= $code !== '' ? User::where('telegram_link_code', $code)->where('telegram_link_expires_at', '>', now())->value('id') : null;
         if (! $userId) {
             $this->api->send($chat, $code === '' ? $this->help() : e(__('Kode tidak berlaku. Buat kode baru di aplikasi > Profil > Hubungkan Telegram.')));
 
@@ -340,6 +342,7 @@ class TelegramHandler
             return;
         }
         $user->update(['telegram_id' => $from]);
+        User::whereKey($user->id)->update(['telegram_link_code' => null, 'telegram_link_expires_at' => null]);
         $this->api->send($chat, '✅ '.e(__('Terhubung sebagai :name.', ['name' => $user->name()]))."\n\n".$this->help());
     }
 

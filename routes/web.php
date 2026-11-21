@@ -174,6 +174,9 @@ Route::middleware(['auth', EnsureActiveSession::class, VerifySsoSession::class])
     Route::post('/tim/daftar/impor', [TaskCatalogImportController::class, 'preview'])->name('team.catalog.import.preview');
     Route::post('/profil/telegram', [\App\Http\Controllers\TelegramController::class, 'code'])->name('telegram.code');
     Route::delete('/profil/telegram', [\App\Http\Controllers\TelegramController::class, 'unlink'])->name('telegram.unlink');
+    Route::get('/admin/telegram', [\App\Http\Controllers\Admin\TelegramLinkController::class, 'index'])->middleware('can:manage-tasks')->name('admin.telegram.index');
+    Route::post('/admin/telegram/{user}/ganti', [\App\Http\Controllers\Admin\TelegramLinkController::class, 'rotate'])->middleware('can:manage-tasks')->name('admin.telegram.rotate');
+    Route::delete('/admin/telegram/{user}', [\App\Http\Controllers\Admin\TelegramLinkController::class, 'unlink'])->middleware('can:manage-tasks')->name('admin.telegram.unlink');
     Route::post('/tim/daftar/impor/simpan', [TaskCatalogImportController::class, 'apply'])->name('team.catalog.import.apply');
     Route::post('/tim/daftar/impor/batal', [TaskCatalogImportController::class, 'cancel'])->name('team.catalog.import.cancel');
     Route::get('/tim/jabatan', [TeamPositionController::class, 'edit'])->name('team.positions.edit');

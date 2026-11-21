@@ -55,6 +55,7 @@ final class Reports
         [$linked, $unlinked] = [$users->whereNotNull('telegram_id'), $users->whereNull('telegram_id')];
 
         return '<b>'.e(__('Sudah tertaut')).' ('.$linked->count().')</b>'."\n".e($linked->map->name()->sort()->join(', ') ?: '—')
-            ."\n\n".'<b>'.e(__('Belum tertaut')).' ('.$unlinked->count().')</b>'."\n".e($unlinked->map->name()->sort()->join(', ') ?: '—');
+            ."\n\n".'<b>'.e(__('Belum tertaut')).' ('.$unlinked->count().')</b>'."\n".e($unlinked->map->name()->sort()->join(', ') ?: '—')
+            ."\n\n".'<i>'.e(__('Tautan per orang: aplikasi > Kelola > Tautan Telegram.')).'</i>';
     }
 }

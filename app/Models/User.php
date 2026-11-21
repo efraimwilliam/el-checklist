@@ -27,7 +27,7 @@ class User extends Authenticatable
 
     protected function casts(): array
     {
-        return ['role' => Role::class, 'is_active' => 'boolean', 'last_login_at' => 'datetime'];
+        return ['role' => Role::class, 'is_active' => 'boolean', 'last_login_at' => 'datetime', 'telegram_link_expires_at' => 'datetime'];
     }
 
     public function employee(): BelongsTo

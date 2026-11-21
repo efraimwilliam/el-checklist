@@ -286,3 +286,39 @@ it('memperingatkan HOD (30 / 60 / 120 menit) dan HOD menugaskan pegawai lewat to
     $this->postJson('/api/telegram/webhook', tgClick(222, 'as:rq:'.$other->id.':'.$this->hkUser->id, 222), ['X-Telegram-Bot-Api-Secret-Token' => 'rahasia'])->assertOk();
     expect($other->fresh()->claimed_by)->toBeNull();
 });
+
+it('mencoba lagi sekali bila Telegram membatasi kirim (429)', function () {
+    Http::swap(new \Illuminate\Http\Client\Factory(app('events')));
+    Http::fake(['api.telegram.org/*' => Http::sequence()
+        ->push(['ok' => false, 'description' => 'Too Many Requests', 'parameters' => ['retry_after' => 1]], 429)
+        ->push(['ok' => true, 'result' => ['message_id' => 7]])]);
+
+    expect(app(\App\Telegram\TelegramApi::class)->send(TG_GROUP, 'halo'))->toMatchArray(['message_id' => 7]);
+    Http::assertSentCount(2);
+});
+
+it('HR membuat tautan Telegram per pegawai: sekali pakai, tanpa login pegawai', function () {
+    $newUser = User::factory()->role(Role::Staff)->create(['telegram_id' => null, 'employee_id' => Employee::factory()->for($this->hk)->create(['name' => 'Budi Baru'])->id]);
+    $hr = User::factory()->role(Role::Hr)->create(['employee_id' => Employee::factory()->for($this->fo)->create()->id]);
+
+    loggedIn($hr);
+    $this->get(route('admin.telegram.index'))->assertOk()->assertSee('Budi Baru')->assertSee('t.me/el_bot?start=', false);
+    $code = $newUser->fresh()->telegram_link_code;
+    expect($code)->not->toBeNull();
+    $this->get(route('admin.telegram.index')); // dibuka ulang: tautan yang sama dipakai
+    expect($newUser->fresh()->telegram_link_code)->toBe($code);
+
+    Http::swap(new \Illuminate\Http\Client\Factory(app('events'))); // loggedIn() memalsukan Http sendiri
+    Http::fake(['api.telegram.org/*' => Http::response(['ok' => true, 'result' => ['message_id' => 900, 'chat' => ['id' => TG_GROUP]]])]);
+    $start = fn (int $from) => $this->postJson('/api/telegram/webhook', tgMessage($from, '/start '.$code, [], 777), ['X-Telegram-Bot-Api-Secret-Token' => 'rahasia'])->assertOk();
+    $start(777);
+    expect($newUser->fresh())->telegram_id->toBe(777)->telegram_link_code->toBeNull();
+
+    $start(888); // tautan sudah dipakai
+    expect(User::where('telegram_id', 888)->exists())->toBeFalse();
+});
+
+it('halaman Tautan Telegram hanya untuk HR / Administrator', function () {
+    loggedIn($this->hkUser);
+    $this->get(route('admin.telegram.index'))->assertForbidden();
+});

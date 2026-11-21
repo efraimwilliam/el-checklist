@@ -115,6 +115,7 @@
             $menu[] = ['label' => __('Kelola'), 'active' => $is('admin.access.*', 'admin.sync', 'admin.settings.*'), 'count' => 0, 'items' => array_values(array_filter([
                 $can('manage-access') ? $link(__('Akses pengguna'), 'admin.access.index', $is('admin.access.*', 'admin.sync')) : null,
                 $link(__('Pengaturan'), 'admin.settings.edit', $is('admin.settings.*')),
+                $can('manage-tasks') && filled(config('services.telegram.token')) ? $link(__('Tautan Telegram'), 'admin.telegram.index', $is('admin.telegram.*')) : null,
             ]))];
         }
     ?>
