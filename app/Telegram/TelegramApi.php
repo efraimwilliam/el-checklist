@@ -56,6 +56,24 @@ class TelegramApi
         ]);
     }
 
+    /** Unduh berkas (foto) dari Telegram: isi mentah, atau null bila gagal. */
+    public function download(string $fileId): ?string
+    {
+        $path = $this->call('getFile', ['file_id' => $fileId])['file_path'] ?? null;
+        if (! $path) {
+            return null;
+        }
+        try {
+            $response = Http::timeout(15)->get('https://api.telegram.org/file/bot'.config('services.telegram.token').'/'.$path);
+        } catch (\Throwable $e) {
+            Log::warning('Telegram unduh berkas gagal: '.$e->getMessage());
+
+            return null;
+        }
+
+        return $response->successful() ? $response->body() : null;
+    }
+
     public function answer(string $callbackId, string $text = '', bool $alert = false): void
     {
         $this->call('answerCallbackQuery', array_filter(['callback_query_id' => $callbackId, 'text' => $text !== '' ? mb_substr($text, 0, 190) : null, 'show_alert' => $alert ?: null]));

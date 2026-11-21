@@ -3,6 +3,7 @@
 namespace App\Telegram;
 
 use App\Models\GuestRequest;
+use App\Models\LostItem;
 use App\Models\RoomIssue;
 use App\Models\User;
 
@@ -21,6 +22,15 @@ final class Reports
 
         return $lines->isEmpty() ? '✅ '.e(__('Tidak ada permintaan atau kendala yang terbuka.'))
             : '<b>'.e(__('Belum selesai')).' ('.$lines->count().')</b>'."\n".$lines->join("\n");
+    }
+
+    public static function lost(): string
+    {
+        $items = LostItem::with('room')->where('status', LostItem::STATUS_STORED)->orderBy('id')->limit(40)->get();
+
+        return $items->isEmpty() ? '✅ '.e(__('Tidak ada barang tertinggal yang sedang disimpan.'))
+            : '<b>'.e(__('Barang tertinggal disimpan')).' ('.$items->count().')</b>'."\n"
+                .$items->map(fn (LostItem $l) => '🧳 '.e($l->placeTitle()).' · '.e($l->description).($l->stored_at ? ' · '.e($l->stored_at) : '').' · '.(int) $l->found_at->diffInDays(now()).' '.e(__('hari')))->join("\n");
     }
 
     public static function response(): string

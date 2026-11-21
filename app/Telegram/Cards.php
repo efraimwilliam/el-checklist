@@ -3,6 +3,7 @@
 namespace App\Telegram;
 
 use App\Models\GuestRequest;
+use App\Models\LostItem;
 use App\Models\RoomIssue;
 
 /** Teks (HTML) dan tombol kartu permintaan / kendala di Telegram. Tombol = callback `rq|is : aksi : id`. */
@@ -29,6 +30,18 @@ final class Cards
         };
 
         return [$html, $keys ? [$keys] : []];
+    }
+
+    /** Barang tertinggal: tanpa tombol (status diubah dengan membalas kartu: "diambil nama", "dikirim resi", "dilepas"). @return array{0: string, 1: array} */
+    public static function lost(LostItem $l): array
+    {
+        $l->loadMissing(['room', 'resolver.employee']);
+        $html = '🧳 <b>'.e($l->placeTitle()).'</b> · '.e($l->description)
+            ."\n".($l->isOpen()
+                ? '🕓 '.e(__('Disimpan')).($l->stored_at ? ' · '.e($l->stored_at) : '')."\n".'<i>'.e(__('Balas kartu ini: "diambil nama penerima", "dikirim nomor resi", atau "dilepas".')).'</i>'
+                : '✅ '.e(LostItem::statusLabels()[$l->status]).($l->resolution_note ? ' · '.e($l->resolution_note) : '').($l->resolver ? ' · '.e($l->resolver->name()) : ''));
+
+        return [$html, []];
     }
 
     /** @return array{0: string, 1: list<list<array{text: string, callback_data: string}>>} */

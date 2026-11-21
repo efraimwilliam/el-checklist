@@ -7,10 +7,13 @@ use App\Chat\QuickRecorder;
 use App\Chat\ReplyAction;
 use App\Checklists\ChecklistSettings;
 use App\Models\ChatMessage;
+use App\Http\Controllers\LostItemController;
 use App\Models\GuestRequest;
+use App\Models\LostItem;
 use App\Models\RoomIssue;
 use App\Models\TelegramCard;
 use App\Models\User;
+use App\Support\PhotoReencoder;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
 
@@ -38,7 +41,7 @@ class TelegramHandler
     {
         if (isset($update['callback_query'])) {
             $this->callback($update['callback_query']);
-        } elseif (isset($update['message']['text'])) {
+        } elseif (isset($update['message']['text']) || isset($update['message']['photo'])) {
             $this->message($update['message']);
         }
     }
@@ -47,7 +50,10 @@ class TelegramHandler
     private function message(array $m): void
     {
         $chat = (int) $m['chat']['id'];
-        $text = trim((string) $m['text']);
+        $text = trim((string) ($m['text'] ?? $m['caption'] ?? ''));
+        if ($text === '') {
+            return; // foto tanpa keterangan bukan perintah
+        }
         $private = ($m['chat']['type'] ?? '') === 'private';
         $from = (int) ($m['from']['id'] ?? 0);
 
@@ -71,6 +77,7 @@ class TelegramHandler
         $reply = match ($command) {
             '/daftar' => Reports::open(),
             '/respon' => Reports::response(),
+            '/tertinggal' => Reports::lost(),
             '/anggota' => Gate::forUser($user)->allows('manage-tasks') ? Reports::members() : null,
             default => null,
         };
@@ -83,9 +90,14 @@ class TelegramHandler
             return; // perintah lain bukan untuk bot ini
         }
 
-        // Membalas kartu / pesan yang sudah tercatat: "copy" = Saya ambil, "done" = Selesai.
+        // Membalas kartu / pesan yang sudah tercatat: "copy" = Saya ambil, "done" = Selesai; barang tertinggal: "diambil nama" / "dikirim resi" / "dilepas".
         if ($replyId = $m['reply_to_message']['message_id'] ?? null) {
             $card = TelegramCard::where(['chat_id' => $chat, 'message_id' => $replyId])->first();
+            if ($card?->lost_item_id && preg_match('~^(diambil|dikirim|dilepas|disimpan)\b[\s:,\-]*(.*)$~isu', $text, $match)) {
+                $this->lostStatus($user, $card, strtolower($match[1]), trim($match[2]), $chat, (int) $m['message_id']);
+
+                return;
+            }
             if ($card && ($action = $this->quick->replyAction($text))) {
                 $this->act($user, $card, $action, $chat, (int) $m['message_id']);
 
@@ -93,11 +105,11 @@ class TelegramHandler
             }
         }
 
-        $this->record($user, $text, $chat, (int) $m['message_id'], $private);
+        $this->record($user, $text, $chat, (int) $m['message_id'], $private, $m['photo'] ?? null);
     }
 
     /** Ketik bebas: permintaan langsung dicatat (kartu + 🗑 Batal); kendala menunggu ketukan "Catat kendala" supaya obrolan biasa tidak jadi kendala. */
-    private function record(User $user, string $text, int $chat, int $messageId, bool $private): void
+    private function record(User $user, string $text, int $chat, int $messageId, bool $private, ?array $photo = null): void
     {
         $settings = app(ChecklistSettings::class);
         if (! $settings->quickEntry('quick_entry')) {
@@ -106,7 +118,9 @@ class TelegramHandler
         $read = $this->quick->read($text);
         $gate = Gate::forUser($user);
 
-        if ($read['type'] === 'request' && $gate->allows('guest-requests') && $settings->quickEntry('quick_requests')) {
+        if ($read['type'] === 'lost') {
+            $this->recordLost($user, $read, $chat, $messageId, $private, $photo);
+        } elseif ($read['type'] === 'request' && $gate->allows('guest-requests') && $settings->quickEntry('quick_requests')) {
             if (! $read['room']) {
                 $this->api->send($chat, '⚠️ '.e($read['warnings'][0] ?? ''), null, $messageId);
 
@@ -125,6 +139,48 @@ class TelegramHandler
             $this->api->send($chat, '🛠 <b>'.e(__('Sepertinya kendala')).'</b> · '.e(__('Kamar').' '.$read['room']->number).($read['category'] ? ' · '.e($read['category']->name) : '')
                 ."\n".e(__('Catat sebagai kendala?')), [[['text' => __('Catat kendala'), 'callback_data' => 'ik:rec:'.$token], ['text' => __('Abaikan'), 'callback_data' => 'ik:no:'.$token]]], $messageId);
         }
+    }
+
+    /** Barang tertinggal ("1203 dompet tertinggal", boleh dengan foto): langsung dicatat; kartu ke grup dikirim TelegramNotifier. @param array<string, mixed> $read @param list<array<string, mixed>>|null $photo */
+    private function recordLost(User $user, array $read, int $chat, int $messageId, bool $private, ?array $photo): void
+    {
+        if (! $read['room']) {
+            $this->api->send($chat, '⚠️ '.e($read['warnings'][0] ?? ''), null, $messageId);
+
+            return;
+        }
+        $path = null;
+        if ($photo && ($bytes = $this->api->download((string) end($photo)['file_id']))) {
+            try {
+                $path = LostItemController::storePhoto(PhotoReencoder::fromString($bytes));
+            } catch (\Throwable) {
+                // bukan gambar yang bisa dibaca: dicatat tanpa foto
+            }
+        }
+        $item = LostItem::create([
+            'room_id' => $read['room']->id, 'description' => $read['description'] ?? __('Barang tertinggal (lihat foto)'), 'photo_path' => $path,
+            'found_by' => $user->id, 'found_at' => now(), 'status' => LostItem::STATUS_STORED, 'source' => 'telegram',
+        ]);
+        TelegramCard::create(['chat_id' => $chat, 'message_id' => $messageId, 'origin' => true, 'lost_item_id' => $item->id]);
+        if ($private || (string) $chat !== (string) config('services.telegram.chat_id')) {
+            $this->api->send($chat, '✅ '.e(__('Dicatat: barang tertinggal · :place · :item', ['place' => $item->placeTitle(), 'item' => $item->description])), null, $messageId);
+        }
+    }
+
+    /** Balasan pada kartu barang tertinggal: ubah status (diambil / dikirim wajib dengan nama penerima / resi). */
+    private function lostStatus(User $user, TelegramCard $card, string $status, string $note, int $chat, int $messageId): void
+    {
+        $item = LostItem::find($card->lost_item_id);
+        $needsNote = in_array($status, ['diambil', 'dikirim'], true) && $note === '';
+        if (! $item || $needsNote) {
+            $this->api->send($chat, $needsNote ? '⚠️ '.e(__('Tulis nama penerima / nomor resi, mis. "diambil Mr. Smith".')) : e(__('Barang tidak ditemukan.')), null, $messageId);
+
+            return;
+        }
+        $resolved = $status !== LostItem::STATUS_STORED;
+        $item->update(['status' => $status, 'resolution_note' => $note ?: null, 'resolved_by' => $resolved ? $user->id : null, 'resolved_at' => $resolved ? now() : null]);
+        $this->notifier->refreshNow($item);
+        $this->api->call('setMessageReaction', ['chat_id' => $chat, 'message_id' => $messageId, 'reaction' => [['type' => 'emoji', 'emoji' => '👍']]]);
     }
 
     /** @param array<string, mixed> $q */
@@ -249,6 +305,7 @@ class TelegramHandler
         return '<b>'.e(__('Bot eL Checklist')).'</b>'
             ."\n".e(__('Ketik seperti biasa di grup: "1206 req 2 mineral water" dicatat sebagai permintaan tamu, "305 AC tidak dingin" ditawarkan sebagai kendala.'))
             ."\n".e(__('Balas kartu atau pesan permintaan dengan "copy" (Saya ambil) atau "done" (Selesai), atau ketuk tombolnya.'))
-            ."\n".e(__('Perintah: /daftar (belum selesai + siapa yang mengambil), /respon (kecepatan hari ini), /anggota (siapa sudah tertaut; HR / Admin).'));
+            ."\n".e(__('Barang tertinggal: kirim foto dengan keterangan "1203 dompet hitam tertinggal"; ubah statusnya dengan membalas kartu: "diambil Mr. Smith", "dikirim resi JNE123", "dilepas".'))
+            ."\n".e(__('Perintah: /daftar (belum selesai + siapa yang mengambil), /respon (kecepatan hari ini), /tertinggal (barang disimpan), /anggota (siapa sudah tertaut; HR / Admin).'));
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\GuestRequest;
+use App\Models\LostItem;
 use App\Models\RoomIssue;
 use App\Telegram\TelegramNotifier;
 use Closure;
@@ -25,8 +26,8 @@ class RefreshTelegramCards
         if ($request->isMethodSafe() || $response->getStatusCode() >= 400 || blank(config('services.telegram.token'))) {
             return;
         }
-        $model = $request->route('guestRequest') ?? $request->route('issue');
-        if ($model instanceof GuestRequest || $model instanceof RoomIssue) {
+        $model = $request->route('guestRequest') ?? $request->route('issue') ?? $request->route('item');
+        if ($model instanceof GuestRequest || $model instanceof RoomIssue || $model instanceof LostItem) {
             app(TelegramNotifier::class)->refreshNow($model);
         }
     }

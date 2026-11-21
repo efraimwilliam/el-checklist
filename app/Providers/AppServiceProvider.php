@@ -87,6 +87,7 @@ class AppServiceProvider extends ServiceProvider
         // Kartu di grup Telegram (bila bot dikonfigurasi): satu kartu per permintaan / kendala baru, diperbarui tempat statusnya berubah.
         RoomIssue::created(fn (RoomIssue $issue) => app(\App\Telegram\TelegramNotifier::class)->post($issue));
         GuestRequest::created(fn (GuestRequest $request) => app(\App\Telegram\TelegramNotifier::class)->post($request));
+        \App\Models\LostItem::created(fn (\App\Models\LostItem $item) => app(\App\Telegram\TelegramNotifier::class)->post($item));
         // Obrolan pekerjaan: hanya bila Administrator menyalakannya (Pengaturan); hak per percakapan ada di ChatThreadPolicy.
         Gate::define('chat', fn (User $user) => $user->canUseApp() && $feature('obrolan'));
         Gate::policy(ChatThread::class, ChatThreadPolicy::class);

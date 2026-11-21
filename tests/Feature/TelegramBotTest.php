@@ -239,3 +239,21 @@ it('pelapor tidak bisa mengambil permintaannya sendiri lewat tombol', function (
     $this->postJson('/api/telegram/webhook', tgClick(222, 'rq:claim:'.$r->id), ['X-Telegram-Bot-Api-Secret-Token' => 'rahasia'])->assertOk();
     expect($r->fresh()->status)->toBe('baru');
 });
+
+it('mencatat barang tertinggal dari teks / foto berketerangan dan mengubah statusnya lewat balasan kartu', function () {
+    $post = fn (array $body) => $this->postJson('/api/telegram/webhook', $body, ['X-Telegram-Bot-Api-Secret-Token' => 'rahasia'])->assertOk();
+
+    $post(tgMessage(222, '1206 dompet hitam tertinggal'));
+    $post(tgMessage(222, '1206 charger tertinggal', ['photo' => [['file_id' => 'f1'], ['file_id' => 'f2']], 'message_id' => 501]));
+    expect(\App\Models\LostItem::count())->toBe(2);
+    $item = \App\Models\LostItem::first();
+    expect($item->description)->toContain('dompet')->and($item->source)->toBe('telegram')->and($item->status)->toBe('disimpan');
+    expect(collect(tgCalls())->where('method', 'sendMessage')->pluck('data.text')->join(' '))->toContain('🧳');
+
+    $card = TelegramCard::where('lost_item_id', $item->id)->where('origin', true)->first();
+    $reply = fn (string $text) => $post(tgMessage(111, $text, ['reply_to_message' => ['message_id' => $card->message_id]]));
+    $reply('diambil');
+    expect($item->fresh()->status)->toBe('disimpan'); // wajib nama penerima
+    $reply('diambil Mr. Smith');
+    expect($item->fresh())->status->toBe('diambil')->resolution_note->toBe('Mr. Smith');
+});
