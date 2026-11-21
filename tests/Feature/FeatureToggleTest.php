@@ -87,14 +87,14 @@ it('closes Chronology Report and the Laporan menu when they are off', function (
     $this->get(route('dashboard'))->assertOk()->assertDontSee(route('chronology.index'), false)->assertDontSee(route('laporan.index'), false);
 });
 
-it('groups Kendala, Permintaan tamu, and Chronology Report under one Operasional menu, or one link when only one is on', function () {
+it('groups Kendala, Permintaan tamu, and Chronology Report under one Operasional menu, or a single link when only one item is left', function () {
     loggedIn(featureUser());
 
     $this->get(route('checklists.index'))->assertOk()->assertSee('Operasional')
         ->assertSee(route('kamar.issues.index'), false)->assertSee(route('permintaan.index'), false)->assertSee(route('chronology.index'), false);
 
     turnOff('kendala', 'chronology');
-    $this->get(route('checklists.index'))->assertOk()->assertDontSee('Operasional')->assertSee(route('permintaan.index'), false)
+    $this->get(route('checklists.index'))->assertOk()->assertSee('Operasional')->assertSee(route('permintaan.index'), false)->assertSee(route('lost.index'), false)
         ->assertDontSee(route('kamar.issues.index'), false)->assertDontSee(route('chronology.index'), false);
 });
 

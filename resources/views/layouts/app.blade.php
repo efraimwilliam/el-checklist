@@ -49,9 +49,10 @@
     @php($serviceItems = array_values(array_filter([
         $canIssues ? ['route' => 'kamar.issues.index', 'active' => ['kamar.*'], 'label' => __('Kendala'), 'count' => $newIssues] : null,
         $canRequests ? ['route' => 'permintaan.index', 'active' => ['permintaan.*'], 'label' => __('Permintaan tamu'), 'count' => $newRequests] : null,
+        \Illuminate\Support\Facades\Gate::allows('lost-found') ? ['route' => 'lost.index', 'active' => ['lost.*'], 'label' => __('Barang tertinggal'), 'count' => 0] : null,
         \Illuminate\Support\Facades\Gate::allows('chronology-reports') ? ['route' => 'chronology.index', 'active' => ['chronology.*'], 'label' => 'Chronology Report', 'count' => 0] : null,
     ])))
-    @php($serviceActive = request()->routeIs('kamar.*', 'permintaan.*', 'chronology.*'))
+    @php($serviceActive = request()->routeIs('kamar.*', 'permintaan.*', 'chronology.*', 'lost.*'))
     @php($unreadChats = \Illuminate\Support\Facades\Gate::allows('chat') ? $me->unreadChatCount() : 0)
     {{-- SATU sumber menu untuk baris menu atas (komputer), panel ☰ (HP), dan navigasi bawah (HP). Menu baru cukup ditambahkan di sini.
          Entri: label, route, active, count (angka merah), items (dropdown / kelompok), children (submenu, hanya di komputer). --}}

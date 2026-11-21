@@ -25,7 +25,6 @@ class EnsureFeatureEnabled
         'chat.share-issue' => ['kendala'],
         'chronology.' => ['chronology'],
         'chat.share-chronology' => ['chronology'],
-        'lost.' => ['obrolan'],
         'laporan.' => ['laporan'],
     ];
 

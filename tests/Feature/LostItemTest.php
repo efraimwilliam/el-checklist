@@ -79,10 +79,10 @@ it('logs from the chat form and updates the status with a new card as a trail', 
         ->and(ChatMessage::where('lost_item_id', $item->id)->latest('id')->value('body'))->toContain('Diambil tamu');
 });
 
-it('is part of the chat: no menu entry, and closed when chat is off', function () {
+it('has a menu entry under Operasional and works even when chat is off', function () {
     loggedIn($this->hk);
-    $this->get(route('checklists.index'))->assertOk()->assertDontSee(route('lost.index'), false);
+    $this->get(route('checklists.index'))->assertOk()->assertSee(route('lost.index'), false);
 
     app(ChecklistSettings::class)->put('chat_enabled', '0');
-    $this->get(route('lost.index'))->assertNotFound();
+    $this->get(route('lost.index'))->assertOk();
 });

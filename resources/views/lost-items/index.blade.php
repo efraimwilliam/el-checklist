@@ -9,7 +9,7 @@
         $keep = array_filter(['obrolan' => $chatThreadId, 'q' => $search]);
     @endphp
 
-    <x-ui.page-header :title="'🧳 '.__('Barang tertinggal')" :subtitle="__('Dicatat dan diperbarui dari obrolan: ketik /t, pilih di menu lampiran, atau kirim foto berketerangan mis. 1203 tertinggal.')">
+    <x-ui.page-header :title="'🧳 '.__('Barang tertinggal')" :subtitle="__('Daftar barang yang ditemukan. Bisa dicatat dari sini, dari obrolan (/t), atau dari grup Telegram: kirim foto berketerangan mis. 1203 dompet tertinggal.')">
         <x-slot:actions>
             @if ($chatThreadId)<button type="button" data-chat-tool-close class="btn-secondary btn-sm">{{ __('Tutup') }}</button>@endif
         </x-slot:actions>
