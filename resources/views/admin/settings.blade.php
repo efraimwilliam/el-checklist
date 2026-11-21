@@ -38,6 +38,12 @@
                 </a>
             @endcan
             @can('manage-access')
+                <a href="#telegram" data-tab-link="telegram" class="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 3L2 11l7 3 3 7 4-6 6-12z"/></svg>
+                    {{ __('Bot Telegram') }}
+                </a>
+            @endcan
+            @can('manage-access')
                 <a href="#aturan" data-tab-link="aturan" class="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
                     {{ __('Aturan checklist') }}
@@ -171,6 +177,22 @@
                                     <option value="{{ $department->id }}" @selected($quickOtherDepartmentId === $department->id)>{{ $department->name }}</option>
                                 @endforeach
                             </select>
+                        </div>
+                        <div class="flex justify-end border-t border-slate-100 pt-5">
+                            <button class="btn-primary">{{ __('Simpan bagian ini') }}</button>
+                        </div>
+                    </form>
+                </section>
+            @endcan
+            @can('manage-access')
+                <section id="telegram" data-tab-panel class="p-6 sm:p-8">
+                    <h2 class="text-section">{{ __('Bot Telegram') }}</h2>
+                    <form method="POST" action="{{ route('admin.settings.telegram.update') }}" class="mt-4 space-y-4">
+                        @csrf @method('PUT')
+                        <div>
+                            <label for="help-video" class="font-semibold text-slate-900">{{ __('Video panduan (YouTube)') }}</label>
+                            <p class="mt-1 text-sm text-slate-500">{{ __('Tautan ini ikut tampil di balasan /bantuan dan pesan sambutan bot (dengan pratinjau video). Kosongkan untuk menyembunyikan. Bisa diganti kapan saja.') }}</p>
+                            <input id="help-video" name="help_video" type="url" value="{{ old('help_video', $telegramHelpVideo) }}" maxlength="300" placeholder="https://youtu.be/..." class="input mt-2 w-full">
                         </div>
                         <div class="flex justify-end border-t border-slate-100 pt-5">
                             <button class="btn-primary">{{ __('Simpan bagian ini') }}</button>

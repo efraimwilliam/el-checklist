@@ -83,7 +83,7 @@ class TelegramHandler
             return; // foto tanpa keterangan dan bukan balasan kartu kendala
         }
         if ($private && in_array(strtolower(explode('@', $text)[0]), ['/bantuan', '/help'], true)) {
-            $this->api->send($chat, $this->help());
+            $this->api->send($chat, $this->help(), null, null, true);
 
             return;
         }
@@ -416,7 +416,7 @@ class TelegramHandler
         // Tautan buatan HR (Kelola > Tautan Telegram): tersimpan di basis data, sekali pakai.
         $userId ??= $code !== '' ? User::where('telegram_link_code', $code)->where('telegram_link_expires_at', '>', now())->value('id') : null;
         if (! $userId) {
-            $this->api->send($chat, $code === '' ? $this->help() : e(__('Kode tidak berlaku. Buat kode baru di aplikasi > Profil > Hubungkan Telegram.')));
+            $this->api->send($chat, $code === '' ? $this->help() : e(__('Kode tidak berlaku. Buat kode baru di aplikasi > Profil > Hubungkan Telegram.')), null, null, true);
 
             return;
         }
@@ -433,7 +433,7 @@ class TelegramHandler
         }
         $user->update(['telegram_id' => $from]);
         User::whereKey($user->id)->update(['telegram_link_code' => null, 'telegram_link_expires_at' => null]);
-        $this->api->send($chat, '✅ '.e(__('Terhubung sebagai :name.', ['name' => $user->name()]))."\n\n".$this->help());
+        $this->api->send($chat, '✅ '.e(__('Terhubung sebagai :name.', ['name' => $user->name()]))."\n\n".$this->help(), null, null, true);
     }
 
     private function user(int $telegramId): ?User
@@ -445,7 +445,9 @@ class TelegramHandler
 
     private function help(): string
     {
-        return '<b>'.e(__('Bot eL Checklist')).'</b>'
+        $video = app(ChecklistSettings::class)->get('telegram_help_video');
+
+        return ($video ? '▶️ '.e(__('Video panduan')).': '.e($video)."\n\n" : '').'<b>'.e(__('Bot eL Checklist')).'</b>'
             ."\n".e(__('Ketik seperti biasa di grup: "1206 req 2 mineral water" dicatat sebagai permintaan tamu, "305 AC tidak dingin" ditawarkan sebagai kendala.'))
             ."\n".e(__('Balas kartu atau pesan permintaan dengan "copy" (Saya ambil) atau "done" (Selesai), atau ketuk tombolnya.'))
             ."\n".e(__('Foto bukti pekerjaan kendala: balas kartu kendala dengan foto (keterangan boleh diisi; "done" sekaligus menyelesaikan). Hanya yang mengambil kendala itu.'))

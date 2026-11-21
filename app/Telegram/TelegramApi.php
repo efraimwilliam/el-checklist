@@ -44,10 +44,10 @@ class TelegramApi
     }
 
     /** @param list<list<array{text: string, callback_data: string}>>|null $keyboard @return array<string, mixed>|null */
-    public function send(int|string $chatId, string $html, ?array $keyboard = null, ?int $replyTo = null): ?array
+    public function send(int|string $chatId, string $html, ?array $keyboard = null, ?int $replyTo = null, bool $preview = false): ?array
     {
         return $this->call('sendMessage', array_filter([
-            'chat_id' => $chatId, 'text' => $html, 'parse_mode' => 'HTML', 'disable_web_page_preview' => true,
+            'chat_id' => $chatId, 'text' => $html, 'parse_mode' => 'HTML', 'disable_web_page_preview' => ! $preview,
             'reply_markup' => $keyboard !== null ? ['inline_keyboard' => $keyboard] : null,
             'reply_parameters' => $replyTo ? ['message_id' => $replyTo, 'allow_sending_without_reply' => true] : null,
         ], fn ($value) => $value !== null));

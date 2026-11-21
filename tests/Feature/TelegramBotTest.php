@@ -442,3 +442,19 @@ it('mendaftarkan menu perintah "/" untuk grup dan chat pribadi', function () {
         ->and($calls[0]['data']['scope']['type'])->toBe('all_group_chats')->and(collect($calls[0]['data']['commands'])->pluck('command')->all())->not->toContain('checklist')
         ->and($calls[1]['data']['scope']['type'])->toBe('all_private_chats')->and(collect($calls[1]['data']['commands'])->pluck('command')->all())->toContain('checklist', 'chronology');
 });
+
+it('Administrator mengatur tautan video YouTube yang ikut di /bantuan', function () {
+    $admin = User::factory()->role(Role::Admin)->create(['employee_id' => Employee::factory()->for($this->fo)->create()->id]);
+    loggedIn($admin);
+    $this->put(route('admin.settings.telegram.update'), ['help_video' => 'https://evil.example.com/x'])->assertSessionHasErrors('help_video');
+    $this->put(route('admin.settings.telegram.update'), ['help_video' => 'https://youtu.be/abc123'])->assertSessionHasNoErrors();
+
+    Http::swap(new \Illuminate\Http\Client\Factory(app('events'))); // loggedIn() memalsukan Http sendiri
+    Http::fake(['api.telegram.org/*' => Http::response(['ok' => true, 'result' => ['message_id' => 900, 'chat' => ['id' => 111]]])]);
+    $this->postJson('/api/telegram/webhook', tgMessage(111, '/bantuan', [], 111), ['X-Telegram-Bot-Api-Secret-Token' => 'rahasia'])->assertOk();
+    $help = collect(tgCalls())->where('method', 'sendMessage')->last()['data'];
+    expect($help['text'])->toContain('https://youtu.be/abc123')->and($help['disable_web_page_preview'])->toBeFalse();
+
+    $this->put(route('admin.settings.telegram.update'), ['help_video' => ''])->assertSessionHasNoErrors();
+    expect(app(\App\Checklists\ChecklistSettings::class)->get('telegram_help_video'))->toBeNull();
+});

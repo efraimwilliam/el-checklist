@@ -201,6 +201,7 @@ Route::middleware(['auth', EnsureActiveSession::class, VerifySsoSession::class])
         Route::put('/pengaturan/aturan', [SettingsController::class, 'updateRules'])->name('settings.rules.update');
         Route::put('/pengaturan/fitur', [SettingsController::class, 'updateFeatures'])->name('settings.features.update');
         Route::put('/pengaturan/ketik-bebas', [SettingsController::class, 'updateQuickEntry'])->name('settings.quick.update');
+        Route::put('/pengaturan/telegram', [SettingsController::class, 'updateTelegram'])->name('settings.telegram.update');
         Route::get('/kamus-ketik', [QuickTermController::class, 'index'])->name('quick-terms.index');
         Route::post('/kamus-ketik', [QuickTermController::class, 'store'])->name('quick-terms.store');
         Route::post('/kamus-ketik/jenis', [QuickTermController::class, 'storeKind'])->name('quick-terms.kinds.store');

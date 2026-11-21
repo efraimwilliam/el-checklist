@@ -34,6 +34,7 @@ class SettingsController extends Controller
             'quickTermCount' => \App\Models\QuickTerm::count(),
             'quickStates' => collect(ChecklistSettings::QUICK_ENTRY)->map(fn ($option, $key) => $settings->get($key) !== '0')->all(),
             'quickOtherDepartmentId' => $settings->quickOtherDepartmentId(),
+            'telegramHelpVideo' => $settings->get('telegram_help_video'),
             'allDepartments' => Department::where('is_active', true)->orderBy('sort')->orderBy('name')->get(),
             'defaultRequestDepartmentId' => \App\Models\GuestRequest::defaultDepartmentId(),
             'featureStates' => collect(ChecklistSettings::FEATURES)->map(fn ($feature, $key) => $settings->featureEnabled($key))->all(),
@@ -77,6 +78,18 @@ class SettingsController extends Controller
         \App\Models\GuestRequest::kinds()->refresh();
 
         return redirect()->to(route('admin.settings.edit').'#ketik')->with('status', __('Pengaturan ketik bebas disimpan.'));
+    }
+
+    /** Bot Telegram (Administrator): tautan video panduan YouTube yang ikut dalam balasan /bantuan. Kosong = tanpa video. */
+    public function updateTelegram(Request $request, ChecklistSettings $settings): RedirectResponse
+    {
+        Gate::authorize('manage-access');
+        $data = $request->validate(['help_video' => ['nullable', 'string', 'max:300', 'regex:~^https://((www|m)\.)?(youtube\.com|youtu\.be)/\S+$~i']], [
+            'help_video.regex' => __('Isi tautan YouTube (https://youtu.be/... atau https://www.youtube.com/...).'),
+        ]);
+        $settings->put('telegram_help_video', filled($data['help_video'] ?? null) ? trim($data['help_video']) : null);
+
+        return redirect()->to(route('admin.settings.edit').'#telegram')->with('status', __('Pengaturan Telegram disimpan.'));
     }
 
     public function update(Request $request, ChecklistSettings $settings): RedirectResponse
