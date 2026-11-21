@@ -35,4 +35,5 @@
             <button class="btn-primary">{{ __('Simpan password') }}</button>
         </div>
     </form>
+    @include('account.partials.telegram')
 </x-app-layout>

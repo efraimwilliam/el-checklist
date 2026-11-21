@@ -84,6 +84,9 @@ class AppServiceProvider extends ServiceProvider
         // Chronology Report (laporan kejadian tamu): semua pengguna berakses boleh membuat; hak per laporan ada di ChronologyReportPolicy.
         Gate::define('chronology-reports', fn (User $user) => $user->canUseApp() && $feature('chronology'));
         Gate::policy(ChronologyReport::class, ChronologyReportPolicy::class);
+        // Kartu di grup Telegram (bila bot dikonfigurasi): satu kartu per permintaan / kendala baru, diperbarui tempat statusnya berubah.
+        RoomIssue::created(fn (RoomIssue $issue) => app(\App\Telegram\TelegramNotifier::class)->post($issue));
+        GuestRequest::created(fn (GuestRequest $request) => app(\App\Telegram\TelegramNotifier::class)->post($request));
         // Obrolan pekerjaan: hanya bila Administrator menyalakannya (Pengaturan); hak per percakapan ada di ChatThreadPolicy.
         Gate::define('chat', fn (User $user) => $user->canUseApp() && $feature('obrolan'));
         Gate::policy(ChatThread::class, ChatThreadPolicy::class);

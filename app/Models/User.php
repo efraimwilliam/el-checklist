@@ -18,7 +18,7 @@ class User extends Authenticatable
 {
     use HasApiTokens, HasFactory;
 
-    protected $fillable = ['employee_id', 'role', 'position_id', 'is_active', 'last_login_at'];
+    protected $fillable = ['employee_id', 'telegram_id', 'role', 'position_id', 'is_active', 'last_login_at'];
 
     // Tidak ada kolom remember_token. Password hanya ada untuk akun sistem (lihat checklist:admin-lokal).
     protected $rememberTokenName = '';

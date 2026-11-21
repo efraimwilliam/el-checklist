@@ -68,4 +68,7 @@
             <button class="btn-primary">{{ __('Simpan ke Sistem Absensi') }}</button>
         </div>
     </form>
+    @if (! isset($self) || $self)
+        @include('account.partials.telegram')
+    @endif
 </x-app-layout>

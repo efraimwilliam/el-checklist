@@ -652,6 +652,18 @@ Tanpa berkas ini aplikasi tetap jalan, hanya tanpa notifikasi.
 
 **Notifikasi tidak masuk?** Jalankan `sudo -u www-data php artisan aplikasi:cek-notif <username> --kirim`: perintah ini menunjukkan apakah berkas Firebase terbaca, fitur menyala, HP orang itu sudah login dan memberi token (login aplikasi berlaku 12 jam, sesudah itu harus login lagi), lalu mengirim notifikasi uji dan menampilkan jawaban Firebase. Server harus bisa menghubungi `oauth2.googleapis.com` dan `fcm.googleapis.com` (HTTPS keluar). Lokasi lain: `.env` `FCM_CREDENTIALS=/path/ke/berkas.json`. Berkas ini ikut dicadangkan bersama `storage` (bagian 11); bila bocor, hapus kuncinya di konsol Firebase (Project settings > Service accounts) dan buat yang baru.
 
+## 13c. Bot Telegram (opsional)
+
+Antarmuka tambahan: permintaan tamu / kendala bisa diketik di grup Telegram, kartunya punya tombol Saya ambil / Selesai, dan membalas "copy" / "done" bekerja seperti di WhatsApp. Aplikasi tetap pusat datanya.
+
+1. Di Telegram buka **@BotFather** > `/newbot` > catat **token** dan **username** bot. Lalu `/setprivacy` > pilih bot > **Disable** (supaya bot bisa membaca pesan grup).
+2. Buat grup (atau pakai grup Room Division), tambahkan bot, jadikan **admin**. Ambil id grup (kirim satu pesan di grup, lalu buka `https://api.telegram.org/bot<TOKEN>/getUpdates` dan lihat `chat.id`, biasanya diawali `-100`).
+3. Di `.env` server: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME` (tanpa @), `TELEGRAM_CHAT_ID` (id grup; kosong = tanpa kartu otomatis), dan `TELEGRAM_WEBHOOK_SECRET` (acak, huruf / angka / `_` / `-`, mis. `openssl rand -hex 24`). Lalu `php artisan config:clear` dan `php artisan migrate --force`.
+4. Pasang webhook (butuh HTTPS publik): `php artisan telegram:webhook https://domain-aplikasi`. Perintah tanpa argumen menampilkan status (alamat, update menunggu, galat terakhir); `--hapus` melepasnya.
+5. Tiap pegawai: aplikasi > **Profil** > **Hubungkan Telegram** > ketuk tombol > tekan Start. Akun yang belum tertaut diabaikan di grup.
+
+Catatan: pesan grup dan nama tamu lewat server Telegram (bukan end-to-end). Obrolan bawaan aplikasi tetap jalan; matikan lewat Pengaturan > Fitur bila sudah pindah penuh.
+
 ## 13b. Menerbitkan aplikasi Android versi baru
 
 Aplikasi di HP mengecek versi terbaru saat dibuka dan menawarkan **Perbarui** (staff cukup menekan Perbarui lalu Instal; data dan login tetap).

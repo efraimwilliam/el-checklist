@@ -940,5 +940,15 @@
     "Kirim sebagai balasan biasa": "Send as a normal reply",
     "Selesaikan tugas (balasan)": "Complete task (reply)",
     "Membalas kartu Permintaan tamu / Kendala hanya dengan salah satu kata ini = Selesai (kendala yang belum diambil ikut diambil dulu), mis. \"done\", \"sudah\".": "Replying to a Guest request / Issue card with only one of these words = Done (an issue not yet taken is taken first), e.g. \"done\", \"sudah\".",
-    "Ketuk kartu ini untuk membuka form Catat kendala (sudah terisi). Shift + Enter = langsung catat. Enter = kirim sebagai pesan biasa.": "Tap this card to open the Log issue form (already filled in). Shift + Enter = log it right away. Enter = send as a normal message."
+    "Ketuk kartu ini untuk membuka form Catat kendala (sudah terisi). Shift + Enter = langsung catat. Enter = kirim sebagai pesan biasa.": "Tap this card to open the Log issue form (already filled in). Shift + Enter = log it right away. Enter = send as a normal message.",
+    "Telegram": "Telegram",
+    "Hubungkan Telegram": "Connect Telegram",
+    "Putuskan Telegram": "Disconnect Telegram",
+    "Buka Telegram": "Open Telegram",
+    "Telegram diputuskan.": "Telegram disconnected.",
+    "Putuskan Telegram dari akun ini?": "Disconnect Telegram from this account?",
+    "Akun Telegram Anda terhubung. Permintaan dan kendala yang Anda ketik di grup dicatat atas nama Anda, dan tombol di kartu memakai hak akses Anda.": "Your Telegram account is connected. Requests and issues you type in the group are logged in your name, and the card buttons use your permissions.",
+    "Ketuk tombol di bawah, lalu tekan Start di Telegram. Kode berlaku 10 menit dan sekali pakai.": "Tap the button below, then press Start in Telegram. The code is valid for 10 minutes and works once.",
+    "Tidak ada tombol? Kirim teks di atas ke bot secara pribadi.": "No button? Send the text above to the bot in a private chat.",
+    "Hubungkan Telegram supaya Anda bisa mengetik permintaan / kendala dan menekan tombol Saya ambil / Selesai langsung dari grup.": "Connect Telegram so you can type requests / issues and tap I'll take it / Done right from the group."
 }

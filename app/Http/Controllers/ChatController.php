@@ -538,15 +538,8 @@ class ChatController extends Controller
             $read = app(QuickEntry::class)->read($body);
             if ($read['type'] === 'request' && $read['room']) {
                 // Tiap jenis ke departemennya (bawaan Housekeeping); "Lainnya" boleh diganti di pratinjau (`departemen`).
-                $otherDepartmentId = \App\Models\Department::where('is_active', true)->whereKey((int) $request->input('departemen'))->value('id')
-                    ?? GuestRequest::kinds()->departmentFor('other');
-                foreach ($read['items'] as $index => $item) {
-                    $guestRequest = GuestRequest::create([
-                        'room_id' => $read['room']->id, 'kind' => $item['kind'], 'item_name' => $item['name'] ?? null,
-                        'quantity' => GuestRequest::kinds()->hasQuantity($item['kind']) ? $item['quantity'] : 1,
-                        'note' => mb_substr($body, 0, 500), 'priority' => $read['priority'], 'source' => 'chat', 'requested_by' => $me->id,
-                        'assigned_department_id' => $item['kind'] === 'other' ? $otherDepartmentId : GuestRequest::kinds()->departmentFor($item['kind']), 'status' => GuestRequest::STATUS_NEW,
-                    ]);
+                $created = app(\App\Chat\QuickRecorder::class)->requests($me, $read, $body, (int) $request->input('departemen'));
+                foreach ($created as $index => $guestRequest) {
                     if ($index === 0) {
                         $message->update(['guest_request_id' => $guestRequest->id]);
                     } else {
@@ -819,33 +812,10 @@ class ChatController extends Controller
         return redirect()->route('chat.show', $thread);
     }
 
-    /** Catat kendala dari ketik bebas. Kendala serupa yang belum selesai (kamar + kategori sama) menerima laporan tambahan, bukan kendala ganda. */
+    /** Catat kendala dari ketik bebas (aturan di App\Chat\QuickRecorder, dipakai juga bot Telegram). */
     private function recordIssue(User $user, array $read, string $text): RoomIssue
     {
-        $roomId = $read['room']->id;
-        $categoryId = $read['category']?->id;
-        $note = fn (RoomIssue $issue, string $body, string $kind, ?int $related = null) => RoomIssueUpdate::create([
-            'room_issue_id' => $issue->id, 'user_id' => $user->id, 'department_id' => $user->checklistDepartmentId(), 'body' => $body, 'kind' => $kind, 'related_issue_id' => $related,
-        ]);
-
-        if ($duplicate = RoomIssue::openDuplicate($roomId, null, $categoryId)) {
-            $note($duplicate, __('Laporan lagi (:source): :text', ['source' => RoomIssue::sourceLabels()['staff'], 'text' => mb_substr($text, 0, 2000)]), 'laporan');
-            $read['priority'] === 'mendesak' && $duplicate->priority !== 'mendesak' ? $duplicate->update(['priority' => 'mendesak']) : $duplicate->touch();
-
-            return $duplicate;
-        }
-
-        $issue = RoomIssue::create([
-            'room_id' => $roomId, 'category_id' => $categoryId, 'source' => 'staff', 'priority' => $read['priority'],
-            'recurrence' => RoomIssue::nextRecurrence($roomId, null, $categoryId), 'description' => mb_substr($text, 0, 2000), 'reported_by' => $user->id,
-            'assigned_department_id' => $categoryId ? $read['category']->department_id : null, 'status' => RoomIssue::STATUS_NEW,
-        ]);
-        if ($issue->recurrence > 1) {
-            RoomIssue::atPlace($roomId, null)->where('category_id', $categoryId)->whereKeyNot($issue->id)->orderByDesc('created_at')->first()
-                ?->updates()->create(['body' => __('Muncul lagi sebagai kendala #:id (Berulang ke-:n).', ['id' => $issue->id, 'n' => $issue->recurrence]), 'kind' => 'berulang', 'related_issue_id' => $issue->id]);
-        }
-
-        return $issue;
+        return app(\App\Chat\QuickRecorder::class)->issue($user, $read, $text);
     }
 
     private function post(ChatThread $thread, User $user, ?string $body, ?string $photo = null, ?int $replyTo = null, string $type = 'text'): ChatMessage

@@ -34,6 +34,14 @@ return [
         'credentials' => env('FCM_CREDENTIALS', storage_path('app/private/firebase/service-account.json')),
     ],
 
+    // Bot Telegram (antarmuka tambahan untuk permintaan / kendala; lihat App\Telegram). Kosong = mati.
+    'telegram' => [
+        'token' => env('TELEGRAM_BOT_TOKEN'),
+        'secret' => env('TELEGRAM_WEBHOOK_SECRET'), // dikirim Telegram di header X-Telegram-Bot-Api-Secret-Token
+        'username' => env('TELEGRAM_BOT_USERNAME'),
+        'chat_id' => env('TELEGRAM_CHAT_ID'), // grup tujuan kartu permintaan / kendala baru; kosong = tanpa kartu otomatis
+    ],
+
     'sso' => [
         'enabled' => (bool) env('SSO_ENABLED', true),
         'portal_url' => rtrim((string) env('SSO_PORTAL_URL'), '/'),

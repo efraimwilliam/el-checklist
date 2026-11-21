@@ -15,7 +15,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->web(append: [SetLocale::class, EnsureFeatureEnabled::class]);
+        $middleware->web(append: [SetLocale::class, EnsureFeatureEnabled::class, \App\Http\Middleware\RefreshTelegramCards::class]);
+        $middleware->api(append: [\App\Http\Middleware\RefreshTelegramCards::class]);
         $middleware->redirectGuestsTo(fn () => route('login'));
         $middleware->redirectUsersTo(fn () => route('home'));
     })

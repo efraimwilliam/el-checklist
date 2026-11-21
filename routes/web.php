@@ -172,6 +172,8 @@ Route::middleware(['auth', EnsureActiveSession::class, VerifySsoSession::class])
     Route::get('/tim/daftar/ekspor.xlsx', [TaskCatalogImportController::class, 'export'])->name('team.catalog.export');
     Route::get('/tim/daftar/impor', [TaskCatalogImportController::class, 'create'])->name('team.catalog.import');
     Route::post('/tim/daftar/impor', [TaskCatalogImportController::class, 'preview'])->name('team.catalog.import.preview');
+    Route::post('/profil/telegram', [\App\Http\Controllers\TelegramController::class, 'code'])->name('telegram.code');
+    Route::delete('/profil/telegram', [\App\Http\Controllers\TelegramController::class, 'unlink'])->name('telegram.unlink');
     Route::post('/tim/daftar/impor/simpan', [TaskCatalogImportController::class, 'apply'])->name('team.catalog.import.apply');
     Route::post('/tim/daftar/impor/batal', [TaskCatalogImportController::class, 'cancel'])->name('team.catalog.import.cancel');
     Route::get('/tim/jabatan', [TeamPositionController::class, 'edit'])->name('team.positions.edit');

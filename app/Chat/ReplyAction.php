@@ -102,6 +102,11 @@ class ReplyAction
             });
         }
 
+        // Kartu di Telegram (bila ada) ikut diperbarui, dari obrolan web maupun dari bot.
+        $notifier = app(\App\Telegram\TelegramNotifier::class);
+        $won['requests']->each(fn (GuestRequest $r) => $notifier->refresh($r));
+        $won['issue'] && $notifier->refresh($won['issue']);
+
         return $won;
     }
 

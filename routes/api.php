@@ -21,6 +21,9 @@ use App\Http\Controllers\RoomIssueController;
 use App\Http\Middleware\EnsureActiveToken;
 use Illuminate\Support\Facades\Route;
 
+// Bot Telegram: webhook tanpa login (dijaga header rahasia di controller).
+Route::post('telegram/webhook', [\App\Http\Controllers\TelegramController::class, 'webhook'])->middleware('throttle:300,1')->name('telegram.webhook');
+
 // Aplikasi Android (token Sanctum). Simpan isian / catatan / foto memakai controller web yang sama.
 Route::prefix('v1/app')->group(function () {
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
