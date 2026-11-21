@@ -142,7 +142,7 @@ class TelegramHandler
         $messageId = (int) ($q['message']['message_id'] ?? 0);
 
         if ($kind === 'ik') {
-            $this->issueButton($id, $user, $action, $key, $chat, $messageId);
+            $this->issueButton($id, $user, $action, $key, $chat, $messageId, $q['message'] ?? []);
 
             return;
         }
@@ -167,7 +167,7 @@ class TelegramHandler
         $this->api->answer($id, $this->applyAction($user, $card, $action === 'done' ? 'done' : 'claim') ? '✅' : __('Tidak bisa: sudah diambil / diselesaikan, bukan tugas Anda, atau Anda sendiri pelapornya.'), false);
     }
 
-    private function issueButton(string $callbackId, User $user, string $action, string $token, int $chat, int $messageId): void
+    private function issueButton(string $callbackId, User $user, string $action, string $token, int $chat, int $messageId, array $callbackMessage = []): void
     {
         $pending = Cache::pull(self::PENDING_CACHE.$token);
         if (! $pending || $pending['user'] !== $user->id) {
@@ -189,9 +189,11 @@ class TelegramHandler
             return;
         }
         $issue = $this->recorder->issue($user, $read, $pending['text']);
-        [$html, $keyboard] = Cards::issue($issue);
-        $this->api->edit($chat, $messageId, $html, $keyboard);
-        TelegramCard::firstOrCreate(['chat_id' => $chat, 'message_id' => $messageId], ['room_issue_id' => $issue->id]);
+        // Kartu kerja (tombol Saya ambil / Selesai) dikirim sekali oleh TelegramNotifier; pertanyaan ini hanya jadi pemberitahuan.
+        $this->api->edit($chat, $messageId, '✅ '.e(__('Kendala dicatat').' · '.$issue->placeTitle().($issue->category ? ' · '.$issue->category->name : '')));
+        // Pesan asli pengguna dikenali saat dibalas "copy" / "done".
+        $original = $callbackMessage['reply_to_message']['message_id'] ?? null;
+        $original && TelegramCard::firstOrCreate(['chat_id' => $chat, 'message_id' => $original], ['room_issue_id' => $issue->id, 'origin' => true]);
         $this->api->answer($callbackId, '✅');
     }
 
