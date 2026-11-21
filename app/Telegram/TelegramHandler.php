@@ -67,6 +67,18 @@ class TelegramHandler
 
             return;
         }
+        $command = strtolower(explode('@', explode(' ', $text)[0])[0]);
+        $reply = match ($command) {
+            '/daftar' => Reports::open(),
+            '/respon' => Reports::response(),
+            '/anggota' => Gate::forUser($user)->allows('manage-tasks') ? Reports::members() : null,
+            default => null,
+        };
+        if ($reply) {
+            $this->api->send($chat, $reply);
+
+            return;
+        }
         if (str_starts_with($text, '/')) {
             return; // perintah lain bukan untuk bot ini
         }
@@ -152,7 +164,7 @@ class TelegramHandler
             return;
         }
         $card = new TelegramCard($kind === 'rq' ? ['guest_request_id' => $model->id] : ['room_issue_id' => $model->id]);
-        $this->api->answer($id, $this->applyAction($user, $card, $action === 'done' ? 'done' : 'claim') ? '✅' : __('Tidak bisa: sudah diambil / diselesaikan atau bukan tugas Anda.'), false);
+        $this->api->answer($id, $this->applyAction($user, $card, $action === 'done' ? 'done' : 'claim') ? '✅' : __('Tidak bisa: sudah diambil / diselesaikan, bukan tugas Anda, atau Anda sendiri pelapornya.'), false);
     }
 
     private function issueButton(string $callbackId, User $user, string $action, string $token, int $chat, int $messageId): void
@@ -234,6 +246,7 @@ class TelegramHandler
     {
         return '<b>'.e(__('Bot eL Checklist')).'</b>'
             ."\n".e(__('Ketik seperti biasa di grup: "1206 req 2 mineral water" dicatat sebagai permintaan tamu, "305 AC tidak dingin" ditawarkan sebagai kendala.'))
-            ."\n".e(__('Balas kartu atau pesan permintaan dengan "copy" (Saya ambil) atau "done" (Selesai), atau ketuk tombolnya.'));
+            ."\n".e(__('Balas kartu atau pesan permintaan dengan "copy" (Saya ambil) atau "done" (Selesai), atau ketuk tombolnya.'))
+            ."\n".e(__('Perintah: /daftar (belum selesai + siapa yang mengambil), /respon (kecepatan hari ini), /anggota (siapa sudah tertaut; HR / Admin).'));
     }
 }

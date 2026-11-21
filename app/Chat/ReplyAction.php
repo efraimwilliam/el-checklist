@@ -41,8 +41,9 @@ class ReplyAction
         $gate = Gate::forUser($user);
 
         return [
-            'requests' => $requests->filter(fn (GuestRequest $r) => $gate->allows($action === 'done' ? 'complete' : 'claim', $r))->values(),
-            'issue' => $issue && ($gate->allows('claim', $issue) || ($action === 'done' && $gate->allows('work', $issue))) ? $issue : null,
+            // Pelapor tidak mengambil / menyelesaikan laporannya sendiri (berlaku untuk balasan obrolan dan bot Telegram).
+            'requests' => $requests->filter(fn (GuestRequest $r) => $r->requested_by !== $user->id && $gate->allows($action === 'done' ? 'complete' : 'claim', $r))->values(),
+            'issue' => $issue && $issue->reported_by !== $user->id && ($gate->allows('claim', $issue) || ($action === 'done' && $gate->allows('work', $issue))) ? $issue : null,
         ];
     }
 

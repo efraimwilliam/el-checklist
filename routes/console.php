@@ -30,3 +30,6 @@ Schedule::call(fn () => Cache::forever(SystemHealth::SCHEDULER_CACHE, now()->toI
 
 // Ringkasan harian untuk laporan bulanan (menghitung ulang 7 hari terakhir).
 Schedule::command('laporan:snapshot')->dailyAt('03:50')->withoutOverlapping();
+
+// Pengingat permintaan tamu yang belum diambil ke grup Telegram (15 / 30 menit).
+Schedule::command('telegram:eskalasi')->everyMinute()->withoutOverlapping();

@@ -193,3 +193,49 @@ it('polls Telegram for updates (no public URL needed), handles them, and moves t
     $offsets = collect(tgCalls())->where('method', 'getUpdates')->pluck('data.offset');
     expect($offsets->last())->toBe(42);
 });
+
+it('mengingatkan di kartu bila permintaan belum diambil 15 lalu 30 menit, sekali per tingkat', function () {
+    $r = GuestRequest::create(['room_id' => $this->room->id, 'kind' => 'towel', 'status' => 'baru', 'priority' => 'biasa', 'requested_by' => $this->foUser->id]);
+    TelegramCard::create(['chat_id' => TG_GROUP, 'message_id' => 900, 'guest_request_id' => $r->id]);
+
+    $this->artisan('telegram:eskalasi');
+    expect(collect(tgCalls())->where('method', 'sendMessage'))->toHaveCount(0);
+
+    $this->travel(16)->minutes();
+    $this->artisan('telegram:eskalasi');
+    $this->artisan('telegram:eskalasi');
+    $sent = collect(tgCalls())->where('method', 'sendMessage');
+    expect($sent)->toHaveCount(1)->and($sent->first()['data']['reply_parameters']['message_id'])->toBe(900);
+
+    $this->travel(15)->minutes();
+    $this->artisan('telegram:eskalasi');
+    expect(collect(tgCalls())->where('method', 'sendMessage'))->toHaveCount(2);
+
+    $r->update(['status' => 'diambil']);
+    $this->travel(60)->minutes();
+    $this->artisan('telegram:eskalasi');
+    expect(collect(tgCalls())->where('method', 'sendMessage'))->toHaveCount(2);
+});
+
+it('perintah /daftar, /respon, /anggota', function () {
+    $r = GuestRequest::create(['room_id' => $this->room->id, 'kind' => 'towel', 'status' => 'diambil', 'priority' => 'biasa', 'requested_by' => $this->foUser->id, 'claimed_by' => $this->hkUser->id, 'claimed_at' => now()]);
+    $send = fn (int $from, string $cmd) => $this->postJson('/api/telegram/webhook', tgMessage($from, $cmd), ['X-Telegram-Bot-Api-Secret-Token' => 'rahasia']);
+    $texts = fn () => collect(tgCalls())->where('method', 'sendMessage')->pluck('data.text');
+
+    $send(111, '/daftar@el_bot');
+    $send(111, '/respon');
+    $send(111, '/anggota'); // bukan HR / Admin: diabaikan
+    expect($texts()->filter(fn ($t) => str_contains($t, 'Belum selesai')))->toHaveCount(1)
+        ->and($texts()->filter(fn ($t) => str_contains($t, 'Permintaan hari ini')))->toHaveCount(1)
+        ->and($texts()->filter(fn ($t) => str_contains($t, 'Sudah tertaut')))->toHaveCount(0);
+
+    $this->foUser->update(['role' => Role::Hr]);
+    $send(111, '/anggota');
+    expect($texts()->filter(fn ($t) => str_contains($t, 'Sudah tertaut') && str_contains($t, 'Eka FO')))->toHaveCount(1);
+});
+
+it('pelapor tidak bisa mengambil permintaannya sendiri lewat tombol', function () {
+    $r = GuestRequest::create(['room_id' => $this->room->id, 'kind' => 'towel', 'status' => 'baru', 'priority' => 'biasa', 'requested_by' => $this->hkUser->id]);
+    $this->postJson('/api/telegram/webhook', tgClick(222, 'rq:claim:'.$r->id), ['X-Telegram-Bot-Api-Secret-Token' => 'rahasia'])->assertOk();
+    expect($r->fresh()->status)->toBe('baru');
+});
