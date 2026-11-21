@@ -24,7 +24,13 @@ class RoomIssuePhotoService
     /** @throws \Illuminate\Validation\ValidationException */
     public function store(RoomIssueUpdate $update, UploadedFile $file, User $by): RoomIssuePhoto
     {
-        $bytes = PhotoReencoder::jpeg($file, 'photos');
+        return $this->storeBytes($update, (string) file_get_contents($file->getRealPath()), $by);
+    }
+
+    /** Sama, dari isi berkas mentah (mis. diunduh dari Telegram). @throws \Illuminate\Validation\ValidationException */
+    public function storeBytes(RoomIssueUpdate $update, string $raw, User $by): RoomIssuePhoto
+    {
+        $bytes = PhotoReencoder::fromString($raw, 'photos');
         $path = "room-issue-photos/{$update->room_issue_id}/".Str::uuid().'.jpg';
         $this->disk()->put($path, $bytes);
 

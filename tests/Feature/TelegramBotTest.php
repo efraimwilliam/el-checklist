@@ -322,3 +322,58 @@ it('halaman Tautan Telegram hanya untuk HR / Administrator', function () {
     loggedIn($this->hkUser);
     $this->get(route('admin.telegram.index'))->assertForbidden();
 });
+
+it('foto yang membalas kartu kendala jadi bukti pekerjaan, hanya dari yang mengambil', function () {
+    \Illuminate\Support\Facades\Storage::fake(config('checklist.photos.disk'));
+    $image = imagecreatetruecolor(40, 30);
+    ob_start();
+    imagejpeg($image);
+    $jpeg = (string) ob_get_clean();
+    Http::swap(new \Illuminate\Http\Client\Factory(app('events')));
+    Http::fake([
+        'api.telegram.org/file/*' => Http::response($jpeg, 200, ['Content-Type' => 'image/jpeg']),
+        'api.telegram.org/*/getFile' => Http::response(['ok' => true, 'result' => ['file_path' => 'photos/a.jpg']]),
+        'api.telegram.org/*' => Http::response(['ok' => true, 'result' => ['message_id' => 901, 'chat' => ['id' => TG_GROUP]]]),
+    ]);
+    $issue = RoomIssue::create(['room_id' => $this->room->id, 'source' => 'staff', 'description' => 'AC', 'priority' => 'biasa', 'status' => 'dikerjakan', 'claimed_by' => $this->hkUser->id, 'claimed_at' => now(), 'assigned_department_id' => $this->hk->id]);
+    TelegramCard::create(['chat_id' => TG_GROUP, 'message_id' => 950, 'room_issue_id' => $issue->id]);
+    $send = fn (int $from, array $extra) => $this->postJson('/api/telegram/webhook', tgMessage($from, '', ['photo' => [['file_id' => 'a'], ['file_id' => 'b']], 'reply_to_message' => ['message_id' => 950]] + $extra), ['X-Telegram-Bot-Api-Secret-Token' => 'rahasia'])->assertOk();
+
+    $send(111, []); // bukan yang mengambil
+    expect($issue->updates()->count())->toBe(0);
+
+    $send(222, ['caption' => 'AC sudah dibersihkan', 'media_group_id' => 'g1']);
+    $send(222, ['media_group_id' => 'g1', 'message_id' => 502]);
+    $update = $issue->updates()->latest('id')->first();
+    expect($issue->updates()->count())->toBe(1)->and($update->body)->toBe('AC sudah dibersihkan')->and($update->photos)->toHaveCount(2);
+
+    $send(222, ['caption' => 'done']);
+    expect($issue->fresh()->status)->toBe('selesai');
+});
+
+it('mengingatkan pengambil lalu HOD bila sudah diambil tapi belum selesai (tidak di jam tenang, Pending dilewati)', function () {
+    $this->travelTo(now()->setTime(10, 0));
+    $hod = User::factory()->role(Role::Hod)->create(['telegram_id' => 333, 'employee_id' => Employee::factory()->for($this->hk)->create(['name' => 'Pak Wayan'])->id]);
+    $hod->departments()->attach($this->hk);
+    $r = GuestRequest::create(['room_id' => $this->room->id, 'kind' => 'towel', 'status' => 'diambil', 'priority' => 'biasa', 'requested_by' => $this->foUser->id, 'assigned_department_id' => $this->hk->id, 'claimed_by' => $this->hkUser->id, 'claimed_at' => now()]);
+    $pending = RoomIssue::create(['room_id' => $this->room->id, 'source' => 'staff', 'description' => 'AC', 'priority' => 'biasa', 'status' => 'tertunda', 'claimed_by' => $this->hkUser->id, 'claimed_at' => now()->subHours(9), 'assigned_department_id' => $this->hk->id]);
+    $to = fn (int $chat) => collect(tgCalls())->where('method', 'sendMessage')->filter(fn ($c) => ($c['data']['chat_id'] ?? null) === $chat);
+
+    $this->travel(61)->minutes();
+    $this->artisan('telegram:eskalasi');
+    $this->artisan('telegram:eskalasi');
+    expect($to(222))->toHaveCount(1)->and($to(222)->first()['data']['text'])->toContain('Sudah selesai?')->and($to(333))->toHaveCount(0);
+
+    $this->travel(120)->minutes(); // total 3 jam sejak diambil
+    $this->artisan('telegram:eskalasi');
+    expect($to(333))->toHaveCount(1)->and($to(333)->first()['data']['text'])->toContain('belum selesai');
+
+    expect($pending->fresh()->claimed_reminders)->toBe(0); // Pending tidak diingatkan
+
+    $r2 = GuestRequest::create(['room_id' => $this->room->id, 'kind' => 'towel', 'status' => 'diambil', 'priority' => 'biasa', 'requested_by' => $this->foUser->id, 'assigned_department_id' => $this->hk->id, 'claimed_by' => $this->hkUser->id, 'claimed_at' => now()]);
+    $this->travelTo(now()->setTime(23, 0)->addDay()->subHours(0));
+    $r2->update(['claimed_at' => now()->subHours(2)]);
+    $before = $to(222)->count();
+    $this->artisan('telegram:eskalasi');
+    expect($to(222))->toHaveCount($before); // jam tenang
+});

@@ -46,8 +46,53 @@ class TelegramEscalate extends Command
             });
 
         $this->alertHods($api);
+        $this->remindClaimed($api);
 
         return self::SUCCESS;
+    }
+
+    /** Jam tenang (WITA): pengingat "sudah selesai?" tidak dikirim, supaya yang sudah pulang tidak diganggu; terkirim pagi harinya. */
+    private function quietHours(): bool
+    {
+        return now()->hour >= 22 || now()->hour < 6;
+    }
+
+    /**
+     * Yang sudah diambil tapi belum selesai (Pending tidak diingatkan): pesan pribadi ke pengambil, lalu ke HOD.
+     * Permintaan tamu 1 jam / 3 jam, kendala 4 jam / 8 jam sejak diambil.
+     */
+    private function remindClaimed(TelegramApi $api): void
+    {
+        if ($this->quietHours()) {
+            return;
+        }
+        $sets = [
+            [GuestRequest::with('room', 'claimer')->where('status', GuestRequest::STATUS_CLAIMED), 60, 180, 'rq'],
+            [RoomIssue::with('room', 'category', 'claimer')->where('status', RoomIssue::STATUS_WORKING), 240, 480, 'is'],
+        ];
+        foreach ($sets as [$query, $first, $second, $kind]) {
+            $query->whereNotNull('claimed_by')->where('claimed_reminders', '<', 2)->whereBetween('claimed_at', [now()->subDays(3), now()->subMinutes($first)])->get()
+                ->each(function (GuestRequest|RoomIssue $item) use ($api, $first, $second, $kind) {
+                    $minutes = (int) $item->claimed_at->diffInMinutes(now());
+                    $level = $minutes >= $second ? 2 : 1;
+                    if ($level <= $item->claimed_reminders) {
+                        return;
+                    }
+                    [$html, $keyboard] = $item instanceof GuestRequest ? Cards::request($item) : Cards::issue($item);
+                    $hours = max(1, (int) round($minutes / 60));
+                    $targets = $level === 1
+                        ? collect([$item->claimer])->filter()
+                        : User::where('role', Role::Hod)->whereHas('departments', fn ($q) => $q->whereKey($item->assigned_department_id))->get();
+                    $text = $level === 1
+                        ? '⏳ '.e(__('Sudah :h jam sejak Anda ambil. Sudah selesai?', ['h' => $hours]))."\n".$html
+                        : '⏳ '.e(__(':name mengambil ini :h jam lalu dan belum selesai.', ['name' => $item->claimer?->name(), 'h' => $hours]))."\n".$html;
+                    foreach ($targets->filter(fn (User $u) => $u->telegram_id) as $user) {
+                        $sent = $api->send($user->telegram_id, $text, $keyboard ?: null);
+                        isset($sent['message_id']) && TelegramCard::firstOrCreate(['chat_id' => $user->telegram_id, 'message_id' => $sent['message_id']], [$kind === 'rq' ? 'guest_request_id' : 'room_issue_id' => $item->id]);
+                    }
+                    $item::whereKey($item->id)->update(['claimed_reminders' => $level]);
+                });
+        }
     }
 
     /** Peringatan pribadi ke HOD departemen tujuan: 30, 60, dan 120 menit sesudah dicatat bila masih belum diambil (permintaan dan kendala). */

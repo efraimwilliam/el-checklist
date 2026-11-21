@@ -11,6 +11,8 @@ use App\Http\Controllers\LostItemController;
 use App\Models\GuestRequest;
 use App\Models\LostItem;
 use App\Models\RoomIssue;
+use App\Models\RoomIssueUpdate;
+use App\Rooms\RoomIssuePhotoService;
 use App\Models\TelegramCard;
 use App\Models\User;
 use App\Support\PhotoReencoder;
@@ -51,8 +53,8 @@ class TelegramHandler
     {
         $chat = (int) $m['chat']['id'];
         $text = trim((string) ($m['text'] ?? $m['caption'] ?? ''));
-        if ($text === '') {
-            return; // foto tanpa keterangan bukan perintah
+        if ($text === '' && ! isset($m['photo'])) {
+            return;
         }
         $private = ($m['chat']['type'] ?? '') === 'private';
         $from = (int) ($m['from']['id'] ?? 0);
@@ -67,6 +69,16 @@ class TelegramHandler
             $private && $this->api->send($chat, e(__('Akun Telegram ini belum terhubung. Buka aplikasi > Profil > Hubungkan Telegram, lalu ketuk tautannya.')));
 
             return;
+        }
+        // Foto yang membalas kartu kendala = foto bukti pekerjaan (keterangan jadi catatan; "done" sekaligus menyelesaikan).
+        if (isset($m['photo']) && ($replyId = $m['reply_to_message']['message_id'] ?? null)
+            && ($card = TelegramCard::where(['chat_id' => $chat, 'message_id' => $replyId])->first())?->room_issue_id) {
+            $this->workPhoto($user, $card, $m, $text, $chat);
+
+            return;
+        }
+        if ($text === '') {
+            return; // foto tanpa keterangan dan bukan balasan kartu kendala
         }
         if ($private && in_array(strtolower(explode('@', $text)[0]), ['/bantuan', '/help'], true)) {
             $this->api->send($chat, $this->help());
@@ -139,6 +151,43 @@ class TelegramHandler
             $this->api->send($chat, '🛠 <b>'.e(__('Sepertinya kendala')).'</b> · '.e(__('Kamar').' '.$read['room']->number).($read['category'] ? ' · '.e($read['category']->name) : '')
                 ."\n".e(__('Catat sebagai kendala?')), [[['text' => __('Catat kendala'), 'callback_data' => 'ik:rec:'.$token], ['text' => __('Abaikan'), 'callback_data' => 'ik:no:'.$token]]], $messageId);
         }
+    }
+
+    /** Foto bukti pekerjaan kendala dari Telegram: masuk ke riwayat kendala (satu catatan; album = satu catatan, maks 3 foto). @param array<string, mixed> $m */
+    private function workPhoto(User $user, TelegramCard $card, array $m, string $caption, int $chat): void
+    {
+        $messageId = (int) $m['message_id'];
+        $issue = RoomIssue::find($card->room_issue_id);
+        $react = fn (string $emoji) => $this->api->call('setMessageReaction', ['chat_id' => $chat, 'message_id' => $messageId, 'reaction' => [['type' => 'emoji', 'emoji' => $emoji]]]);
+        if (! $issue || ! Gate::forUser($user)->allows('work', $issue)) {
+            $this->api->send($chat, '⚠️ '.e($issue?->isDone() ? __('Kendala ini sudah Done.') : __('Foto bukti hanya dari yang mengambil kendala ini (ketuk Saya ambil dulu).')), null, $messageId);
+
+            return;
+        }
+        $album = isset($m['media_group_id']) ? 'telegram.album.'.$m['media_group_id'] : null;
+        $update = $album && ($id = Cache::get($album)) ? RoomIssueUpdate::find($id) : null;
+        if ($update && $update->photos()->count() >= RoomIssuePhotoService::MAX_PER_UPDATE) {
+            return; // album lebih dari 3 foto: sisanya diabaikan
+        }
+        $bytes = $this->api->download((string) end($m['photo'])['file_id']);
+        if (! $bytes) {
+            $this->api->send($chat, '⚠️ '.e(__('Foto tidak bisa diunduh dari Telegram. Coba kirim lagi.')), null, $messageId);
+
+            return;
+        }
+        $done = $caption !== '' && $this->quick->replyAction($caption) === 'done';
+        $words = $caption !== '' && ! $this->quick->replyAction($caption);
+        try {
+            $update ??= RoomIssueUpdate::create(['room_issue_id' => $issue->id, 'user_id' => $user->id, 'department_id' => $user->checklistDepartmentId(), 'body' => $words ? $caption : __('Foto bukti pekerjaan.'), 'kind' => 'catatan']);
+            app(RoomIssuePhotoService::class)->storeBytes($update, $bytes, $user);
+        } catch (\Throwable) {
+            $react('🤷');
+
+            return;
+        }
+        $album && Cache::put($album, $update->id, now()->addMinutes(5));
+        $done && $this->applyAction($user, $card, 'done');
+        $react('👍');
     }
 
     /** Barang tertinggal ("1203 dompet tertinggal", boleh dengan foto): langsung dicatat; kartu ke grup dikirim TelegramNotifier. @param array<string, mixed> $read @param list<array<string, mixed>>|null $photo */
@@ -358,6 +407,7 @@ class TelegramHandler
         return '<b>'.e(__('Bot eL Checklist')).'</b>'
             ."\n".e(__('Ketik seperti biasa di grup: "1206 req 2 mineral water" dicatat sebagai permintaan tamu, "305 AC tidak dingin" ditawarkan sebagai kendala.'))
             ."\n".e(__('Balas kartu atau pesan permintaan dengan "copy" (Saya ambil) atau "done" (Selesai), atau ketuk tombolnya.'))
+            ."\n".e(__('Foto bukti pekerjaan kendala: balas kartu kendala dengan foto (keterangan boleh diisi; "done" sekaligus menyelesaikan). Hanya yang mengambil kendala itu.'))
             ."\n".e(__('Barang tertinggal: kirim foto dengan keterangan "1203 dompet hitam tertinggal"; ubah statusnya dengan membalas kartu: "diambil Mr. Smith", "dikirim resi JNE123", "dilepas".'))
             ."\n".e(__('Perintah: /daftar (belum selesai + siapa yang mengambil), /respon (kecepatan hari ini), /tertinggal (barang disimpan), /anggota (siapa sudah tertaut; HR / Admin).'));
     }
