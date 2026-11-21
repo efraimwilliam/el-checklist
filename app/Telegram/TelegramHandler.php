@@ -36,6 +36,8 @@ class TelegramHandler
         private readonly QuickEntry $quick,
         private readonly QuickRecorder $recorder,
         private readonly ReplyAction $replies,
+        private readonly ChronologyFlow $chronology,
+        private readonly ChecklistFlow $checklist,
     ) {}
 
     /** @param array<string, mixed> $update */
@@ -85,7 +87,23 @@ class TelegramHandler
 
             return;
         }
-        $command = strtolower(explode('@', explode(' ', $text)[0])[0]);
+        $command = strtolower(explode('@', preg_split('/\s+/', $text, 2)[0])[0]);
+        $rest = trim((string) (preg_split('/\s+/', $text, 2)[1] ?? ''));
+        if (in_array($command, ['/chronology', '/checklist', '/batal'], true)) {
+            if (! $private) {
+                $this->api->send($chat, e(__('Buka chat pribadi dengan bot untuk perintah ini.')), null, (int) $m['message_id']);
+            } elseif ($command === '/chronology') {
+                $this->chronology->start($user, $chat, $rest);
+            } elseif ($command === '/checklist') {
+                $this->checklist->open($user, $chat);
+            } else {
+                $this->chronology->cancel($user);
+                Cache::forget(ChecklistFlow::REASON.$user->id);
+                $this->api->send($chat, e(__('Dibatalkan.')));
+            }
+
+            return;
+        }
         $reply = match ($command) {
             '/daftar' => Reports::open($private ? $user : null),
             '/respon' => Reports::response(),
@@ -100,6 +118,19 @@ class TelegramHandler
         }
         if (str_starts_with($text, '/')) {
             return; // perintah lain bukan untuk bot ini
+        }
+
+        // Chat pribadi: jawaban atas pertanyaan bot (teks laporan Chronology / alasan Pending).
+        if ($private && $this->chronology->waiting($user)) {
+            $this->chronology->receive($user, $chat, $text);
+
+            return;
+        }
+        if ($private && $this->checklist->waitingReason($user)) {
+            $this->checklist->saveReason($user, $text);
+            $this->api->call('setMessageReaction', ['chat_id' => $chat, 'message_id' => (int) $m['message_id'], 'reaction' => [['type' => 'emoji', 'emoji' => '👍']]]);
+
+            return;
         }
 
         // Membalas kartu / pesan yang sudah tercatat: "copy" = Saya ambil, "done" = Selesai; barang tertinggal: "diambil nama" / "dikirim resi" / "dilepas".
@@ -248,6 +279,16 @@ class TelegramHandler
 
         if ($kind === 'ik') {
             $this->issueButton($id, $user, $action, $key, $chat, $messageId, $q['message'] ?? []);
+
+            return;
+        }
+        if ($kind === 'cr') {
+            $this->chronology->callback($user, $action, (int) $key, $chat, $messageId, $id);
+
+            return;
+        }
+        if ($kind === 'cl') {
+            $this->checklist->callback($user, $action, $key, $chat, $messageId, $id);
 
             return;
         }
@@ -408,6 +449,7 @@ class TelegramHandler
             ."\n".e(__('Ketik seperti biasa di grup: "1206 req 2 mineral water" dicatat sebagai permintaan tamu, "305 AC tidak dingin" ditawarkan sebagai kendala.'))
             ."\n".e(__('Balas kartu atau pesan permintaan dengan "copy" (Saya ambil) atau "done" (Selesai), atau ketuk tombolnya.'))
             ."\n".e(__('Foto bukti pekerjaan kendala: balas kartu kendala dengan foto (keterangan boleh diisi; "done" sekaligus menyelesaikan). Hanya yang mengambil kendala itu.'))
+            ."\n".e(__('Chat pribadi: /checklist (isi checklist hari ini dengan tombol), /chronology (tempel teks laporan, lalu dikirim ke grup), /batal.'))
             ."\n".e(__('Barang tertinggal: kirim foto dengan keterangan "1203 dompet hitam tertinggal"; ubah statusnya dengan membalas kartu: "diambil Mr. Smith", "dikirim resi JNE123", "dilepas".'))
             ."\n".e(__('Perintah: /daftar (belum selesai + siapa yang mengambil), /respon (kecepatan hari ini), /tertinggal (barang disimpan), /anggota (siapa sudah tertaut; HR / Admin).'));
     }

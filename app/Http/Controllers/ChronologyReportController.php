@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Chat\ChatPoster;
 use App\Chronology\ReportParser;
+use App\Chronology\ReportRecorder;
 use App\Chronology\ReportText;
 use App\Enums\Role;
 use App\Models\ChatThread;
@@ -241,30 +242,6 @@ class ChronologyReportController extends Controller
     /** Menyimpan laporan beserta tamu dan poinnya (urutan = urutan di daftar); `$final` sekaligus mengunci. */
     private function persist(User $user, ChronologyReport $report, array $data, Collection $guests, Collection $entries, ?int $issueId, bool $final = false): void
     {
-        DB::transaction(function () use ($user, $report, $data, $guests, $entries, $issueId, $final) {
-            $report->fill([
-                'nationality' => filled($data['nationality'] ?? null) ? trim($data['nationality']) : null,
-                'check_in' => $data['check_in'],
-                'check_out' => $data['check_out'] ?? null,
-                'booking_source' => filled($data['booking_source'] ?? null) ? trim($data['booking_source']) : null,
-                'room_issue_id' => $issueId,
-            ]);
-            if (! $report->exists) {
-                $report->fill(['author_id' => $user->id, 'department_id' => $user->checklistDepartmentId(), 'status' => ChronologyReport::STATUS_DRAFT]);
-            }
-            $report->save();
-
-            $report->guests()->delete();
-            foreach ($guests as $index => $guest) {
-                $report->guests()->create(['sort' => $index + 1, 'name' => trim($guest['name']), 'room_number' => filled($guest['room_number'] ?? null) ? trim($guest['room_number']) : null]);
-            }
-            $report->entries()->delete();
-            foreach ($entries as $index => $entry) {
-                $report->entries()->create(['sort' => $index + 1, 'occurred_at' => filled($entry['occurred_at'] ?? null) ? $entry['occurred_at'] : null, 'body' => trim($entry['body'])]);
-            }
-            if ($final) {
-                $report->update(['status' => ChronologyReport::STATUS_FINAL, 'finalized_at' => now()]);
-            }
-        });
+        ReportRecorder::persist($user, $report, $data, $guests, $entries, $issueId, $final);
     }
 }

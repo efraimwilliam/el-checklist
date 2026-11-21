@@ -377,3 +377,60 @@ it('mengingatkan pengambil lalu HOD bila sudah diambil tapi belum selesai (tidak
     $this->artisan('telegram:eskalasi');
     expect($to(222))->toHaveCount($before); // jam tenang
 });
+
+it('/chronology: tempel teks -> draft + pratinjau -> finalisasi dikirim ke grup', function () {
+    $this->foUser->employee->update(['position_title' => 'GRO']);
+    $post = fn (array $body) => $this->postJson('/api/telegram/webhook', $body, ['X-Telegram-Bot-Api-Secret-Token' => 'rahasia'])->assertOk();
+    $private = fn (string $text) => tgMessage(111, $text, [], 111);
+    $sentTo = fn ($chat) => collect(tgCalls())->where('method', 'sendMessage')->filter(fn ($c) => ($c['data']['chat_id'] ?? null) === $chat);
+
+    $post(tgMessage(111, '/chronology')); // di grup: ditolak
+    expect(\App\Models\ChronologyReport::count())->toBe(0);
+
+    $post($private('/chronology'));
+    $post($private("Guest Name : Mr John Smith\nRoom Number : 1206\nNationality : Australia\nLength of stay : 02 November 2026 - 05 November 2026\nSource of Booking : Booking.com\n\n1. Tamu melapor AC mati.\n2. Teknisi memperbaiki."));
+    $report = \App\Models\ChronologyReport::with(['guests', 'entries'])->sole();
+    expect($report->status)->toBe('draft')->and($report->guests->first()->name)->toBe('Mr John Smith')->and($report->entries)->toHaveCount(2)->and($report->author_id)->toBe($this->foUser->id);
+    expect($sentTo(111)->pluck('data.text')->join(' '))->toContain('Mr John Smith');
+
+    $post(tgClick(222, 'cr:fin:'.$report->id, 222)); // bukan penulis
+    expect($report->fresh()->status)->toBe('draft');
+
+    $post(tgClick(111, 'cr:fin:'.$report->id, 111));
+    expect($report->fresh()->status)->toBe('final')->and($sentTo(TG_GROUP)->pluck('data.text')->join(' '))->toContain('Mr John Smith');
+});
+
+it('/chronology menolak teks yang belum lengkap dan menunggu perbaikan', function () {
+    $post = fn (string $text) => $this->postJson('/api/telegram/webhook', tgMessage(111, $text, [], 111), ['X-Telegram-Bot-Api-Secret-Token' => 'rahasia'])->assertOk();
+    $post("/chronology\nhalo saja");
+    expect(\App\Models\ChronologyReport::count())->toBe(0);
+    expect(collect(tgCalls())->where('method', 'sendMessage')->pluck('data.text')->join(' '))->toContain('Belum terbaca');
+});
+
+it('/checklist: isi tugas dengan tombol, Pending dengan alasan', function () {
+    $position = \App\Models\Position::factory()->for($this->fo)->create(['name' => 'GSA']);
+    \App\Models\Task::factory()->for($position)->create(['title' => 'Cek lobby', 'sort' => 1]);
+    \App\Models\Task::factory()->for($position)->create(['title' => 'Cek kunci', 'sort' => 2]);
+    $checklist = makeChecklist($this->foUser->employee, $position, null, null);
+    $items = $checklist->items()->orderBy('sort')->get();
+    $post = fn (array $body) => $this->postJson('/api/telegram/webhook', $body, ['X-Telegram-Bot-Api-Secret-Token' => 'rahasia'])->assertOk();
+    // makeChecklist() memalsukan Http sendiri: pasang kembali tiruan Telegram.
+    Http::swap(new \Illuminate\Http\Client\Factory(app('events')));
+    Http::fake(['api.telegram.org/*' => Http::response(['ok' => true, 'result' => ['message_id' => 900, 'chat' => ['id' => 111]]])]);
+
+    $post(tgMessage(111, '/checklist', [], 111));
+    expect(collect(tgCalls())->where('method', 'sendMessage')->pluck('data.text')->join(' '))->toContain('Cek lobby');
+
+    $post(tgClick(111, 'cl:s:'.$checklist->id.':'.$items[0]->id.':done', 111));
+    expect($items[0]->fresh()->status->value)->toBe('done');
+    expect(collect(tgCalls())->where('method', 'editMessageText')->last()['data']['text'])->toContain('Cek kunci'); // pindah ke tugas berikutnya
+
+    $post(tgClick(111, 'cl:s:'.$checklist->id.':'.$items[1]->id.':pending', 111));
+    expect($items[1]->fresh()->status->value)->toBe('pending');
+    $post(tgMessage(111, 'Kunci belum diserahkan', [], 111));
+    expect($items[1]->fresh()->note)->toBe('Kunci belum diserahkan');
+
+    // Orang lain tidak bisa mengubah checklist ini.
+    $post(tgClick(222, 'cl:s:'.$checklist->id.':'.$items[0]->id.':pending', 222));
+    expect($items[0]->fresh()->status->value)->toBe('done');
+});
