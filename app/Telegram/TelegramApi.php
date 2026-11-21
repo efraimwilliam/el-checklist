@@ -14,13 +14,13 @@ class TelegramApi
     }
 
     /** @param array<string, mixed> $params @return array<string, mixed>|null isi `result`, null bila gagal */
-    public function call(string $method, array $params = []): ?array
+    public function call(string $method, array $params = [], int $timeout = 5): ?array
     {
         if (! $this->enabled()) {
             return null;
         }
         try {
-            $response = Http::timeout(5)->post('https://api.telegram.org/bot'.config('services.telegram.token').'/'.$method, $params);
+            $response = Http::timeout($timeout)->post('https://api.telegram.org/bot'.config('services.telegram.token').'/'.$method, $params);
         } catch (\Throwable $e) {
             Log::warning('Telegram '.$method.' gagal: '.$e->getMessage());
 

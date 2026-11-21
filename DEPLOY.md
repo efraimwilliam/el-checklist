@@ -659,7 +659,26 @@ Antarmuka tambahan: permintaan tamu / kendala bisa diketik di grup Telegram, kar
 1. Di Telegram buka **@BotFather** > `/newbot` > catat **token** dan **username** bot. Lalu `/setprivacy` > pilih bot > **Disable** (supaya bot bisa membaca pesan grup).
 2. Buat grup (atau pakai grup Room Division), tambahkan bot, jadikan **admin**. Ambil id grup (kirim satu pesan di grup, lalu buka `https://api.telegram.org/bot<TOKEN>/getUpdates` dan lihat `chat.id`, biasanya diawali `-100`).
 3. Di `.env` server: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME` (tanpa @), `TELEGRAM_CHAT_ID` (id grup; kosong = tanpa kartu otomatis), dan `TELEGRAM_WEBHOOK_SECRET` (acak, huruf / angka / `_` / `-`, mis. `openssl rand -hex 24`). Lalu `php artisan config:clear` dan `php artisan migrate --force`.
-4. Pasang webhook (butuh HTTPS publik): `php artisan telegram:webhook https://domain-aplikasi`. Perintah tanpa argumen menampilkan status (alamat, update menunggu, galat terakhir); `--hapus` melepasnya.
+4. Pilih SATU cara menerima pesan:
+   - **Server hanya di jaringan hotel (tanpa alamat publik)** -> polling, tanpa webhook: bot mengambil pesan sendiri dari Telegram (hanya koneksi keluar ke api.telegram.org). Webhook akan ditolak Telegram dengan "bad webhook: IP address ... is reserved" bila domain mengarah ke alamat dalam (172.16.x / 192.168.x / 10.x). Jalankan terus-menerus lewat systemd, buat `/etc/systemd/system/el-telegram.service`:
+     ```
+     [Unit]
+     Description=Bot Telegram eL Checklist
+     After=network-online.target mysql.service
+
+     [Service]
+     User=www-data
+     WorkingDirectory=/var/www/checklist
+     ExecStart=/usr/bin/php artisan telegram:poll
+     Restart=always
+     RestartSec=5
+
+     [Install]
+     WantedBy=multi-user.target
+     ```
+     lalu `sudo systemctl daemon-reload && sudo systemctl enable --now el-telegram` (log: `journalctl -u el-telegram -f`). Setiap `git pull` yang mengubah kode: `sudo systemctl restart el-telegram` (proses panjang tidak memuat kode baru sendiri). Uji tanpa systemd: `php artisan telegram:poll` di terminal (Ctrl+C berhenti).
+   - **Server punya HTTPS publik** (mis. Cloudflare Tunnel) -> webhook: `php artisan telegram:webhook https://domain-aplikasi`. Perintah tanpa argumen menampilkan status (alamat, update menunggu, galat terakhir); `--hapus` melepasnya.
+   Jangan dua-duanya sekaligus: `telegram:poll` melepas webhook saat mulai.
 5. Tiap pegawai: aplikasi > **Profil** > **Hubungkan Telegram** > ketuk tombol > tekan Start. Akun yang belum tertaut diabaikan di grup.
 
 Catatan: pesan grup dan nama tamu lewat server Telegram (bukan end-to-end). Obrolan bawaan aplikasi tetap jalan; matikan lewat Pengaturan > Fitur bila sudah pindah penuh.

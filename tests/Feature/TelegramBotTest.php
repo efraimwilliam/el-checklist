@@ -173,3 +173,23 @@ it('refreshes the Telegram card when the request changes on the web', function (
     $edit = collect(tgCalls())->where('method', 'editMessageText')->last();
     expect($edit['data']['message_id'])->toBe(900)->and($edit['data']['text'])->toContain('Diambil')->and($edit['data']['text'])->toContain('Komang HK');
 });
+
+it('polls Telegram for updates (no public URL needed), handles them, and moves the offset forward', function () {
+    Cache::forget('telegram.poll.offset');
+    Http::swap(new \Illuminate\Http\Client\Factory(app('events')));
+    Http::preventStrayRequests();
+    Http::fake([
+        'api.telegram.org/*/getUpdates' => Http::response(['ok' => true, 'result' => [array_merge(tgMessage(111, '1206 req 2 mineral water *eka'), ['update_id' => 41])]]),
+        'api.telegram.org/*' => Http::response(['ok' => true, 'result' => ['message_id' => 900, 'chat' => ['id' => TG_GROUP]]]),
+    ]);
+
+    $this->artisan('telegram:poll', ['--sekali' => true])->assertExitCode(0);
+
+    $methods = array_column(tgCalls(), 'method');
+    expect($methods)->toContain('deleteWebhook')->toContain('getUpdates')->toContain('sendMessage');
+    expect(GuestRequest::firstOrFail()->kind)->toBe('mineral_water')->and(Cache::get('telegram.poll.offset'))->toBe(42);
+    // Putaran berikutnya meminta update sesudah 41.
+    $this->artisan('telegram:poll', ['--sekali' => true]);
+    $offsets = collect(tgCalls())->where('method', 'getUpdates')->pluck('data.offset');
+    expect($offsets->last())->toBe(42);
+});
