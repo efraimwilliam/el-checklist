@@ -33,6 +33,7 @@ class TelegramWebhook extends Command
             }
             $ok = $api->call('setWebhook', ['url' => rtrim($url, '/').'/api/telegram/webhook', 'secret_token' => $secret, 'allowed_updates' => ['message', 'callback_query'], 'drop_pending_updates' => true]);
             $this->line($ok ? 'Webhook terpasang.' : 'Gagal memasang webhook (lihat storage/logs).');
+            $ok && $api->registerCommands();
         }
         $info = $api->call('getWebhookInfo');
         $this->line('Webhook: '.($info['url'] ?? '-').' | menunggu: '.($info['pending_update_count'] ?? '-').(isset($info['last_error_message']) ? ' | galat terakhir: '.$info['last_error_message'] : ''));

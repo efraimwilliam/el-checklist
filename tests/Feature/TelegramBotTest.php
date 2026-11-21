@@ -434,3 +434,11 @@ it('/checklist: isi tugas dengan tombol, Pending dengan alasan', function () {
     $post(tgClick(222, 'cl:s:'.$checklist->id.':'.$items[0]->id.':pending', 222));
     expect($items[0]->fresh()->status->value)->toBe('done');
 });
+
+it('mendaftarkan menu perintah "/" untuk grup dan chat pribadi', function () {
+    app(\App\Telegram\TelegramApi::class)->registerCommands();
+    $calls = collect(tgCalls())->where('method', 'setMyCommands')->values();
+    expect($calls)->toHaveCount(2)
+        ->and($calls[0]['data']['scope']['type'])->toBe('all_group_chats')->and(collect($calls[0]['data']['commands'])->pluck('command')->all())->not->toContain('checklist')
+        ->and($calls[1]['data']['scope']['type'])->toBe('all_private_chats')->and(collect($calls[1]['data']['commands'])->pluck('command')->all())->toContain('checklist', 'chronology');
+});

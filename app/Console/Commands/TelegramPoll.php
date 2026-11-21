@@ -30,6 +30,7 @@ class TelegramPoll extends Command
             return self::FAILURE;
         }
         $api->call('deleteWebhook'); // getUpdates ditolak Telegram selama webhook terpasang
+        $api->registerCommands(); // menu "/" di Telegram diperbarui tiap bot dimulai ulang (deploy)
         $once = (bool) $this->option('sekali');
         $this->info('Bot Telegram mengambil pesan'.($once ? ' (satu putaran)' : ' terus-menerus (Ctrl+C untuk berhenti)').'.');
 

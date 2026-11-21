@@ -62,6 +62,25 @@ class TelegramApi
         ]);
     }
 
+    /** Daftar perintah yang muncul saat pengguna mengetik "/" (grup dan chat pribadi berbeda). */
+    public function registerCommands(): void
+    {
+        $common = [
+            ['command' => 'daftar', 'description' => 'Permintaan / kendala yang belum selesai'],
+            ['command' => 'respon', 'description' => 'Kecepatan respons hari ini'],
+            ['command' => 'tertinggal', 'description' => 'Barang tertinggal yang disimpan'],
+            ['command' => 'bantuan', 'description' => 'Cara memakai bot'],
+        ];
+        $private = [...$common,
+            ['command' => 'checklist', 'description' => 'Isi checklist hari ini'],
+            ['command' => 'chronology', 'description' => 'Buat Chronology Report'],
+            ['command' => 'anggota', 'description' => 'Siapa sudah tertaut (HR / Admin)'],
+            ['command' => 'batal', 'description' => 'Batalkan isian yang sedang berjalan'],
+        ];
+        $this->call('setMyCommands', ['commands' => $common, 'scope' => ['type' => 'all_group_chats']]);
+        $this->call('setMyCommands', ['commands' => $private, 'scope' => ['type' => 'all_private_chats']]);
+    }
+
     /** Unduh berkas (foto) dari Telegram: isi mentah, atau null bila gagal. */
     public function download(string $fileId): ?string
     {
